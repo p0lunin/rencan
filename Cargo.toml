@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "rencan-core",
+    "rencan-render",
+    "rencan-ui",
+    "demo",
+]
