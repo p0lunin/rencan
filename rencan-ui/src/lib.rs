@@ -232,7 +232,7 @@ fn create_swap_chain(
 
     let surface_format = choose_swap_surface_format(&capabilities.supported_formats);
     let present_mode = choose_swap_present_mode(capabilities.present_modes);
-    let extent = choose_swap_extent(&capabilities);
+    let extent = choose_swap_extent(surface.window().inner_size().into(), &capabilities);
 
     let mut image_count = capabilities.min_image_count + 1;
 
@@ -295,9 +295,9 @@ fn choose_swap_present_mode(available_present_modes: SupportedPresentModes) -> P
     }
 }
 
-fn choose_swap_extent(capabilities: &Capabilities) -> [u32; 2] {
+fn choose_swap_extent(window_size: [u32; 2], capabilities: &Capabilities) -> [u32; 2] {
     capabilities.current_extent.unwrap_or_else(|| {
-        let mut actual = [512, 512];
+        let mut actual = window_size;
         actual[0] =
             capabilities.min_image_extent[0].max(capabilities.min_image_extent[0].min(actual[0]));
 
