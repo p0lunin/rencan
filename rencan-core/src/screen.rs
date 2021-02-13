@@ -3,7 +3,7 @@
 pub struct Screen(pub [u32; 2]);
 
 impl Screen {
-    pub fn new(width: u32, height: u32, ) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Screen([width, height])
     }
 }

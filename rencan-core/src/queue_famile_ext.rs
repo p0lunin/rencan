@@ -1,4 +1,4 @@
-use vk::instance::QueueFamily;
+use vulkano::instance::QueueFamily;
 
 pub trait QueueFamilyExt {
     fn proof_support_graphics(&self) -> Option<ProofSupportGraphics>;

@@ -13,7 +13,7 @@ layout(set = 0, binding = 2) buffer Rays {
 };
 layout(set = 0, binding = 3, rgba8) uniform writeonly image2D out_image;
 
-const float eps = 0.001;
+const float eps = 0.005;
 
 bool eqf(float f1, float f2) {
     return abs(f1 - f2) < eps;
