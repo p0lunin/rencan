@@ -8,9 +8,9 @@ use rencan_core::{AppInfo, BufferAccessData, Screen};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
-    command_buffer::{AutoCommandBuffer, CommandBuffer, CommandBufferExecFuture},
+    command_buffer::{AutoCommandBuffer, CommandBufferExecFuture},
     image::ImageViewAccess,
-    sync::{GpuFuture, NowFuture},
+    sync::{GpuFuture},
 };
 
 pub struct App {
