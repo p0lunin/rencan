@@ -1,11 +1,13 @@
-use rencan_core::{AppInfo, Screen};
+use rencan_core::{AppInfo, Model, Screen};
 use rencan_render::{camera::Camera, App};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
 use vulkano::{
+    command_buffer::AutoCommandBufferBuilder,
     device::{Device, DeviceExtensions, Features, Queue},
+    format::ClearValue,
     image::{ImageUsage, SwapchainImage},
     instance::{Instance, PhysicalDevice},
     swapchain::{
@@ -50,13 +52,17 @@ impl GuiApp {
         }
     }
 
-    pub fn run<T>(
+    pub fn run<T, Models>(
         mut self,
         event_loop: EventLoop<T>,
-        mut pre_compute: impl FnMut(&Event<T>, &mut App) + 'static,
-    ) {
+        mut models: Models,
+        mut pre_compute: impl FnMut(&Event<T>, &mut App, &mut Models) + 'static,
+    ) where
+        Models: 'static,
+        for<'a> &'a Models: IntoIterator<Item = &'a Model>,
+    {
         event_loop.run(move |event, _, control_flow| {
-            pre_compute(&event, &mut self.app);
+            pre_compute(&event, &mut self.app, &mut models);
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(5));
 
             match event {
@@ -97,12 +103,27 @@ impl GuiApp {
                         self.must_recreate_swapchain = true;
                     }
 
-                    let (fut, _) = self
-                        .app
-                        .render(acquire_future, |_| self.swap_chain_images[image_num].clone());
+                    let mut clear_image = AutoCommandBufferBuilder::new(
+                        self.device(),
+                        self.graphics_queue().family(),
+                    )
+                    .unwrap();
+                    clear_image
+                        .clear_color_image(
+                            self.swap_chain_images[image_num].clone(),
+                            ClearValue::Float([0.0, 0.0, 0.0, 0.0]),
+                        )
+                        .unwrap();
+                    let clear_image = clear_image.build().unwrap();
+
+                    let (fut, _) = self.app.render(
+                        acquire_future.then_execute(self.graphics_queue(), clear_image).unwrap(),
+                        (&models).into_iter(),
+                        |_| self.swap_chain_images[image_num].clone(),
+                    );
 
                     fut.then_swapchain_present(
-                        self.app.info().graphics_queue.clone(),
+                        self.present_queue(),
                         self.swap_chain.clone(),
                         image_num,
                     )
@@ -114,6 +135,16 @@ impl GuiApp {
                 _ => (),
             }
         })
+    }
+
+    pub fn device(&self) -> Arc<Device> {
+        self.app.info().device.clone()
+    }
+    pub fn graphics_queue(&self) -> Arc<Queue> {
+        self.app.info().graphics_queue.clone()
+    }
+    pub fn present_queue(&self) -> Arc<Queue> {
+        self.app.info().graphics_queue.clone()
     }
 }
 
@@ -136,7 +167,12 @@ fn init_swapchain(
         format,
         dimensions,
         1,
-        ImageUsage { storage: true, color_attachment: true, ..ImageUsage::none() },
+        ImageUsage {
+            storage: true,
+            color_attachment: true,
+            transfer_destination: true,
+            ..ImageUsage::none()
+        },
         &queue,
         SurfaceTransform::Identity,
         alpha,

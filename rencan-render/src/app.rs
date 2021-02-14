@@ -4,22 +4,18 @@ use crate::{
 };
 use crevice::std140::AsStd140;
 use nalgebra::Point4;
-use rencan_core::{AppInfo, BufferAccessData, Screen};
+use rencan_core::{AppInfo, BufferAccessData, Model, Screen};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
-    command_buffer::{AutoCommandBuffer, CommandBufferExecFuture},
     image::ImageViewAccess,
-    sync::{GpuFuture},
+    sync::GpuFuture,
 };
 
 pub struct App {
     info: AppInfo,
     camera: Camera,
 }
-
-type RenderFut<F> =
-    CommandBufferExecFuture<CommandBufferExecFuture<F, AutoCommandBuffer>, AutoCommandBuffer>;
 
 impl App {
     pub fn new(info: AppInfo, camera: Camera) -> Self {
@@ -34,11 +30,12 @@ impl App {
     pub fn update_camera(&mut self, update_cam: impl FnOnce(Camera) -> Camera) {
         self.camera = update_cam(self.camera.clone());
     }
-    pub fn render<Prev, F>(
+    pub fn render<'a, Prev, F>(
         &self,
         previous: Prev,
+        models: impl Iterator<Item = &'a Model>,
         image_create: F,
-    ) -> (RenderFut<Prev>, Arc<dyn ImageViewAccess + Send + Sync + 'static>)
+    ) -> (impl GpuFuture, Arc<dyn ImageViewAccess + Send + Sync + 'static>)
     where
         Prev: GpuFuture,
         F: FnOnce(&AppInfo) -> Arc<dyn ImageViewAccess + Send + Sync + 'static>,
@@ -51,6 +48,14 @@ impl App {
             buffers.camera.clone(),
             buffers.rays.clone(),
         );
+        let make_ray_tracing = commands::make_ray_tracing(
+            &self.info,
+            models,
+            self.camera.position().clone(),
+            buffers.output_image.clone(),
+            buffers.screen.clone(),
+            buffers.rays.clone(),
+        );
         let show_ordinates = commands::show_xyz_ordinates(
             &self.info,
             self.camera.position().clone(),
@@ -60,6 +65,8 @@ impl App {
         );
         let fut = previous
             .then_execute(self.info.graphics_queue.clone(), compute_rays)
+            .unwrap()
+            .then_execute_same_queue(make_ray_tracing)
             .unwrap()
             .then_execute_same_queue(show_ordinates)
             .unwrap();

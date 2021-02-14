@@ -11,9 +11,22 @@ layout(set = 0, binding = 1) uniform Origin {
 layout(set = 0, binding = 2) buffer Rays {
     vec4 rays[];
 };
-layout(set = 0, binding = 3, rgba8) uniform writeonly image2D out_image;
+layout(set = 0, binding = 3, rgba8) uniform image2D out_image;
 
-const float eps = 0.005;
+struct IntersectResult {
+    float distance;
+    bool intersect;
+};
+
+IntersectResult not_intersect() {
+    return IntersectResult(0.0, false);
+}
+
+IntersectResult intersect(float distance) {
+    return IntersectResult(distance, true);
+}
+
+const float eps = 0.008;
 
 bool eqf(float f1, float f2) {
     return abs(f1 - f2) < eps;
@@ -26,22 +39,46 @@ bool try_intersect_x(vec3 ray, float t) {
         origin.x + ray.x * t >= 0;
 }
 
-bool check_x_y(vec3 ray) {
+IntersectResult check_x_y(vec3 ray) {
     float t = (-origin.y) / ray.y;
-    return t > 0 && try_intersect_x(ray, t);
+    if (t > 0 && try_intersect_x(ray, t)) {
+        return intersect(t);
+    }
+    else {
+        return not_intersect();
+    }
 }
-bool check_x_z(vec3 ray) {
+IntersectResult check_x_z(vec3 ray) {
     float t = (-origin.z) / ray.z;
-    return t > 0 && try_intersect_x(ray, t);
+    if (t > 0 && try_intersect_x(ray, t)) {
+        return intersect(t);
+    }
+    else {
+        return not_intersect();
+    }
 }
 
-bool intersect_x(vec3 ray) {
-    bool intersect = true;
-    if (!(eqf(ray.y, 0.0) && eqf(origin.y, 0.0)))
-        intersect = intersect && check_x_y(ray);
-    if (!(eqf(ray.z, 0.0) && eqf(origin.z, 0.0)))
-        intersect = intersect && check_x_z(ray);
-    return intersect;
+IntersectResult intersect_x(vec3 ray) {
+    IntersectResult res_out = intersect(3.402823466e+38);
+    if (!(eqf(ray.y, 0.0) && eqf(origin.y, 0.0))) {
+        IntersectResult res = check_x_y(ray);
+        if (res.intersect) {
+            res_out.distance = res.distance;
+        }
+        else {
+            return not_intersect();
+        }
+    }
+    if (!(eqf(ray.z, 0.0) && eqf(origin.z, 0.0))) {
+        IntersectResult res = check_x_z(ray);
+        if (res.intersect) {
+            res_out.distance = min(res.distance, res_out.distance);
+        }
+        else {
+            return not_intersect();
+        }
+    }
+    return res_out;
 }
 
 bool try_intersect_y(vec3 ray, float t) {
@@ -100,18 +137,21 @@ void main() {
 
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
-    float red = 0.0;
-    float blue = 0.0;
-    float green = 0.0;
+    vec4 pixel = imageLoad(out_image, pos);
 
-    if (intersect_x(ray)) {
-        red = 1.0;
+    float distance = pixel.w;
+
+    IntersectResult x_res = intersect_x(ray);
+    if (x_res.intersect) {
+        if (x_res.distance < distance) {
+            distance = x_res.distance;
+            imageStore(out_image, pos, vec4(1.0, 0.0, 0.0, distance));
+        }
     }
-    if (intersect_y(ray)) {
-        blue = 1.0;
+    else if (intersect_y(ray)) {
+        imageStore(out_image, pos, vec4(0.0, 1.0, 0.0, distance));
     }
-    if (intersect_z(ray)) {
-        green = 1.0;
+    else if (intersect_z(ray)) {
+        imageStore(out_image, pos, vec4(0.0, 0.0, 1.0, distance));
     }
-    imageStore(out_image, pos, vec4(red, blue, green, 1.0));
 }

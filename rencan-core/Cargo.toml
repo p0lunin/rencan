@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 vulkano = "0.20.0"
+nalgebra = "0.24.1"
