@@ -44,6 +44,9 @@ impl App {
     pub fn info(&self) -> &AppInfo {
         &self.info
     }
+    pub fn camera(&self) -> &Camera {
+        &self.camera
+    }
     pub fn update_screen(&mut self, screen: Screen) {
         self.info.screen = screen;
     }

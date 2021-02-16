@@ -5,9 +5,11 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
-layout(std140, set = 0, binding = 1) uniform Origin {
+layout(std140, set = 0, binding = 1) uniform Camera {
     vec3 origin;
     mat3 rotation;
+    float x_angle;
+    float y_angle;
 };
 layout(set = 0, binding = 2) buffer Rays {
     vec3 rays[];
