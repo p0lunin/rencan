@@ -1,112 +1,96 @@
-use crate::app::Rays;
-use crevice::std140::AsStd140;
-use nalgebra::Point3;
-use rencan_core::{AppInfo, BufferAccessData, Model, Screen};
+use crate::core::{CommandFactory, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-    descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
-    image::ImageViewAccess,
+    descriptor::{
+        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout,
+        PipelineLayoutAbstract,
+    },
+    device::Device,
     pipeline::ComputePipeline,
 };
 
-pub fn make_ray_tracing<'a>(
-    AppInfo { screen, device, graphics_queue: queue, .. }: &AppInfo,
-    models: impl Iterator<Item = &'a Model>,
-    origin: Point3<f32>,
-    image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-    screen_buffer: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
-    rays: Arc<dyn BufferAccessData<Data = Rays> + Send + Sync + 'static>,
-) -> AutoCommandBuffer {
-    mod cs {
-        vulkano_shaders::shader! {
-            ty: "compute",
-            path: "shaders/ray_tracing.glsl"
-        }
+mod cs {
+    vulkano_shaders::shader! {
+        ty: "compute",
+        path: "shaders/ray_tracing.glsl"
     }
+}
 
-    let shader = cs::Shader::load(device.clone()).unwrap();
+pub struct RayTraceCommandFactory {
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+}
 
-    let compute_pipeline = Arc::new(
-        ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
-    );
-
-    let origin_buffer = CpuAccessibleBuffer::from_data(
-        device.clone(),
-        BufferUsage::all(),
-        false,
-        Into::<mint::Vector3<f32>>::into(origin.coords).as_std140(),
-    )
-    .unwrap();
-
-    let layout_0 = compute_pipeline.layout().descriptor_set_layout(0).unwrap();
-    let set_0 = Arc::new(
-        PersistentDescriptorSet::start(layout_0.clone())
-            .add_buffer(screen_buffer.clone())
-            .unwrap()
-            .add_buffer(origin_buffer.clone())
-            .unwrap()
-            .add_buffer(rays.clone())
-            .unwrap()
-            .add_image(image.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
-    );
-
-    let layout_1 = compute_pipeline.layout().descriptor_set_layout(1).unwrap();
-
-    let mut command = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
-
-    for model in models {
-        let vertices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.vertices.iter().cloned(),
-        )
-        .unwrap();
-        let indices_length_buffer = CpuAccessibleBuffer::from_data(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.indexes.len() as u32,
-        )
-        .unwrap();
-        let indices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.indexes.iter().cloned(),
-        )
-        .unwrap();
-
-        let set_1 = Arc::new(
-            PersistentDescriptorSet::start(layout_1.clone())
-                .add_buffer(vertices_buffer)
-                .unwrap()
-                .add_buffer(indices_length_buffer)
-                .unwrap()
-                .add_buffer(indices_buffer)
-                .unwrap()
-                .build()
-                .unwrap(),
+impl RayTraceCommandFactory {
+    pub fn new(device: Arc<Device>) -> Self {
+        let shader = cs::Shader::load(device.clone()).unwrap();
+        let pipeline = Arc::new(
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
+        RayTraceCommandFactory { pipeline }
+    }
+}
 
-        command
-            .dispatch(
-                [screen.width() * screen.height(), 1, 1],
-                compute_pipeline.clone(),
-                (set_0.clone(), set_1),
-                (),
+impl CommandFactory for RayTraceCommandFactory {
+    fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
+        let CommandFactoryContext { app_info, global_set, count_of_workgroups, models } = ctx;
+        let device = app_info.device.clone();
+
+        let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
+        let mut command =
+            AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
+                .unwrap();
+
+        for model in models.iter() {
+            let vertices_buffer = CpuAccessibleBuffer::from_iter(
+                device.clone(),
+                BufferUsage::all(),
+                false,
+                model.vertices.iter().cloned(),
             )
             .unwrap();
+            let indices_length_buffer = CpuAccessibleBuffer::from_data(
+                device.clone(),
+                BufferUsage::all(),
+                false,
+                model.indexes.len() as u32,
+            )
+            .unwrap();
+            let indices_buffer = CpuAccessibleBuffer::from_iter(
+                device.clone(),
+                BufferUsage::all(),
+                false,
+                model.indexes.iter().cloned(),
+            )
+            .unwrap();
+
+            let set_1 = Arc::new(
+                PersistentDescriptorSet::start(layout_1.clone())
+                    .add_buffer(vertices_buffer)
+                    .unwrap()
+                    .add_buffer(indices_length_buffer)
+                    .unwrap()
+                    .add_buffer(indices_buffer)
+                    .unwrap()
+                    .build()
+                    .unwrap(),
+            );
+
+            command
+                .dispatch(
+                    [count_of_workgroups, 1, 1],
+                    self.pipeline.clone(),
+                    (global_set.clone(), set_1),
+                    (),
+                )
+                .unwrap();
+        }
+
+        let command = command.build().unwrap();
+
+        command
     }
-
-    let command = command.build().unwrap();
-
-    command
 }
 
 #[cfg(test)]
@@ -159,6 +143,7 @@ mod tests {
 
         let command = make_ray_tracing(
             &app_info,
+            9,
             std::iter::once(&Model::new(vec![], vec![])),
             camera.position().clone(),
             image.clone(),

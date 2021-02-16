@@ -33,7 +33,9 @@ fn main() {
         ],
     );
 
-    app.run(event_loop, vec![model], move |event, app, _| {
+    let models = vec![model.clone()];
+
+    app.run(event_loop, models, move |event, app, models| {
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);
@@ -79,6 +81,7 @@ fn main() {
                 }
             }
             _ => {}
-        }
+        };
+        models.as_slice()
     })
 }

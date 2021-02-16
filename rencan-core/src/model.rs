@@ -1,5 +1,6 @@
 use nalgebra::Point4;
 
+#[derive(Debug, Clone)]
 pub struct Model {
     pub vertices: Vec<Point4<f32>>,
     pub indexes: Vec<Point4<u32>>,

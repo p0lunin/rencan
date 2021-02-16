@@ -1,12 +1,13 @@
 #version 450
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
-layout(set = 0, binding = 1) uniform Origin {
+layout(std140, set = 0, binding = 1) uniform Origin {
     vec3 origin;
+    mat3 rotation;
 };
 layout(set = 0, binding = 2) buffer Rays {
     vec3 rays[];

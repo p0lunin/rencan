@@ -52,17 +52,17 @@ impl GuiApp {
         }
     }
 
-    pub fn run<T, Models>(
+    pub fn run<T, PreCompute, Models>(
         mut self,
         event_loop: EventLoop<T>,
         mut models: Models,
-        mut pre_compute: impl FnMut(&Event<T>, &mut App, &mut Models) + 'static,
+        mut pre_compute: PreCompute,
     ) where
         Models: 'static,
-        for<'a> &'a Models: IntoIterator<Item = &'a Model>,
+        PreCompute: for<'a> FnMut(&Event<T>, &mut App, &'a mut Models) -> &'a [Model] + 'static,
     {
         event_loop.run(move |event, _, control_flow| {
-            pre_compute(&event, &mut self.app, &mut models);
+            let models_ref = pre_compute(&event, &mut self.app, &mut models);
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(5));
 
             match event {
@@ -118,7 +118,7 @@ impl GuiApp {
 
                     let (fut, _) = self.app.render(
                         acquire_future.then_execute(self.graphics_queue(), clear_image).unwrap(),
-                        (&models).into_iter(),
+                        models_ref,
                         |_| self.swap_chain_images[image_num].clone(),
                     );
 

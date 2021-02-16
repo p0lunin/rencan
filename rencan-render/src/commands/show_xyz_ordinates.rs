@@ -11,6 +11,7 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
+#[allow(dead_code)]
 pub fn show_xyz_ordinates(
     AppInfo { screen, device, graphics_queue: queue, .. }: &AppInfo,
     origin: Point3<f32>,
