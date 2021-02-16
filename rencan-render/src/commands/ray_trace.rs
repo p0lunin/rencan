@@ -1,5 +1,5 @@
-use crate::core::{CommandFactory, CommandFactoryContext};
 use std::sync::Arc;
+
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
@@ -10,6 +10,8 @@ use vulkano::{
     device::Device,
     pipeline::ComputePipeline,
 };
+
+use crate::core::{CommandFactory, CommandFactoryContext};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -95,14 +97,18 @@ impl CommandFactory for RayTraceCommandFactory {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{camera::Camera, test_utils::*};
     use nalgebra::{Point3, Point4, Rotation3};
     use vulkano::{
         command_buffer::CommandBuffer,
         image::{AttachmentImage, ImageUsage},
         sync::GpuFuture,
     };
+
+    use rencan_core::camera::Camera;
+
+    use crate::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_show() {

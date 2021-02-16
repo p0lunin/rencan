@@ -1,8 +1,7 @@
-use crate::app::Rays;
+use std::sync::Arc;
+
 use crevice::std140::AsStd140;
 use nalgebra::Point3;
-use rencan_core::{AppInfo, BufferAccessData, Screen};
-use std::sync::Arc;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
@@ -10,6 +9,10 @@ use vulkano::{
     image::ImageViewAccess,
     pipeline::ComputePipeline,
 };
+
+use rencan_core::{AppInfo, BufferAccessData, Screen};
+
+use rencan_core::app::Rays;
 
 #[allow(dead_code)]
 pub fn show_xyz_ordinates(
@@ -66,14 +69,18 @@ pub fn show_xyz_ordinates(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{camera::Camera, test_utils::*};
     use nalgebra::{Point3, Point4, Rotation3};
     use vulkano::{
         command_buffer::CommandBuffer,
         image::{AttachmentImage, ImageUsage},
         sync::GpuFuture,
     };
+
+    use rencan_core::camera::Camera;
+
+    use crate::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_show() {

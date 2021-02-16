@@ -1,6 +1,5 @@
-use crate::core::CommandFactoryContext;
-use rencan_core::CommandFactory;
 use std::sync::Arc;
+
 use vulkano::{
     command_buffer::{
         pool::standard::StandardCommandPoolAlloc, AutoCommandBuffer, AutoCommandBufferBuilder,
@@ -9,6 +8,10 @@ use vulkano::{
     device::Device,
     pipeline::ComputePipeline,
 };
+
+use rencan_core::CommandFactory;
+
+use crate::core::CommandFactoryContext;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -52,10 +55,14 @@ impl CommandFactory for ComputeRaysCommandFactory {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{camera::Camera, test_utils::*};
     use crevice::std140::AsStd140;
     use nalgebra::{Point3, Rotation3};
+
+    use rencan_core::camera::Camera;
+
+    use crate::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_compute() {

@@ -1,17 +1,17 @@
-use crate::{
-    camera::{Camera, CameraUniform},
-    commands,
-    core::CommandFactoryContext,
-};
+use std::sync::Arc;
+
 use crevice::std140::AsStd140;
 use nalgebra::Point4;
-use rencan_core::{AppInfo, BufferAccessData, CommandFactory, Model, Screen};
-use std::sync::Arc;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
     descriptor::{descriptor_set::UnsafeDescriptorSetLayout, DescriptorSet},
     image::ImageViewAccess,
     sync::GpuFuture,
+};
+
+use crate::{
+    camera::{Camera, CameraUniform},
+    AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Model, Screen,
 };
 
 pub struct App {
@@ -26,7 +26,7 @@ macro_rules! get_layout {
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
-                path: "shaders/ray_tracing.glsl"
+                path: "../rencan-render/shaders/ray_tracing.glsl"
             }
         }
         let shader = cs::Shader::load($this.info.device.clone()).unwrap();
@@ -38,11 +38,7 @@ macro_rules! get_layout {
 }
 
 impl App {
-    pub fn new(info: AppInfo, camera: Camera) -> Self {
-        let commands: Vec<Box<dyn CommandFactory>> = vec![
-            Box::new(commands::ComputeRaysCommandFactory::new(info.device.clone())),
-            Box::new(commands::RayTraceCommandFactory::new(info.device.clone())),
-        ];
+    pub fn new(info: AppInfo, camera: Camera, commands: Vec<Box<dyn CommandFactory>>) -> Self {
         Self { info, camera, commands }
     }
     pub fn info(&self) -> &AppInfo {
@@ -153,31 +149,33 @@ impl AppDescriptorSet {
 }
 pub type Rays = [Point4<f32>];
 
-/* TODO: api?
-pub struct AppBuilder<'a> {
-    instance: Option<Arc<Instance>>,
-    physical: Option<Arc<>>
+pub struct AppBuilder {
+    info: AppInfo,
+    camera: Camera,
+    commands: Vec<Box<dyn CommandFactory>>,
 }
 
 impl AppBuilder {
-    pub fn new() -> Self {
-        unimplemented!()
+    pub fn info(&self) -> &AppInfo {
+        &self.info
     }
-    pub fn instance(mut self, i: Arc<Instance>) -> Self {
-        self.instance = Some(i);
-        self
+    pub fn camera(&self) -> &Camera {
+        &self.camera
     }
-    pub fn instance_with_ext(mut self, ext: &InstanceExtensions) -> Self {
-        self.instance = Some(Instance::new(
-            None,
-            ext,
-            None,
-        ).unwrap());
-        self
+    pub fn commands(&self) -> &Vec<Box<dyn CommandFactory>> {
+        &self.commands
     }
-    pub fn default_instance(mut self) -> Self {
-        self.instance_with_ext(&InstanceExtensions::none())
-    }
-    pub fn device(mut self, f: impl Fn())
 }
-*/
+
+impl AppBuilder {
+    pub fn new(info: AppInfo, camera: Camera) -> Self {
+        Self { info, camera, commands: vec![] }
+    }
+    pub fn then_command(mut self, factory: Box<dyn CommandFactory>) -> Self {
+        self.commands.push(factory);
+        self
+    }
+    pub fn build(self) -> App {
+        App::new(self.info, self.camera, self.commands)
+    }
+}

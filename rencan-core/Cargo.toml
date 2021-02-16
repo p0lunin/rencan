@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 vulkano = "0.20.0"
 nalgebra = "0.24.1"
+crevice = "0.5.0"
+vulkano-shaders = "0.20.0"
+mint = "0.5.6"

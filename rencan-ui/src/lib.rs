@@ -1,9 +1,8 @@
-use rencan_core::{AppInfo, Model, Screen};
-use rencan_render::{camera::Camera, App};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
 use vulkano::{
     command_buffer::AutoCommandBufferBuilder,
     device::{Device, DeviceExtensions, Features, Queue},
@@ -23,6 +22,9 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
+
+use rencan_core::{camera::Camera, AppInfo, Model, Screen};
+use rencan_render::{App, AppBuilder};
 
 pub struct GuiApp {
     app: App,
@@ -185,12 +187,15 @@ fn init_swapchain(
 }
 
 fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
+    use rencan_render::AppBuilderRtExt;
     let (device, queue) = init_device_and_queues(&instance);
 
-    App::new(
+    AppBuilder::new(
         AppInfo::new(instance, queue, device, screen),
         Camera::from_origin().move_at(0.0, 0.0, 1.0),
     )
+    .then_ray_tracing_pipeline()
+    .build()
 }
 
 fn init_vulkan() -> Arc<Instance> {
