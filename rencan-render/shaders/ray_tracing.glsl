@@ -61,6 +61,7 @@ IntersectResult intersect(vec3 ray, vec3[3] triangle) {
     if (v < 0 || u + v > 1) return not_intersect();
 
     float t = dot(v0v2, vvec) * inv_det;
+    if (t < 0) return not_intersect();
 
     return ret_intersect(vec2(u, v), t);
 }
