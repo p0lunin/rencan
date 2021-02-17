@@ -66,7 +66,7 @@ pub fn show_xyz_ordinates(
 
     command
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use nalgebra::{Point3, Point4, Rotation3};
@@ -157,3 +157,4 @@ mod tests {
         assert_eq!(pixels_refs.as_slice(), expected.as_slice(),);
     }
 }
+*/

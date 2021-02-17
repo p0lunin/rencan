@@ -122,7 +122,20 @@ pub struct Buffers {
 }
 
 impl Buffers {
-    fn into_descriptor_set(self, layout: Arc<UnsafeDescriptorSetLayout>) -> AppDescriptorSet {
+    pub fn new(
+        rays: Arc<dyn BufferAccessData<Data = [Point4<f32>]> + Send + Sync>,
+        camera: Arc<
+            dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
+        >,
+        screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
+        output_image: Arc<dyn ImageViewAccess + Send + Sync>,
+    ) -> Self {
+        Buffers { rays, camera, screen, output_image }
+    }
+}
+
+impl Buffers {
+    pub fn into_descriptor_set(self, layout: Arc<UnsafeDescriptorSetLayout>) -> AppDescriptorSet {
         use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
         let Buffers { rays, camera, screen, output_image } = self;

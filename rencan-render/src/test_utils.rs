@@ -4,7 +4,7 @@ use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder, CommandBuffer},
     device::{Device, DeviceExtensions, Features, Queue},
-    image::ImageAccess,
+    image::{AttachmentImage, ImageAccess, ImageUsage},
     instance::{Instance, InstanceExtensions, PhysicalDevice},
     sync::GpuFuture,
 };
@@ -48,6 +48,16 @@ pub fn empty_rays(device: Arc<Device>, size: usize) -> Arc<CpuAccessibleBuffer<[
         BufferUsage::all(),
         false,
         (0..size).map(|_| Point4::new(0.0, 0.0, 0.0, 0.0)),
+    )
+    .unwrap()
+}
+
+pub fn empty_image(device: Arc<Device>) -> Arc<AttachmentImage> {
+    AttachmentImage::with_usage(
+        device.clone(),
+        [1, 1],
+        vulkano::format::Format::R8G8B8A8Uint,
+        ImageUsage { storage: true, ..ImageUsage::none() },
     )
     .unwrap()
 }

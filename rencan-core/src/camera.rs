@@ -37,6 +37,11 @@ impl Camera {
             60.0f32.to_radians(),
         )
     }
+    pub fn with_angles(mut self, x_angle: f32, y_angle: f32) -> Self {
+        self.x_angle = x_angle;
+        self.y_angle = y_angle;
+        self
+    }
     pub fn move_at(self, x: f32, y: f32, z: f32) -> Self {
         let vector_to_move =
             Rotation3::from_euler_angles(self.rotation.0, self.rotation.1, self.rotation.2)
