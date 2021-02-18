@@ -1,3 +1,4 @@
+use nalgebra::UnitQuaternion;
 use rencan_render::core::Model;
 use std::time::{Duration, Instant};
 use winit::{
@@ -35,7 +36,19 @@ fn main() {
 
     let models = vec![model.clone()];
 
+    let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
+
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_millis(10));
+        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.05, 0.0, 0.0)) {
+            break;
+        }
+    });
+
     app.run(event_loop, models, move |event, app, models| {
+        while let Ok(rot) = rot_rx.try_recv() {
+            models.iter_mut().for_each(|model| model.rotation *= rot)
+        }
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);

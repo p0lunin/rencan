@@ -52,11 +52,11 @@ impl CommandFactory for RayTraceCommandFactory {
                 model.vertices.iter().cloned(),
             )
             .unwrap();
-            let indices_length_buffer = CpuAccessibleBuffer::from_data(
+            let model_info_buffer = CpuAccessibleBuffer::from_data(
                 device.clone(),
                 BufferUsage::all(),
                 false,
-                model.indexes.len() as u32,
+                model.get_uniform_info().as_std140(),
             )
             .unwrap();
             let indices_buffer = CpuAccessibleBuffer::from_iter(
@@ -69,9 +69,9 @@ impl CommandFactory for RayTraceCommandFactory {
 
             let set_1 = Arc::new(
                 PersistentDescriptorSet::start(layout_1.clone())
-                    .add_buffer(vertices_buffer)
+                    .add_buffer(model_info_buffer)
                     .unwrap()
-                    .add_buffer(indices_length_buffer)
+                    .add_buffer(vertices_buffer)
                     .unwrap()
                     .add_buffer(indices_buffer)
                     .unwrap()

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crevice::std140::AsStd140;
-use nalgebra::Point4;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
     descriptor::{descriptor_set::UnsafeDescriptorSetLayout, DescriptorSet},
@@ -11,6 +10,7 @@ use vulkano::{
 
 use crate::{
     camera::{Camera, CameraUniform},
+    ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Model, Screen,
 };
 
@@ -123,7 +123,7 @@ pub struct Buffers {
 
 impl Buffers {
     pub fn new(
-        rays: Arc<dyn BufferAccessData<Data = [Point4<f32>]> + Send + Sync>,
+        rays: Arc<dyn BufferAccessData<Data = Rays> + Send + Sync>,
         camera: Arc<
             dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
         >,
@@ -163,7 +163,7 @@ impl AppDescriptorSet {
         self.0
     }
 }
-pub type Rays = [Point4<f32>];
+pub type Rays = [Ray];
 
 pub struct AppBuilder {
     info: AppInfo,
