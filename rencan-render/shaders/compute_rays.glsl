@@ -29,51 +29,55 @@ uint compute_y(uint screen_width) {
     return gl_GlobalInvocationID.x / screen_width;
 }
 
+vec2 compute_origin(float x, float y) {
+    y = float(screen.y) / 2.0;
+    x = x * (screen.x - screen.y) / screen.x + screen.y / 2;
+    return vec2(x, y);
+}
+
+vec3 from_raster_space_to_coords(vec2 coords, vec2 step, vec2 max_deviation) {
+    float x = coords.x * step.x * 2 * max_deviation.x - max_deviation.x;
+    float y = -(coords.y * step.y * 2 * max_deviation.y) + max_deviation.y;
+    return vec3(x, y, 0.0);
+}
+
 void main() {
     uint screen_width = screen.x;
     uint screen_height = screen.y;
-    float proportions = float(screen_width) / float(screen_height);
-    float x_props;
-
-    if (proportions >= 1.0) {
-        x_props = proportions;
-    }
-    else {
+    float x_props = float(screen_width) / float(screen_height);
+    if (x_props <= 1.0) {
         x_props = 1.0;
     }
+    x_props = x_props + 0.25;
 
     uint idx = gl_GlobalInvocationID.x;
 
-    float x = compute_x(screen_width);
-    float y = compute_y(screen_width);
+    vec2 this_point = vec2(compute_x(screen_width), compute_y(screen_width));
 
-    float step_x = x_props/(screen_width - 1);
-    float step_y = 1.0/(screen_height - 1);
+    vec2 step = vec2(1.0/(screen_width - 1), 1.0/(screen_height - 1));
+    vec2 max_deviation = vec2(tan(camera.x_angle/2) * x_props, tan(camera.y_angle/2));
 
-    float max_x_offset = screen_width - screen_height;
-    if (max_x_offset < 0.0) max_x_offset = 0.0;
-    max_x_offset = max_x_offset / screen_width;
+    vec2 origin_for_ray = compute_origin(this_point.x, this_point.y);
+    vec3 ray_origin_local = from_raster_space_to_coords(origin_for_ray, step, max_deviation);
 
-    float max_deviation_x = tan(camera.x_angle/2);
-    float max_deviation_y = tan(camera.y_angle/2);
+    vec3 deviation_local = from_raster_space_to_coords(this_point, step, max_deviation);
+    deviation_local.z = -1.0;
 
-    float x_deviation_local = step_x * x * (2 * proportions) * max_deviation_x - max_deviation_x;
-    float y_deviation_local = -(step_y * y * 2 * max_deviation_y) + max_deviation_y;
-
-    vec3 deviation_global = camera.rotation * vec3(x_deviation_local - max_x_offset * x_deviation_local, y_deviation_local, -1.0);
+    vec3 deviation_global = camera.rotation * deviation_local;
 
     vec4 ray_direction = vec4(
         deviation_global,
         0.0
     );
 
-    vec3 add_to_origin = camera.rotation * vec3(
-        max_x_offset * x_deviation_local,
-        0.0,
-        0.0
-    );
-
-    vec3 origin = camera.pos + add_to_origin;
-
+    vec3 origin = camera.pos + camera.rotation * ray_origin_local;
+/*
+    if (deviation_local.x > 0 && deviation_local.x < ray_origin_local.x ||
+        deviation_local.x < 0 && deviation_local.x > ray_origin_local.x
+    ) {
+        rays.data[idx] = Ray(vec3(0.0), vec4(0.0));
+        return;
+    }
+*/
     rays.data[idx] = Ray(origin, ray_direction);
 }

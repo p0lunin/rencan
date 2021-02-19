@@ -46,9 +46,9 @@ fn main() {
     });
 
     app.run(event_loop, models, move |event, app, models| {
-        while let Ok(rot) = rot_rx.try_recv() {
+        /*while let Ok(rot) = rot_rx.try_recv() {
             models.iter_mut().for_each(|model| model.rotation *= rot)
-        }
+        }*/
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);

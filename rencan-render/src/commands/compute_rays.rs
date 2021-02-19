@@ -110,7 +110,7 @@ mod tests {
             .unwrap()
             .iter()
             .cloned()
-            .map(|p| [p.x, p.y, p.z])
+            .map(|p| [p.direction.x, p.direction.y, p.direction.z])
             .collect::<Vec<_>>();
         let rays_refs: Vec<&[f32]> = rays.iter().map(|x| x as &[f32]).collect();
 
