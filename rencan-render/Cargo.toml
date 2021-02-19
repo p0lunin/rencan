@@ -16,7 +16,3 @@ nalgebra = { version = "0.24.1", features = ["mint"] }
 
 [dev-dependencies]
 approx = "0.4.0"
-
-[build-dependencies]
-spirv-builder = { git = "https://github.com/EmbarkStudios/rust-gpu.git", branch = "main" }
-
