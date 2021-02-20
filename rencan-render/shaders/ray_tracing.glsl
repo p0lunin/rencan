@@ -1,29 +1,8 @@
 #version 450
 
-struct Ray {
-    vec3 origin;
-    vec4 direction;
-};
+#extension GL_GOOGLE_include_directive : require
 
-struct Intersection {
-    vec2 barycentric_coords;
-    uint is_intersect;
-    uint model_id;
-    uint triangle_idx;
-    float distance;
-};
-
-Intersection intersection_succ(uint model_id,
-    uint triangle_idx,
-    vec2 barycentric_coords,
-    float distance
-) {
-    return Intersection(barycentric_coords, 1, model_id, triangle_idx, distance);
-}
-
-Intersection intersection_none() {
-    return Intersection(vec2(0.0), 0, 0, 0, 0.0);
-}
+#include "defs.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
