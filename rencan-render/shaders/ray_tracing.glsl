@@ -106,13 +106,17 @@ void main() {
     float distance = 1.0 / 0.0;
     Intersection inter = intersection_none();
 
+    Ray ray = rays[idx];
+    ray.origin = (inverse(isometry) * vec4(ray.origin, 0.0)).xyz;
+    ray.direction = vec4((inverse(mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * ray.direction.xyz, 0.0);
+
     for (int i = 0; i < indexes_length; i++) {
         uvec3 index = indexes[i];
-        vec3 triangle1 = (isometry * vec4(vertices[index.x], 1.0)).xyz;
-        vec3 triangle2 = (isometry * vec4(vertices[index.y], 1.0)).xyz;
-        vec3 triangle3 = (isometry * vec4(vertices[index.z], 1.0)).xyz;
+        vec3 triangle1 = vertices[index.x];
+        vec3 triangle2 = vertices[index.y];
+        vec3 triangle3 = vertices[index.z];
         vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
-        IntersectResult res = intersect(rays[idx], triangles);
+        IntersectResult res = intersect(ray, triangles);
         if (res.intersect && res.distance < distance) {
             distance = res.distance;
             inter = intersection_succ(
