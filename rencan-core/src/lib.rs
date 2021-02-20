@@ -10,6 +10,7 @@ mod app_info;
 mod buffer;
 pub mod camera;
 mod command_factory;
+pub mod intersection;
 mod model;
 pub mod queue_famile_ext;
 mod ray;

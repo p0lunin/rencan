@@ -5,6 +5,26 @@ struct Ray {
     vec4 direction;
 };
 
+struct Intersection {
+    vec2 barycentric_coords;
+    uint is_intersect;
+    uint model_id;
+    uint triangle_idx;
+    float distance;
+};
+
+Intersection intersection_succ(uint model_id,
+    uint triangle_idx,
+    vec2 barycentric_coords,
+    float distance
+) {
+    return Intersection(barycentric_coords, 1, model_id, triangle_idx, distance);
+}
+
+Intersection intersection_none() {
+    return Intersection(vec2(0.0), 0, 0, 0, 0.0);
+}
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform Info {
@@ -20,8 +40,12 @@ layout(std140, set = 0, binding = 2) buffer Rays {
     Ray rays[];
 };
 layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
+layout(std140, set = 0, binding = 4) buffer Intersections {
+    Intersection intersections[];
+};
 layout(std140, set = 1, binding = 0) buffer ModelInfo {
     mat4 isometry;
+    uint model_id;
     uint indexes_length;
 };
 layout(set = 1, binding = 1) buffer Vertices {
@@ -79,12 +103,8 @@ void main() {
 
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
-    float distance = imageLoad(resultImage, pos).w;
-    if (distance == 0.0) {
-        distance = 1.0 / 0.0;
-    }
-    bool need_rewrite = false;
-    vec4 out_color = vec4(0.0, 0.0, 0.0, 0.0);
+    float distance = 1.0 / 0.0;
+    Intersection inter = intersection_none();
 
     for (int i = 0; i < indexes_length; i++) {
         uvec3 index = indexes[i];
@@ -94,17 +114,13 @@ void main() {
         vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
         IntersectResult res = intersect(rays[idx], triangles);
         if (res.intersect && res.distance < distance) {
-            need_rewrite = true;
-            out_color = vec4(
-                res.barycentric_coords.x,
-                res.barycentric_coords.y,
-                1 - res.barycentric_coords.x - res.barycentric_coords.y,
-                res.distance
+            distance = res.distance;
+            inter = intersection_succ(
+                model_id, i, res.barycentric_coords, res.distance
             );
+            imageStore(resultImage, pos, vec4(1.0, 0.0, 0.0, res.distance));
         }
     }
 
-    if (need_rewrite) {
-        imageStore(resultImage, pos, out_color);
-    }
+    intersections[idx] = inter;
 }

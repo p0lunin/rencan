@@ -191,10 +191,11 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
     let (device, queue) = init_device_and_queues(&instance);
 
     AppBuilder::new(
-        AppInfo::new(instance, queue, device, screen),
+        AppInfo::new(instance, queue, device.clone(), screen),
         Camera::from_origin().move_at(0.0, 0.0, 1.0),
     )
     .then_ray_tracing_pipeline()
+    .then_command(Box::new(rencan_render::commands::CheckBoardCommandFactory::new(device.clone())))
     .build()
 }
 

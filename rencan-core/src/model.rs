@@ -1,5 +1,5 @@
 use crevice::std140::AsStd140;
-use nalgebra::{Isometry3, Point3, Point4, Rotation3, Translation3, UnitQuaternion};
+use nalgebra::{Point3, Point4, Similarity3, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
 pub struct Model {
@@ -7,6 +7,7 @@ pub struct Model {
     pub indexes: Vec<Point4<u32>>,
     pub rotation: UnitQuaternion<f32>,
     pub position: Point3<f32>,
+    pub scaling: f32,
 }
 
 impl Model {
@@ -16,6 +17,7 @@ impl Model {
             indexes,
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
+            scaling: 1.0,
         }
     }
     pub fn with_isometry(
@@ -23,17 +25,20 @@ impl Model {
         indexes: Vec<Point4<u32>>,
         rotation: UnitQuaternion<f32>,
         position: Point3<f32>,
+        scaling: f32,
     ) -> Self {
-        Model { vertices, indexes, rotation, position }
+        Model { vertices, indexes, rotation, position, scaling }
     }
-    pub fn get_uniform_info(&self) -> ModelUniformInfo {
+    pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         ModelUniformInfo {
-            isometry: Isometry3::from_parts(
+            isometry: Similarity3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
+                self.scaling,
             )
-            .to_matrix()
+            .to_homogeneous()
             .into(),
+            model_id,
             indexes_length: self.indexes.len() as u32,
         }
     }
@@ -42,6 +47,7 @@ impl Model {
 #[derive(AsStd140)]
 pub struct ModelUniformInfo {
     pub isometry: mint::ColumnMatrix4<f32>,
+    pub model_id: u32,
     pub indexes_length: u32,
 }
 

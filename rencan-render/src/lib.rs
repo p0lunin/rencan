@@ -4,6 +4,6 @@ pub use app_builder_rt_ext::AppBuilderRtExt;
 pub use rencan_core::app::{App, AppBuilder, Buffers};
 
 mod app_builder_rt_ext;
-mod commands;
+pub mod commands;
 #[cfg(test)]
 mod test_utils;

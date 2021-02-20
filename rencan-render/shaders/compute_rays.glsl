@@ -5,6 +5,14 @@ struct Ray {
     vec4 direction;
 };
 
+struct Intersection {
+    vec2 barycentric_coords;
+    uint is_intersect;
+    uint model_id;
+    uint triangle_idx;
+    float distance;
+};
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform Info {
@@ -20,6 +28,9 @@ layout(std140, set = 0, binding = 2) buffer RaysInfo {
     Ray data[];
 } rays;
 layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
+layout(std140, set = 0, binding = 4) buffer Intersections {
+    Intersection intersections[];
+};
 
 uint compute_x(uint screen_width) {
     return gl_GlobalInvocationID.x % screen_width;
@@ -71,13 +82,6 @@ void main() {
     );
 
     vec3 origin = camera.pos + camera.rotation * ray_origin_local;
-/*
-    if (deviation_local.x > 0 && deviation_local.x < ray_origin_local.x ||
-        deviation_local.x < 0 && deviation_local.x > ray_origin_local.x
-    ) {
-        rays.data[idx] = Ray(vec3(0.0), vec4(0.0));
-        return;
-    }
-*/
+
     rays.data[idx] = Ray(origin, ray_direction);
 }

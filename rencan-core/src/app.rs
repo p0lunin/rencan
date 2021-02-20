@@ -10,6 +10,7 @@ use vulkano::{
 
 use crate::{
     camera::{Camera, CameraUniform},
+    intersection::IntersectionUniform,
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Model, Screen,
 };
@@ -105,7 +106,14 @@ impl App {
             self.info.screen.clone(),
         )
         .unwrap();
-        Buffers { rays, camera, screen, output_image: image }
+        let intersections = DeviceLocalBuffer::array(
+            self.info.device.clone(),
+            self.info.size_of_image_array(),
+            BufferUsage::all(),
+            std::iter::once(self.info.graphics_queue.family()),
+        )
+        .unwrap();
+        Buffers { rays, camera, screen, output_image: image, intersections }
     }
 }
 
@@ -119,6 +127,7 @@ pub struct Buffers {
     >,
     screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
     output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
 }
 
 impl Buffers {
@@ -129,8 +138,11 @@ impl Buffers {
         >,
         screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
         output_image: Arc<dyn ImageViewAccess + Send + Sync>,
+        intersections: Arc<
+            dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static,
+        >,
     ) -> Self {
-        Buffers { rays, camera, screen, output_image }
+        Buffers { rays, camera, screen, output_image, intersections }
     }
 }
 
@@ -138,7 +150,7 @@ impl Buffers {
     pub fn into_descriptor_set(self, layout: Arc<UnsafeDescriptorSetLayout>) -> AppDescriptorSet {
         use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
-        let Buffers { rays, camera, screen, output_image } = self;
+        let Buffers { rays, camera, screen, output_image, intersections } = self;
 
         AppDescriptorSet(Arc::new(
             PersistentDescriptorSet::start(layout)
@@ -149,6 +161,8 @@ impl Buffers {
                 .add_buffer(rays)
                 .unwrap()
                 .add_image(output_image)
+                .unwrap()
+                .add_buffer(intersections)
                 .unwrap()
                 .build()
                 .unwrap(),

@@ -44,7 +44,7 @@ impl CommandFactory for RayTraceCommandFactory {
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
                 .unwrap();
 
-        for model in models.iter() {
+        for (i, model) in models.iter().enumerate() {
             let vertices_buffer = CpuAccessibleBuffer::from_iter(
                 device.clone(),
                 BufferUsage::all(),
@@ -56,7 +56,7 @@ impl CommandFactory for RayTraceCommandFactory {
                 device.clone(),
                 BufferUsage::all(),
                 false,
-                model.get_uniform_info().as_std140(),
+                model.get_uniform_info(i as u32).as_std140(),
             )
             .unwrap();
             let indices_buffer = CpuAccessibleBuffer::from_iter(

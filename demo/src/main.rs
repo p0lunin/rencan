@@ -16,7 +16,7 @@ fn main() {
     let mut frames = 0;
     let mut next = Instant::now() + Duration::from_secs(1);
 
-    let model = Model::new(
+    let mut model = Model::new(
         vec![
             [-0.4, -0.3, -0.4, 0.0].into(), // A
             [0.4, -0.3, -0.4, 0.0].into(),  // B
@@ -33,6 +33,7 @@ fn main() {
             [1, 2, 3, 0].into(),
         ],
     );
+    model.scaling = 3.0;
 
     let models = vec![model.clone()];
 
@@ -46,9 +47,9 @@ fn main() {
     });
 
     app.run(event_loop, models, move |event, app, models| {
-        /*while let Ok(rot) = rot_rx.try_recv() {
+        while let Ok(rot) = rot_rx.try_recv() {
             models.iter_mut().for_each(|model| model.rotation *= rot)
-        }*/
+        }
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);
