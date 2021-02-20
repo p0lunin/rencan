@@ -16,27 +16,26 @@ use crate::core::{CommandFactory, CommandFactoryContext};
 mod cs {
     vulkano_shaders::shader! {
         ty: "compute",
-        path: "shaders/checkboard_pattern.glsl"
+        path: "shaders/facing_ratio.glsl"
     }
 }
 
-pub struct CheckBoardCommandFactory {
+pub struct FacingRatioCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
 }
 
-impl CheckBoardCommandFactory {
-    pub fn new(device: Arc<Device>, scale: f32) -> Self {
+impl FacingRatioCommandFactory {
+    pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let constants = cs::SpecializationConstants { CHESSBOARD_SCALE: scale };
         let pipeline = Arc::new(
-            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None)
                 .unwrap(),
         );
-        CheckBoardCommandFactory { pipeline }
+        FacingRatioCommandFactory { pipeline }
     }
 }
 
-impl CommandFactory for CheckBoardCommandFactory {
+impl CommandFactory for FacingRatioCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
         let CommandFactoryContext { app_info, global_set, count_of_workgroups, models } = ctx;
         let device = app_info.device.clone();
