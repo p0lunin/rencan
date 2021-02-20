@@ -25,10 +25,13 @@ pub struct CheckBoardCommandFactory {
 }
 
 impl CheckBoardCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>, scale: f32) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
+        let constants = cs::SpecializationConstants {
+            CHESSBOARD_SCALE: scale
+        };
         let pipeline = Arc::new(
-            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None).unwrap(),
         );
         CheckBoardCommandFactory { pipeline }
     }

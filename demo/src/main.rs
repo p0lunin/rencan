@@ -41,7 +41,7 @@ fn main() {
 
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_millis(10));
-        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.05, 0.0, 0.0)) {
+        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.0, 0.0)) {
             break;
         }
     });

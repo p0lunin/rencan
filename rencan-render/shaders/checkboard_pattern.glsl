@@ -15,6 +15,8 @@ struct Intersection {
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+layout(constant_id = 0) const float CHESSBOARD_SCALE = 1.0;
+
 layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
@@ -60,7 +62,7 @@ void main() {
             vertices[index.z] * inter.barycentric_coords.y +
             vertices[index.x] * (1 - inter.barycentric_coords.x - inter.barycentric_coords.y);
 
-        local_coords = local_coords / 0.25;
+        local_coords = local_coords / CHESSBOARD_SCALE;
 
         float chessboard = fract((floor(local_coords.x) + floor(local_coords.y) + floor(local_coords.z)) * 0.5);
         chessboard = chessboard * 2;
