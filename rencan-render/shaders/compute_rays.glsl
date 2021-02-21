@@ -22,6 +22,9 @@ layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
 layout(std140, set = 0, binding = 4) buffer Intersections {
     Intersection intersections[];
 };
+layout(std140, set = 0, binding = 5) buffer DirectLightInfo {
+    DirectLight global_light;
+};
 
 uint compute_x(uint screen_width) {
     return gl_GlobalInvocationID.x % screen_width;

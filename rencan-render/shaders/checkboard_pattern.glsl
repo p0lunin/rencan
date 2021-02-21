@@ -24,10 +24,14 @@ layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
 layout(std140, set = 0, binding = 4) buffer Intersections {
     Intersection intersections[];
 };
+layout(std140, set = 0, binding = 5) buffer DirectLightInfo {
+    DirectLight global_light;
+};
 layout(std140, set = 1, binding = 0) buffer ModelInfo {
     mat4 isometry;
     uint model_id;
     uint indexes_length;
+    float albedo;
 };
 layout(set = 1, binding = 1) buffer Vertices {
     vec3[] vertices;

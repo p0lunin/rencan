@@ -11,8 +11,9 @@ use vulkano::{
 use crate::{
     camera::{Camera, CameraUniform},
     intersection::IntersectionUniform,
+    light::DirectionLightUniform,
     ray::Ray,
-    AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Model, Screen,
+    AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
 
 pub struct App {
@@ -57,7 +58,7 @@ impl App {
     pub fn render<Prev, F>(
         &self,
         previous: Prev,
-        models: &[Model],
+        scene: &Scene,
         image_create: F,
     ) -> (impl GpuFuture, Arc<dyn ImageViewAccess + Send + Sync + 'static>)
     where
@@ -65,7 +66,7 @@ impl App {
         F: FnOnce(&AppInfo) -> Arc<dyn ImageViewAccess + Send + Sync + 'static>,
     {
         let image = image_create(&self.info);
-        let buffers = self.create_buffers(image.clone());
+        let buffers = self.create_buffers(image.clone(), scene);
         let layout;
         get_layout!(self, layout);
         let set = buffers.into_descriptor_set(layout.clone());
@@ -73,7 +74,7 @@ impl App {
             app_info: &self.info,
             global_set: set.clone().into_inner(),
             count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
-            models: models.clone(),
+            scene,
         };
         let mut fut: Box<dyn GpuFuture> = Box::new(previous);
 
@@ -84,7 +85,11 @@ impl App {
 
         (fut, image)
     }
-    fn create_buffers(&self, image: Arc<dyn ImageViewAccess + Send + Sync + 'static>) -> Buffers {
+    fn create_buffers(
+        &self,
+        image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+        scene: &Scene,
+    ) -> Buffers {
         let rays = DeviceLocalBuffer::array(
             self.info.device.clone(),
             self.info.size_of_image_array(),
@@ -113,7 +118,21 @@ impl App {
             std::iter::once(self.info.graphics_queue.family()),
         )
         .unwrap();
-        Buffers { rays, camera, screen, output_image: image, intersections }
+        let global_light = CpuAccessibleBuffer::from_data(
+            self.info.device.clone(),
+            BufferUsage::all(),
+            false,
+            scene.global_light.clone().into_uniform(),
+        )
+        .unwrap();
+        Buffers {
+            rays,
+            camera,
+            screen,
+            output_image: image,
+            intersections,
+            direction_light: global_light,
+        }
     }
 }
 
@@ -128,6 +147,8 @@ pub struct Buffers {
     screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
     output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
     intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
+    direction_light:
+        Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
 }
 
 impl Buffers {
@@ -141,8 +162,11 @@ impl Buffers {
         intersections: Arc<
             dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static,
         >,
+        direction_light: Arc<
+            dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
+        >,
     ) -> Self {
-        Buffers { rays, camera, screen, output_image, intersections }
+        Buffers { rays, camera, screen, output_image, intersections, direction_light }
     }
 }
 
@@ -150,7 +174,7 @@ impl Buffers {
     pub fn into_descriptor_set(self, layout: Arc<UnsafeDescriptorSetLayout>) -> AppDescriptorSet {
         use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
-        let Buffers { rays, camera, screen, output_image, intersections } = self;
+        let Buffers { rays, camera, screen, output_image, intersections, direction_light } = self;
 
         AppDescriptorSet(Arc::new(
             PersistentDescriptorSet::start(layout)
@@ -163,6 +187,8 @@ impl Buffers {
                 .add_image(output_image)
                 .unwrap()
                 .add_buffer(intersections)
+                .unwrap()
+                .add_buffer(direction_light)
                 .unwrap()
                 .build()
                 .unwrap(),

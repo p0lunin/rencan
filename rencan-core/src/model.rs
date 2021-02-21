@@ -8,6 +8,7 @@ pub struct Model {
     pub rotation: UnitQuaternion<f32>,
     pub position: Point3<f32>,
     pub scaling: f32,
+    pub albedo: f32,
 }
 
 impl Model {
@@ -18,6 +19,7 @@ impl Model {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
+            albedo: 0.18,
         }
     }
     pub fn with_isometry(
@@ -26,8 +28,9 @@ impl Model {
         rotation: UnitQuaternion<f32>,
         position: Point3<f32>,
         scaling: f32,
+        albedo: f32,
     ) -> Self {
-        Model { vertices, indexes, rotation, position, scaling }
+        Model { vertices, indexes, rotation, position, scaling, albedo }
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         ModelUniformInfo {
@@ -40,6 +43,7 @@ impl Model {
             .into(),
             model_id,
             indexes_length: self.indexes.len() as u32,
+            albedo: self.albedo,
         }
     }
 }
@@ -49,6 +53,7 @@ pub struct ModelUniformInfo {
     pub isometry: mint::ColumnMatrix4<f32>,
     pub model_id: u32,
     pub indexes_length: u32,
+    pub albedo: f32,
 }
 
 impl ModelUniformInfo {

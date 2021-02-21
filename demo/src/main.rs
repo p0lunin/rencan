@@ -1,5 +1,8 @@
-use nalgebra::UnitQuaternion;
-use rencan_render::core::Model;
+use nalgebra::{Point4, UnitQuaternion, Vector3};
+use rencan_render::core::{
+    light::{DirectionLight, LightInfo},
+    Model, Scene,
+};
 use std::time::{Duration, Instant};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -39,16 +42,24 @@ fn main() {
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
+    let scene = Scene {
+        models,
+        global_light: DirectionLight::new(
+            LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 30.0),
+            Vector3::new(0.0, -1.0, 0.0),
+        ),
+    };
+
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_millis(10));
-        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.0, 0.0)) {
+        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.01, 0.01)) {
             break;
         }
     });
 
-    app.run(event_loop, models, move |event, app, models| {
+    app.run(event_loop, scene, move |event, app, scene| {
         while let Ok(rot) = rot_rx.try_recv() {
-            models.iter_mut().for_each(|model| model.rotation *= rot)
+            scene.global_light.direction = rot * &scene.global_light.direction;
         }
         frames += 1;
         if Instant::now() >= next {
@@ -96,6 +107,5 @@ fn main() {
             }
             _ => {}
         };
-        models.as_slice()
     })
 }

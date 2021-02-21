@@ -38,7 +38,7 @@ impl CheckBoardCommandFactory {
 
 impl CommandFactory for CheckBoardCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
-        let CommandFactoryContext { app_info, global_set, count_of_workgroups, models } = ctx;
+        let CommandFactoryContext { app_info, global_set, count_of_workgroups, scene } = ctx;
         let device = app_info.device.clone();
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
@@ -46,7 +46,7 @@ impl CommandFactory for CheckBoardCommandFactory {
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
                 .unwrap();
 
-        for (i, model) in models.iter().enumerate() {
+        for (i, model) in scene.models.iter().enumerate() {
             let vertices_buffer = CpuAccessibleBuffer::from_iter(
                 device.clone(),
                 BufferUsage::all(),

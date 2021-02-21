@@ -16,25 +16,25 @@ use crate::core::{CommandFactory, CommandFactoryContext};
 mod cs {
     vulkano_shaders::shader! {
         ty: "compute",
-        path: "shaders/facing_ratio.glsl"
+        path: "shaders/lightning.glsl"
     }
 }
 
-pub struct FacingRatioCommandFactory {
+pub struct LightningCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
 }
 
-impl FacingRatioCommandFactory {
+impl LightningCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        FacingRatioCommandFactory { pipeline }
+        LightningCommandFactory { pipeline }
     }
 }
 
-impl CommandFactory for FacingRatioCommandFactory {
+impl CommandFactory for LightningCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
         let CommandFactoryContext { app_info, global_set, count_of_workgroups, scene } = ctx;
         let device = app_info.device.clone();

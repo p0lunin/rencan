@@ -23,7 +23,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use rencan_core::{camera::Camera, AppInfo, Model, Screen};
+use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder};
 
 pub struct GuiApp {
@@ -54,17 +54,16 @@ impl GuiApp {
         }
     }
 
-    pub fn run<T, PreCompute, Models>(
+    pub fn run<T, PreCompute>(
         mut self,
         event_loop: EventLoop<T>,
-        mut models: Models,
+        mut scene: Scene,
         mut pre_compute: PreCompute,
     ) where
-        Models: 'static,
-        PreCompute: for<'a> FnMut(&Event<T>, &mut App, &'a mut Models) -> &'a [Model] + 'static,
+        PreCompute: for<'a> FnMut(&Event<T>, &mut App, &'a mut Scene) + 'static,
     {
         event_loop.run(move |event, _, control_flow| {
-            let models_ref = pre_compute(&event, &mut self.app, &mut models);
+            pre_compute(&event, &mut self.app, &mut scene);
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(5));
 
             match event {
@@ -120,7 +119,7 @@ impl GuiApp {
 
                     let (fut, _) = self.app.render(
                         acquire_future.then_execute(self.graphics_queue(), clear_image).unwrap(),
-                        models_ref,
+                        &scene,
                         |_| self.swap_chain_images[image_num].clone(),
                     );
 
@@ -195,9 +194,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         Camera::from_origin().move_at(0.0, 0.0, 1.0),
     )
     .then_ray_tracing_pipeline()
-    .then_command(Box::new(rencan_render::commands::FacingRatioCommandFactory::new(
-        device.clone(),
-    )))
+    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
     .build()
 }
 

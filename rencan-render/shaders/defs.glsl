@@ -22,3 +22,9 @@ Intersection intersection_succ(uint model_id,
 Intersection intersection_none() {
     return Intersection(vec2(0.0), 0, 0, 0, 0.0);
 }
+
+struct DirectLight {
+    vec3 color;
+    vec3 direction;
+    float intensity;
+};

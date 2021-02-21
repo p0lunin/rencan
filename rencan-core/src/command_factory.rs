@@ -1,4 +1,4 @@
-use crate::{AppInfo, Model};
+use crate::{AppInfo, Scene};
 use std::sync::Arc;
 use vulkano::{command_buffer::AutoCommandBuffer, descriptor::DescriptorSet};
 
@@ -11,5 +11,5 @@ pub struct CommandFactoryContext<'a> {
     pub app_info: &'a AppInfo,
     pub global_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub count_of_workgroups: u32,
-    pub models: &'a [Model],
+    pub scene: &'a Scene,
 }

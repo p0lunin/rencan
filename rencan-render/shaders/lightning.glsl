@@ -40,6 +40,8 @@ layout(std140, set = 1, binding = 2) buffer Indexes {
 
 const float eps = 0.001;
 
+#define PI radians(180)
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
@@ -50,15 +52,17 @@ void main() {
     if (inter.is_intersect == 1 && inter.model_id == model_id) {
         uvec3 index = indexes[inter.triangle_idx];
 
+        vec3 light_dir = -global_light.direction;
+
         vec3 normal = normalize(cross(vertices[index.y] - vertices[index.x], vertices[index.z] - vertices[index.x]));
 
         vec3 ray_direction = normalize((inverse(mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * rays[idx].direction.xyz);
 
-        vec3 color = vec3(max(dot(normal, -ray_direction), 0.0));
+        vec3 color = albedo / PI * global_light.intensity * global_light.color * max(dot(normal, -global_light.direction.xyz), 0.0);
 
         imageStore(resultImage, pos, vec4(color, 0.0));
     }
     else if (inter.is_intersect == 0) {
-        imageStore(resultImage, pos, vec4(0.0, 0.4, 0.7, 0.0));
+        imageStore(resultImage, pos, vec4(0.0, 0.0, 0.0, 0.0));
     }
 }
