@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use vulkano::{
-    buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
     descriptor::{
         descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout,
@@ -18,7 +17,7 @@ use crate::{
         Ray,
     },
 };
-use vulkano::buffer::DeviceLocalBuffer;
+use vulkano::buffer::{DeviceLocalBuffer, BufferUsage};
 
 mod lightning_cs {
     vulkano_shaders::shader! {
@@ -129,27 +128,9 @@ fn add_lightning(
     let layout_1 = factory.lightning_pipeline.layout().descriptor_set_layout(1).unwrap();
 
     for (i, model) in scene.models.iter().enumerate() {
-        let vertices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.vertices.iter().cloned(),
-        )
-        .unwrap();
-        let model_info_buffer = CpuAccessibleBuffer::from_data(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.get_uniform_info(i as u32).as_std140(),
-        )
-        .unwrap();
-        let indices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.indexes.iter().cloned(),
-        )
-        .unwrap();
+        let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
+        let model_info_buffer = model.get_info_buffer(&device, i as u32);
+        let indices_buffer = model.get_indices_buffer(&app_info.graphics_queue);
 
         let set_1 = Arc::new(
             PersistentDescriptorSet::start(layout_1.clone())
@@ -208,6 +189,8 @@ fn add_making_shadow_rays(
     );
 
     command
+        .fill_buffer(new_rays_buffer.clone(), 0)
+        .unwrap()
         .dispatch(
             [*count_of_workgroups, 1, 1],
             factory.make_shadow_rays_pipeline.clone(),
@@ -249,30 +232,14 @@ fn add_ray_tracing(
             .unwrap(),
     );
 
+    command.fill_buffer(intersections.clone(), 0).unwrap();
+
     let layout_1 = factory.ray_trace_pipeline.layout().descriptor_set_layout(1).unwrap();
 
     for (i, model) in scene.models.iter().enumerate() {
-        let vertices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.vertices.iter().cloned(),
-        )
-        .unwrap();
-        let model_info_buffer = CpuAccessibleBuffer::from_data(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.get_uniform_info(i as u32).as_std140(),
-        )
-        .unwrap();
-        let indices_buffer = CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            false,
-            model.indexes.iter().cloned(),
-        )
-        .unwrap();
+        let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
+        let model_info_buffer = model.get_info_buffer(&device, i as u32);
+        let indices_buffer = model.get_indices_buffer(&app_info.graphics_queue);
 
         let set_1 = Arc::new(
             PersistentDescriptorSet::start(layout_1.clone())

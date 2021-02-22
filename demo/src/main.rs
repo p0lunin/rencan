@@ -9,6 +9,7 @@ use winit::{
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use rencan_render::core::model::AppModel;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -50,7 +51,10 @@ fn main() {
     plane.scaling = 5.0;
     plane.position.y = -3.0;
 
-    let models = vec![model, plane];
+    let models = vec![
+        AppModel::new(model),
+        AppModel::new(plane),
+    ];
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 

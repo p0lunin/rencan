@@ -12,7 +12,7 @@ pub mod camera;
 mod command_factory;
 pub mod intersection;
 pub mod light;
-mod model;
+pub mod model;
 pub mod queue_famile_ext;
 mod ray;
 mod scene;

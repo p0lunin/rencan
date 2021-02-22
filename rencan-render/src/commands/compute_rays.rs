@@ -61,10 +61,6 @@ impl CommandFactory for ComputeRaysCommandFactory {
         );
 
         calc_rays
-            //.fill_buffer(buffers.rays, 0)
-            //.unwrap()
-            .fill_buffer(buffers.intersections, 0)
-            .unwrap()
             .dispatch([ctx.count_of_workgroups, 1, 1], self.pipeline.clone(), set_0, ())
             .unwrap();
         let calc_rays_command = calc_rays.build().unwrap();

@@ -15,16 +15,16 @@ layout(std140, set = 0, binding = 1) buffer Rays {
 layout(std140, set = 0, binding = 2) buffer Intersections {
     Intersection intersections[];
 };
-layout(std140, set = 1, binding = 0) buffer ModelInfo {
+layout(std140, set = 1, binding = 0) readonly buffer ModelInfo {
     mat4 isometry;
     uint model_id;
     uint indexes_length;
     float albedo;
 };
-layout(set = 1, binding = 1) buffer Vertices {
+layout(set = 1, binding = 1) readonly buffer Vertices {
     vec3[] vertices;
 };
-layout(std140, set = 1, binding = 2) buffer Indexes {
+layout(std140, set = 1, binding = 2) readonly buffer Indexes {
     uvec3[] indexes;
 };
 

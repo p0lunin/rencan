@@ -14,6 +14,8 @@ use crate::{
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
+use vulkano::command_buffer::AutoCommandBufferBuilder;
+use vulkano::format::ClearValue;
 
 pub struct App {
     info: AppInfo,
@@ -51,11 +53,19 @@ impl App {
         let buffers = self.create_buffers(image.clone(), scene);
         let ctx = CommandFactoryContext {
             app_info: &self.info,
-            buffers,
+            buffers: buffers.clone(),
             count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
             scene,
         };
-        let mut fut: Box<dyn GpuFuture> = Box::new(previous);
+
+        let mut fill_buffers = AutoCommandBufferBuilder::new(self.info.device.clone(), self.info.graphics_queue.family())
+            .unwrap();
+        fill_buffers.fill_buffer(buffers.intersections.clone(), 0).unwrap();
+        fill_buffers.fill_buffer(buffers.rays.clone(), 0).unwrap();
+
+        let command = fill_buffers.build().unwrap();
+
+        let mut fut: Box<dyn GpuFuture> = Box::new(previous.then_execute(self.info.graphics_queue.clone(), command).unwrap());
 
         for factory in self.commands.iter() {
             let command = factory.make_command(ctx.clone());
