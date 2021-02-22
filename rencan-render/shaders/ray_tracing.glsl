@@ -9,20 +9,11 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
-layout(std140, set = 0, binding = 1) uniform Camera {
-    vec3 pos;
-    mat3 rotation;
-    float fov;
-};
-layout(std140, set = 0, binding = 2) buffer Rays {
+layout(std140, set = 0, binding = 1) buffer Rays {
     Ray rays[];
 };
-layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
-layout(std140, set = 0, binding = 4) buffer Intersections {
+layout(std140, set = 0, binding = 2) buffer Intersections {
     Intersection intersections[];
-};
-layout(std140, set = 0, binding = 5) buffer DirectLightInfo {
-    DirectLight global_light;
 };
 layout(std140, set = 1, binding = 0) buffer ModelInfo {
     mat4 isometry;
@@ -104,12 +95,7 @@ void main() {
             inter = intersection_succ(
                 model_id, i, res.barycentric_coords, res.distance
             );
-            imageStore(resultImage, pos, vec4(1.0, 0.0, 0.0, res.distance));
         }
-        if (res.intersect) {
-            imageStore(resultImage, pos, vec4(0.0, 1.0, 0.0, res.distance));
-        }
-        //imageStore(resultImage, pos, vec4(0.0, 1.0, 0.0, res.distance));
     }
 
     intersections[idx] = inter;

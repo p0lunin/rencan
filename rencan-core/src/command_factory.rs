@@ -1,6 +1,6 @@
 use crate::{AppInfo, Scene};
-use std::sync::Arc;
-use vulkano::{command_buffer::AutoCommandBuffer, descriptor::DescriptorSet};
+use vulkano::{command_buffer::AutoCommandBuffer};
+use crate::app::Buffers;
 
 pub trait CommandFactory {
     fn make_command<'m>(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer;
@@ -9,7 +9,7 @@ pub trait CommandFactory {
 #[derive(Clone)]
 pub struct CommandFactoryContext<'a> {
     pub app_info: &'a AppInfo,
-    pub global_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub buffers: Buffers,
     pub count_of_workgroups: u32,
     pub scene: &'a Scene,
 }

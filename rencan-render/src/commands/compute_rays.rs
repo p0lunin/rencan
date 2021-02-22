@@ -12,6 +12,8 @@ use vulkano::{
 use rencan_core::CommandFactory;
 
 use crate::core::CommandFactoryContext;
+use vulkano::descriptor::PipelineLayoutAbstract;
+use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -39,13 +41,28 @@ impl CommandFactory for ComputeRaysCommandFactory {
         &self,
         ctx: CommandFactoryContext,
     ) -> AutoCommandBuffer<StandardCommandPoolAlloc> {
+        let buffers = ctx.buffers.clone();
         let mut calc_rays = AutoCommandBufferBuilder::new(
             ctx.app_info.device.clone(),
             ctx.app_info.graphics_queue.family(),
         )
         .unwrap();
+
+        let layout_0 = self.pipeline.layout().descriptor_set_layout(0).unwrap();
+        let set_0 = Arc::new(
+            PersistentDescriptorSet::start(layout_0.clone())
+                .add_buffer(buffers.screen.clone())
+                .unwrap()
+                .add_buffer(buffers.camera.clone())
+                .unwrap()
+                .add_buffer(buffers.rays.clone())
+                .unwrap()
+                .build()
+                .unwrap()
+        );
+
         calc_rays
-            .dispatch([ctx.count_of_workgroups, 1, 1], self.pipeline.clone(), ctx.global_set, ())
+            .dispatch([ctx.count_of_workgroups, 1, 1], self.pipeline.clone(), set_0, ())
             .unwrap();
         let calc_rays_command = calc_rays.build().unwrap();
 

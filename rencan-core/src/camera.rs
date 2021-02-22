@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Rotation3, Vector3, Isometry3, UnitQuaternion};
+use nalgebra::{Point3, Rotation3, Vector3};
 
 #[derive(Debug, Clone)]
 pub struct Camera {

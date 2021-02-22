@@ -45,7 +45,7 @@ fn main() {
     let scene = Scene {
         models,
         global_light: DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 30.0),
+            LightInfo::new(Point4::new(1.0, 0.0, 0.0, 0.0), 30.0),
             Vector3::new(0.0, -1.0, 0.0),
         ),
     };
@@ -58,9 +58,9 @@ fn main() {
     });
 
     app.run(event_loop, scene, move |event, app, scene| {
-        /*while let Ok(rot) = rot_rx.try_recv() {
+        while let Ok(rot) = rot_rx.try_recv() {
             scene.global_light.direction = rot * &scene.global_light.direction;
-        }*/
+        }
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);

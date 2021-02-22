@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crevice::std140::AsStd140;
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
-    descriptor::{descriptor_set::UnsafeDescriptorSetLayout, DescriptorSet},
     image::ImageViewAccess,
     sync::GpuFuture,
 };
@@ -20,23 +19,6 @@ pub struct App {
     info: AppInfo,
     camera: Camera,
     commands: Vec<Box<dyn CommandFactory>>,
-}
-
-macro_rules! get_layout {
-    ($this:expr, $to:ident) => {
-        use vulkano::{descriptor::PipelineLayoutAbstract, pipeline::ComputePipeline};
-        mod cs {
-            vulkano_shaders::shader! {
-                ty: "compute",
-                path: "../rencan-render/shaders/ray_tracing.glsl"
-            }
-        }
-        let shader = cs::Shader::load($this.info.device.clone()).unwrap();
-        let compute_pipeline =
-            ComputePipeline::new($this.info.device.clone(), &shader.main_entry_point(), &(), None)
-                .unwrap();
-        $to = compute_pipeline.layout().descriptor_set_layout(0).unwrap();
-    };
 }
 
 impl App {
@@ -67,12 +49,9 @@ impl App {
     {
         let image = image_create(&self.info);
         let buffers = self.create_buffers(image.clone(), scene);
-        let layout;
-        get_layout!(self, layout);
-        let set = buffers.into_descriptor_set(layout.clone());
         let ctx = CommandFactoryContext {
             app_info: &self.info,
-            global_set: set.clone().into_inner(),
+            buffers,
             count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
             scene,
         };
@@ -136,18 +115,19 @@ impl App {
     }
 }
 
+#[derive(Clone)]
 pub struct Buffers {
-    rays: Arc<dyn BufferAccessData<Data = Rays> + Send + Sync + 'static>,
-    camera: Arc<
+    pub rays: Arc<dyn BufferAccessData<Data = Rays> + Send + Sync + 'static>,
+    pub camera: Arc<
         dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type>
             + Send
             + Sync
             + 'static,
     >,
-    screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
-    output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
-    direction_light:
+    pub screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
+    pub output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+    pub intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
+    pub direction_light:
         Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
 }
 
@@ -170,39 +150,6 @@ impl Buffers {
     }
 }
 
-impl Buffers {
-    pub fn into_descriptor_set(self, layout: Arc<UnsafeDescriptorSetLayout>) -> AppDescriptorSet {
-        use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-
-        let Buffers { rays, camera, screen, output_image, intersections, direction_light } = self;
-
-        AppDescriptorSet(Arc::new(
-            PersistentDescriptorSet::start(layout)
-                .add_buffer(screen)
-                .unwrap()
-                .add_buffer(camera)
-                .unwrap()
-                .add_buffer(rays)
-                .unwrap()
-                .add_image(output_image)
-                .unwrap()
-                .add_buffer(intersections)
-                .unwrap()
-                .add_buffer(direction_light)
-                .unwrap()
-                .build()
-                .unwrap(),
-        ))
-    }
-}
-
-#[derive(Clone)]
-pub struct AppDescriptorSet(Arc<dyn DescriptorSet + Send + Sync>);
-impl AppDescriptorSet {
-    pub fn into_inner(self) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.0
-    }
-}
 pub type Rays = [Ray];
 
 pub struct AppBuilder {

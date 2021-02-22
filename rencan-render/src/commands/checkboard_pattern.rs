@@ -38,8 +38,24 @@ impl CheckBoardCommandFactory {
 
 impl CommandFactory for CheckBoardCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
-        let CommandFactoryContext { app_info, global_set, count_of_workgroups, scene } = ctx;
+        let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
         let device = app_info.device.clone();
+
+        let layout_0 = self.pipeline.layout().descriptor_set_layout(0).unwrap();
+
+        let set_0 = Arc::new(
+            PersistentDescriptorSet::start(layout_0.clone())
+                .add_buffer(buffers.screen.clone())
+                .unwrap()
+                .add_image(buffers.output_image.clone())
+                .unwrap()
+                .add_buffer(buffers.intersections.clone())
+                .unwrap()
+                .add_buffer(buffers.direction_light.clone())
+                .unwrap()
+                .build()
+                .unwrap()
+        );
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
         let mut command =
@@ -85,7 +101,7 @@ impl CommandFactory for CheckBoardCommandFactory {
                 .dispatch(
                     [count_of_workgroups, 1, 1],
                     self.pipeline.clone(),
-                    (global_set.clone(), set_1),
+                    (set_0.clone(), set_1),
                     (),
                 )
                 .unwrap();
