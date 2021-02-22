@@ -10,7 +10,8 @@ layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
 layout(std140, set = 0, binding = 1) uniform Camera {
-    mat4 cameraToWorld;
+    vec3 pos;
+    mat3 rotation;
     float fov;
 };
 layout(std140, set = 0, binding = 2) buffer Rays {

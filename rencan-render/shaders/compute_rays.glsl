@@ -10,7 +10,8 @@ layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
 layout(std140, set = 0, binding = 1) uniform Camera {
-    mat4 cameraToWorld;
+    vec3 pos;
+    mat3 rotation;
     float fov;
 };
 layout(std140, set = 0, binding = 2) buffer RaysInfo {
@@ -43,20 +44,12 @@ void main() {
     float scale = tan(fov / 2);
     float aspect_ratio = float(screen_width) / float(screen_height);
 
-    vec3 origin = (cameraToWorld * vec4(0.0)).xyz;
+    vec3 origin = pos;
 
     float x = (2 * ((this_point.x + 0.5) / float(screen_width)) - 1) * aspect_ratio * scale;
     float y = (1 - 2 * ((this_point.y + 0.5) / float(screen_height))) * scale;
 
-    vec4 direction = vec4(
-        (inverse(
-            mat3(
-                cameraToWorld[0].xyz,
-                cameraToWorld[1].xyz,
-                cameraToWorld[2].xyz
-            )
-        )) * vec3(x, y, -1.0), 0.0);
-    //vec4 direction = cameraToWorld * vec4(x, y, -1.0, 0.0);
+    vec4 direction = vec4(rotation * vec3(x, y, -1.0), 0.0);
 
     rays.data[idx] = Ray(origin, direction);
 }
