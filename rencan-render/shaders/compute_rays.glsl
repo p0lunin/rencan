@@ -10,11 +10,9 @@ layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
 layout(std140, set = 0, binding = 1) uniform Camera {
-    vec3 pos;
-    mat3 rotation;
-    float x_angle;
-    float y_angle;
-} camera;
+    mat4 cameraToWorld;
+    float fov;
+};
 layout(std140, set = 0, binding = 2) buffer RaysInfo {
     Ray data[];
 } rays;
@@ -34,48 +32,31 @@ uint compute_y(uint screen_width) {
     return gl_GlobalInvocationID.x / screen_width;
 }
 
-vec2 compute_origin(float x, float y) {
-    y = float(screen.y) / 2.0;
-    x = x * (screen.x - screen.y) / screen.x + screen.y / 2;
-    return vec2(x, y);
-}
-
-vec3 from_raster_space_to_coords(vec2 coords, vec2 step, vec2 max_deviation) {
-    float x = coords.x * step.x * 2 * max_deviation.x - max_deviation.x;
-    float y = -(coords.y * step.y * 2 * max_deviation.y) + max_deviation.y;
-    return vec3(x, y, 0.0);
-}
-
 void main() {
     uint screen_width = screen.x;
     uint screen_height = screen.y;
-    float x_props = float(screen_width) / float(screen_height);
-    if (x_props <= 1.0) {
-        x_props = 1.0;
-    }
-    x_props = x_props + 0.25;
 
     uint idx = gl_GlobalInvocationID.x;
 
     vec2 this_point = vec2(compute_x(screen_width), compute_y(screen_width));
 
-    vec2 step = vec2(1.0/(screen_width - 1), 1.0/(screen_height - 1));
-    vec2 max_deviation = vec2(tan(camera.x_angle/2) * x_props, tan(camera.y_angle/2));
+    float scale = tan(fov / 2);
+    float aspect_ratio = float(screen_width) / float(screen_height);
 
-    vec2 origin_for_ray = compute_origin(this_point.x, this_point.y);
-    vec3 ray_origin_local = from_raster_space_to_coords(origin_for_ray, step, max_deviation);
+    vec3 origin = (cameraToWorld * vec4(0.0)).xyz;
 
-    vec3 deviation_local = from_raster_space_to_coords(this_point, step, max_deviation);
-    deviation_local.z = -1.0;
+    float x = (2 * ((this_point.x + 0.5) / float(screen_width)) - 1) * aspect_ratio * scale;
+    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen_height))) * scale;
 
-    vec3 deviation_global = camera.rotation * deviation_local;
+    vec4 direction = vec4(
+        (inverse(
+            mat3(
+                cameraToWorld[0].xyz,
+                cameraToWorld[1].xyz,
+                cameraToWorld[2].xyz
+            )
+        )) * vec3(x, y, -1.0), 0.0);
+    //vec4 direction = cameraToWorld * vec4(x, y, -1.0, 0.0);
 
-    vec4 ray_direction = vec4(
-        deviation_global,
-        0.0
-    );
-
-    vec3 origin = camera.pos + camera.rotation * ray_origin_local;
-
-    rays.data[idx] = Ray(origin, ray_direction);
+    rays.data[idx] = Ray(origin, direction);
 }

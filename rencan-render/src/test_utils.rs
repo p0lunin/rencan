@@ -1,4 +1,3 @@
-use crate::core::Ray;
 use nalgebra::{Point3, Point4};
 use std::sync::Arc;
 use vulkano::{
@@ -43,15 +42,12 @@ pub fn run_one(command: AutoCommandBuffer, queue: Arc<Queue>) {
     command.execute(queue).unwrap().then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 }
 
-pub fn empty_rays(device: Arc<Device>, size: usize) -> Arc<CpuAccessibleBuffer<[Ray]>> {
+pub fn empty_array<T: 'static>(device: Arc<Device>, size: usize, make: impl Fn() -> T) -> Arc<CpuAccessibleBuffer<[T]>> {
     CpuAccessibleBuffer::from_iter(
         device.clone(),
         BufferUsage::all(),
         false,
-        (0..size).map(|_| Ray {
-            origin: Point3::new(0.0, 0.0, 0.0),
-            direction: Point3::new(0.0, 0.0, 0.0),
-        }),
+        (0..size).map(|_| make()),
     )
     .unwrap()
 }

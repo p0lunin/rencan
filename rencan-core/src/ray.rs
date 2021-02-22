@@ -1,8 +1,8 @@
-use nalgebra::Point3;
+use nalgebra::Point4;
 
-#[repr(C, align(32))]
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Ray {
-    pub origin: Point3<f32>,
-    pub direction: Point3<f32>,
+    pub origin: Point4<f32>,
+    pub direction: Point4<f32>,
 }

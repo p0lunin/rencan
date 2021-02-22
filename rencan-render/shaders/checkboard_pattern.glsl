@@ -12,10 +12,8 @@ layout(set = 0, binding = 0) uniform Info {
     uvec2 screen;
 };
 layout(std140, set = 0, binding = 1) uniform Camera {
-    vec3 camera_origin;
-    mat3 rotation;
-    float x_angle;
-    float y_angle;
+    mat4 cameraToWorld;
+    float fov;
 };
 layout(std140, set = 0, binding = 2) buffer Rays {
     Ray rays[];
@@ -65,6 +63,6 @@ void main() {
         imageStore(resultImage, pos, vec4(chessboard));
     }
     else if (inter.is_intersect == 0) {
-        imageStore(resultImage, pos, vec4(0.0, 0.4, 0.7, 0.0));
+        imageStore(resultImage, pos, vec4(0.3, 0.4, 0.7, 0.0));
     }
 }

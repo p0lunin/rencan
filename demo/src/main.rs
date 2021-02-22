@@ -58,9 +58,9 @@ fn main() {
     });
 
     app.run(event_loop, scene, move |event, app, scene| {
-        while let Ok(rot) = rot_rx.try_recv() {
+        /*while let Ok(rot) = rot_rx.try_recv() {
             scene.global_light.direction = rot * &scene.global_light.direction;
-        }
+        }*/
         frames += 1;
         if Instant::now() >= next {
             println!("fps: {}", frames);
