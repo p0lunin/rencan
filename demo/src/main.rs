@@ -38,21 +38,33 @@ fn main() {
     );
     model.scaling = 3.0;
 
-    let models = vec![model.clone()];
+    let mut plane = Model::new(
+        vec![
+            [-0.4, -0.3, -0.4, 0.0].into(), // A
+            [0.4, -0.3, -0.4, 0.0].into(),  // B
+            [0.4, -0.3, 0.4, 0.0].into(),   // C
+            [-0.4, -0.3, 0.4, 0.0].into(),  // D
+        ],
+        vec![[0, 2, 1, 0].into(), [0, 3, 2, 0].into(), [0, 1, 3, 0].into(), [1, 2, 3, 0].into()],
+    );
+    plane.scaling = 5.0;
+    plane.position.y = -3.0;
+
+    let models = vec![model, plane];
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
     let scene = Scene {
         models,
         global_light: DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.0, 0.0, 0.0), 30.0),
+            LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
             Vector3::new(0.0, -1.0, 0.0),
         ),
     };
 
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_millis(10));
-        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.01, 0.01)) {
+        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.0, 0.0)) {
             break;
         }
     });

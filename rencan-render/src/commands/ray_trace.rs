@@ -20,6 +20,10 @@ mod cs {
     }
 }
 
+pub mod ray_trace_shader {
+    pub use super::cs::*;
+}
+
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
 }
@@ -49,7 +53,7 @@ impl CommandFactory for RayTraceCommandFactory {
                 .add_buffer(buffers.intersections.clone())
                 .unwrap()
                 .build()
-                .unwrap()
+                .unwrap(),
         );
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();

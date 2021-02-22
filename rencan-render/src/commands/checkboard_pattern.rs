@@ -54,7 +54,7 @@ impl CommandFactory for CheckBoardCommandFactory {
                 .add_buffer(buffers.direction_light.clone())
                 .unwrap()
                 .build()
-                .unwrap()
+                .unwrap(),
         );
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();

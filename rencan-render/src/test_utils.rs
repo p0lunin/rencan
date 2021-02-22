@@ -42,7 +42,11 @@ pub fn run_one(command: AutoCommandBuffer, queue: Arc<Queue>) {
     command.execute(queue).unwrap().then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 }
 
-pub fn empty_array<T: 'static>(device: Arc<Device>, size: usize, make: impl Fn() -> T) -> Arc<CpuAccessibleBuffer<[T]>> {
+pub fn empty_array<T: 'static>(
+    device: Arc<Device>,
+    size: usize,
+    make: impl Fn() -> T,
+) -> Arc<CpuAccessibleBuffer<[T]>> {
     CpuAccessibleBuffer::from_iter(
         device.clone(),
         BufferUsage::all(),

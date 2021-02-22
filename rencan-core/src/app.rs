@@ -126,7 +126,8 @@ pub struct Buffers {
     >,
     pub screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
     pub output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-    pub intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
+    pub intersections:
+        Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync + 'static>,
     pub direction_light:
         Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
 }

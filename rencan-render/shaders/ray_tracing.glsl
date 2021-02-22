@@ -76,8 +76,12 @@ void main() {
 
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
+    Intersection inter = intersections[idx];
+
     float distance = 1.0 / 0.0;
-    Intersection inter = intersection_none();
+    if (inter.is_intersect == 1) {
+        distance = inter.distance;
+    }
 
     Ray ray = rays[idx];
     ray.origin = (inverse(isometry) * vec4(ray.origin, 0.0)).xyz;

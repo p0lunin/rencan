@@ -20,19 +20,11 @@ impl Camera {
 }
 
 impl Camera {
-    pub fn new(
-        position: Point3<f32>,
-        rotation: (f32, f32, f32),
-        fov: f32,
-    ) -> Self {
+    pub fn new(position: Point3<f32>, rotation: (f32, f32, f32), fov: f32) -> Self {
         Camera { position, rotation, fov }
     }
     pub fn from_origin() -> Self {
-        Camera::new(
-            Point3::new(0.0, 0.0, 0.0),
-            (0.0, 0.0, 0.0),
-            60.0f32.to_radians(),
-        )
+        Camera::new(Point3::new(0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 60.0f32.to_radians())
     }
     pub fn with_fov(mut self, fov: f32) -> Self {
         self.fov = fov;

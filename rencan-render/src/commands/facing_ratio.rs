@@ -51,7 +51,7 @@ impl CommandFactory for FacingRatioCommandFactory {
                 .add_buffer(buffers.intersections.clone())
                 .unwrap()
                 .build()
-                .unwrap()
+                .unwrap(),
         );
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();

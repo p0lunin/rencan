@@ -11,103 +11,290 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::{
+    commands::shaders::ray_trace_shader,
+    core::{
+        intersection::IntersectionUniform, BufferAccessData, CommandFactory, CommandFactoryContext,
+        Ray,
+    },
+};
+use vulkano::buffer::DeviceLocalBuffer;
 
-mod cs {
+mod lightning_cs {
     vulkano_shaders::shader! {
         ty: "compute",
         path: "shaders/lightning.glsl"
     }
 }
 
+mod make_shadow_rays_cs {
+    vulkano_shaders::shader! {
+        ty: "compute",
+        path: "shaders/make_shadow_rays.glsl"
+    }
+}
+
 pub struct LightningCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    ray_trace_pipeline: Arc<ComputePipeline<PipelineLayout<ray_trace_shader::Layout>>>,
+    make_shadow_rays_pipeline: Arc<ComputePipeline<PipelineLayout<make_shadow_rays_cs::Layout>>>,
+    lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
 }
 
 impl LightningCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
-        let shader = cs::Shader::load(device.clone()).unwrap();
-        let pipeline = Arc::new(
-            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
+        let ray_trace_pipeline = Arc::new(
+            ComputePipeline::new(
+                device.clone(),
+                &ray_trace_shader::Shader::load(device.clone()).unwrap().main_entry_point(),
+                &(),
+                None,
+            )
+            .unwrap(),
         );
-        LightningCommandFactory { pipeline }
+        let make_shadow_rays_pipeline = Arc::new(
+            ComputePipeline::new(
+                device.clone(),
+                &make_shadow_rays_cs::Shader::load(device.clone()).unwrap().main_entry_point(),
+                &(),
+                None,
+            )
+            .unwrap(),
+        );
+        let lightning_pipeline = Arc::new(
+            ComputePipeline::new(
+                device.clone(),
+                &lightning_cs::Shader::load(device.clone()).unwrap().main_entry_point(),
+                &(),
+                None,
+            )
+            .unwrap(),
+        );
+        LightningCommandFactory {
+            ray_trace_pipeline,
+            make_shadow_rays_pipeline,
+            lightning_pipeline,
+        }
     }
 }
 
 impl CommandFactory for LightningCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
-        let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
-        let device = app_info.device.clone();
+        let mut command = AutoCommandBufferBuilder::new(
+            ctx.app_info.device.clone(),
+            ctx.app_info.graphics_queue.family(),
+        )
+        .unwrap();
 
-        let layout_0 = self.pipeline.layout().descriptor_set_layout(0).unwrap();
-        let set_0 = Arc::new(
-            PersistentDescriptorSet::start(layout_0.clone())
-                .add_buffer(buffers.screen.clone())
-                .unwrap()
-                .add_buffer(buffers.rays.clone())
-                .unwrap()
-                .add_image(buffers.output_image.clone())
-                .unwrap()
-                .add_buffer(buffers.intersections.clone())
-                .unwrap()
-                .add_buffer(buffers.direction_light.clone())
-                .unwrap()
-                .build()
-                .unwrap()
-        );
-
-        let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
-        let mut command =
-            AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
-                .unwrap();
-
-        for (i, model) in scene.models.iter().enumerate() {
-            let vertices_buffer = CpuAccessibleBuffer::from_iter(
-                device.clone(),
-                BufferUsage::all(),
-                false,
-                model.vertices.iter().cloned(),
-            )
-            .unwrap();
-            let model_info_buffer = CpuAccessibleBuffer::from_data(
-                device.clone(),
-                BufferUsage::all(),
-                false,
-                model.get_uniform_info(i as u32).as_std140(),
-            )
-            .unwrap();
-            let indices_buffer = CpuAccessibleBuffer::from_iter(
-                device.clone(),
-                BufferUsage::all(),
-                false,
-                model.indexes.iter().cloned(),
-            )
-            .unwrap();
-
-            let set_1 = Arc::new(
-                PersistentDescriptorSet::start(layout_1.clone())
-                    .add_buffer(model_info_buffer)
-                    .unwrap()
-                    .add_buffer(vertices_buffer)
-                    .unwrap()
-                    .add_buffer(indices_buffer)
-                    .unwrap()
-                    .build()
-                    .unwrap(),
-            );
-
-            command
-                .dispatch(
-                    [count_of_workgroups, 1, 1],
-                    self.pipeline.clone(),
-                    (set_0.clone(), set_1),
-                    (),
-                )
-                .unwrap();
-        }
+        let rays = add_making_shadow_rays(self, &ctx, &mut command);
+        let intersections = add_ray_tracing(self, &ctx, rays.clone(), &mut command);
+        add_lightning(self, &ctx, rays, intersections, &mut command);
 
         let command = command.build().unwrap();
 
         command
     }
+}
+
+fn add_lightning(
+    factory: &LightningCommandFactory,
+    ctx: &CommandFactoryContext,
+    rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
+    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>,
+    command: &mut AutoCommandBufferBuilder,
+) {
+    let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
+    let device = app_info.device.clone();
+
+    let layout_0 = factory.lightning_pipeline.layout().descriptor_set_layout(0).unwrap();
+    let set_0 = Arc::new(
+        PersistentDescriptorSet::start(layout_0.clone())
+            .add_buffer(buffers.screen.clone())
+            .unwrap()
+            .add_buffer(buffers.rays.clone())
+            .unwrap()
+            .add_buffer(rays.clone())
+            .unwrap()
+            .add_image(buffers.output_image.clone())
+            .unwrap()
+            .add_buffer(buffers.intersections.clone())
+            .unwrap()
+            .add_buffer(intersections.clone())
+            .unwrap()
+            .add_buffer(buffers.direction_light.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
+
+    let layout_1 = factory.lightning_pipeline.layout().descriptor_set_layout(1).unwrap();
+
+    for (i, model) in scene.models.iter().enumerate() {
+        let vertices_buffer = CpuAccessibleBuffer::from_iter(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.vertices.iter().cloned(),
+        )
+        .unwrap();
+        let model_info_buffer = CpuAccessibleBuffer::from_data(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.get_uniform_info(i as u32).as_std140(),
+        )
+        .unwrap();
+        let indices_buffer = CpuAccessibleBuffer::from_iter(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.indexes.iter().cloned(),
+        )
+        .unwrap();
+
+        let set_1 = Arc::new(
+            PersistentDescriptorSet::start(layout_1.clone())
+                .add_buffer(model_info_buffer)
+                .unwrap()
+                .add_buffer(vertices_buffer)
+                .unwrap()
+                .add_buffer(indices_buffer)
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
+        command
+            .dispatch(
+                [*count_of_workgroups, 1, 1],
+                factory.lightning_pipeline.clone(),
+                (set_0.clone(), set_1),
+                (),
+            )
+            .unwrap();
+    }
+}
+
+fn add_making_shadow_rays(
+    factory: &LightningCommandFactory,
+    ctx: &CommandFactoryContext,
+    command: &mut AutoCommandBufferBuilder,
+) -> Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync> {
+    let CommandFactoryContext { app_info, buffers, count_of_workgroups, .. } = ctx;
+    let device = app_info.device.clone();
+
+    let new_rays_buffer = DeviceLocalBuffer::array(
+        device.clone(),
+        app_info.size_of_image_array(),
+        BufferUsage::all(),
+        std::iter::once(app_info.graphics_queue.family()),
+    )
+    .unwrap();
+
+    let layout_0 = factory.make_shadow_rays_pipeline.layout().descriptor_set_layout(0).unwrap();
+    let set_0 = Arc::new(
+        PersistentDescriptorSet::start(layout_0.clone())
+            .add_buffer(buffers.screen.clone())
+            .unwrap()
+            .add_buffer(buffers.rays.clone())
+            .unwrap()
+            .add_buffer(buffers.intersections.clone())
+            .unwrap()
+            .add_buffer(new_rays_buffer.clone())
+            .unwrap()
+            .add_buffer(buffers.direction_light.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
+
+    command
+        .dispatch(
+            [*count_of_workgroups, 1, 1],
+            factory.make_shadow_rays_pipeline.clone(),
+            set_0,
+            (),
+        )
+        .unwrap();
+
+    new_rays_buffer
+}
+
+fn add_ray_tracing(
+    factory: &LightningCommandFactory,
+    ctx: &CommandFactoryContext,
+    rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
+    command: &mut AutoCommandBufferBuilder,
+) -> Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync> {
+    let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
+    let device = app_info.device.clone();
+
+    let intersections = DeviceLocalBuffer::array(
+        device.clone(),
+        app_info.size_of_image_array(),
+        BufferUsage::all(),
+        std::iter::once(app_info.graphics_queue.family()),
+    )
+    .unwrap();
+
+    let layout_0 = factory.ray_trace_pipeline.layout().descriptor_set_layout(0).unwrap();
+    let set_0 = Arc::new(
+        PersistentDescriptorSet::start(layout_0.clone())
+            .add_buffer(buffers.screen.clone())
+            .unwrap()
+            .add_buffer(rays.clone())
+            .unwrap()
+            .add_buffer(intersections.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
+
+    let layout_1 = factory.ray_trace_pipeline.layout().descriptor_set_layout(1).unwrap();
+
+    for (i, model) in scene.models.iter().enumerate() {
+        let vertices_buffer = CpuAccessibleBuffer::from_iter(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.vertices.iter().cloned(),
+        )
+        .unwrap();
+        let model_info_buffer = CpuAccessibleBuffer::from_data(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.get_uniform_info(i as u32).as_std140(),
+        )
+        .unwrap();
+        let indices_buffer = CpuAccessibleBuffer::from_iter(
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            model.indexes.iter().cloned(),
+        )
+        .unwrap();
+
+        let set_1 = Arc::new(
+            PersistentDescriptorSet::start(layout_1.clone())
+                .add_buffer(model_info_buffer)
+                .unwrap()
+                .add_buffer(vertices_buffer)
+                .unwrap()
+                .add_buffer(indices_buffer)
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
+        command
+            .dispatch(
+                [*count_of_workgroups, 1, 1],
+                factory.ray_trace_pipeline.clone(),
+                (set_0.clone(), set_1),
+                (),
+            )
+            .unwrap();
+    }
+
+    intersections
 }
