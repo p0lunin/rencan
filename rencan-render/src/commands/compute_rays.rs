@@ -11,8 +11,9 @@ use vulkano::{
 
 use rencan_core::CommandFactory;
 
-use crate::core::CommandFactoryContext;
+use crate::core::{CommandFactoryContext, BufferAccessData, Ray};
 use vulkano::descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract};
+use crate::core::app::GlobalAppBuffers;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -23,15 +24,17 @@ mod cs {
 
 pub struct ComputeRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
 }
 
 impl ComputeRaysCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        ComputeRaysCommandFactory { pipeline }
+        let rays = buffers.rays;
+        ComputeRaysCommandFactory { pipeline, rays }
     }
 }
 
@@ -54,7 +57,7 @@ impl CommandFactory for ComputeRaysCommandFactory {
                 .unwrap()
                 .add_buffer(buffers.camera.clone())
                 .unwrap()
-                .add_buffer(buffers.rays.clone())
+                .add_buffer(self.rays.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
@@ -66,6 +69,10 @@ impl CommandFactory for ComputeRaysCommandFactory {
         let calc_rays_command = calc_rays.build().unwrap();
 
         calc_rays_command
+    }
+
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
+        self.rays = buffers.rays;
     }
 }
 

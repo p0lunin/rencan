@@ -11,6 +11,7 @@ use vulkano::{
 };
 
 use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::core::app::GlobalAppBuffers;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -21,15 +22,16 @@ mod cs {
 
 pub struct FacingRatioCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    buffers: GlobalAppBuffers,
 }
 
 impl FacingRatioCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>, buffers: GlobalAppBuffers) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        FacingRatioCommandFactory { pipeline }
+        FacingRatioCommandFactory { pipeline, buffers }
     }
 }
 
@@ -43,11 +45,11 @@ impl CommandFactory for FacingRatioCommandFactory {
             PersistentDescriptorSet::start(layout_0.clone())
                 .add_buffer(buffers.screen.clone())
                 .unwrap()
-                .add_buffer(buffers.rays.clone())
+                .add_buffer(self.buffers.rays.clone())
                 .unwrap()
                 .add_image(buffers.output_image.clone())
                 .unwrap()
-                .add_buffer(buffers.intersections.clone())
+                .add_buffer(self.buffers.intersections.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
@@ -88,5 +90,9 @@ impl CommandFactory for FacingRatioCommandFactory {
         let command = command.build().unwrap();
 
         command
+    }
+
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
+        self.buffers = buffers;
     }
 }

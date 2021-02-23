@@ -1,8 +1,10 @@
 use crate::{app::Buffers, AppInfo, Scene};
 use vulkano::command_buffer::AutoCommandBuffer;
+use crate::app::GlobalAppBuffers;
 
 pub trait CommandFactory {
     fn make_command<'m>(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer;
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers);
 }
 
 #[derive(Clone)]

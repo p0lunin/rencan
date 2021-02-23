@@ -11,6 +11,7 @@ use vulkano::{
 };
 
 use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::core::app::GlobalAppBuffers;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -25,15 +26,16 @@ pub mod ray_trace_shader {
 
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    buffers: GlobalAppBuffers,
 }
 
 impl RayTraceCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        RayTraceCommandFactory { pipeline }
+        RayTraceCommandFactory { buffers, pipeline }
     }
 }
 
@@ -47,9 +49,9 @@ impl CommandFactory for RayTraceCommandFactory {
             PersistentDescriptorSet::start(layout_0.clone())
                 .add_buffer(buffers.screen.clone())
                 .unwrap()
-                .add_buffer(buffers.rays.clone())
+                .add_buffer(self.buffers.rays.clone())
                 .unwrap()
-                .add_buffer(buffers.intersections.clone())
+                .add_buffer(self.buffers.intersections.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
@@ -90,6 +92,10 @@ impl CommandFactory for RayTraceCommandFactory {
         let command = command.build().unwrap();
 
         command
+    }
+
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
+        self.buffers = buffers;
     }
 }
 /*

@@ -17,7 +17,8 @@ use crate::{
         Ray,
     },
 };
-use vulkano::buffer::{DeviceLocalBuffer, BufferUsage};
+use vulkano::buffer::{DeviceLocalBuffer, BufferUsage, TypedBufferAccess};
+use crate::core::app::GlobalAppBuffers;
 
 mod lightning_cs {
     vulkano_shaders::shader! {
@@ -34,13 +35,17 @@ mod make_shadow_rays_cs {
 }
 
 pub struct LightningCommandFactory {
+    device: Arc<Device>,
     ray_trace_pipeline: Arc<ComputePipeline<PipelineLayout<ray_trace_shader::Layout>>>,
     make_shadow_rays_pipeline: Arc<ComputePipeline<PipelineLayout<make_shadow_rays_cs::Layout>>>,
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
+    global_buffers: GlobalAppBuffers,
+    local_ray_buffer: Arc<DeviceLocalBuffer<[Ray]>>,
+    local_intersections_buffer: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
 }
 
 impl LightningCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>, buffers: GlobalAppBuffers) -> Self {
         let ray_trace_pipeline = Arc::new(
             ComputePipeline::new(
                 device.clone(),
@@ -68,10 +73,26 @@ impl LightningCommandFactory {
             )
             .unwrap(),
         );
+        let local_ray_buffer = DeviceLocalBuffer::array(
+            device.clone(),
+            buffers.rays.len(),
+            BufferUsage::all(),
+            buffers.rays.queue_families()
+        ).unwrap();
+        let local_intersections_buffer = DeviceLocalBuffer::array(
+            device.clone(),
+            buffers.intersections.len(),
+            BufferUsage::all(),
+            buffers.intersections.queue_families()
+        ).unwrap();
         LightningCommandFactory {
+            device,
             ray_trace_pipeline,
             make_shadow_rays_pipeline,
             lightning_pipeline,
+            global_buffers: buffers,
+            local_ray_buffer,
+            local_intersections_buffer
         }
     }
 }
@@ -84,18 +105,35 @@ impl CommandFactory for LightningCommandFactory {
         )
         .unwrap();
 
-        let rays = add_making_shadow_rays(self, &ctx, &mut command);
+        let rays = add_making_shadow_rays(self, &self.global_buffers, &ctx, &mut command);
         let intersections = add_ray_tracing(self, &ctx, rays.clone(), &mut command);
-        add_lightning(self, &ctx, rays, intersections, &mut command);
+        add_lightning(self, &self.global_buffers, &ctx, rays, intersections, &mut command);
 
         let command = command.build().unwrap();
 
         command
     }
+
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
+        self.local_ray_buffer = DeviceLocalBuffer::array(
+            self.device.clone(),
+            buffers.rays.len(),
+            BufferUsage::all(),
+            buffers.rays.queue_families()
+        ).unwrap();
+        self.local_intersections_buffer = DeviceLocalBuffer::array(
+            self.device.clone(),
+            buffers.intersections.len(),
+            BufferUsage::all(),
+            buffers.intersections.queue_families()
+        ).unwrap();
+        self.global_buffers = buffers;
+    }
 }
 
 fn add_lightning(
     factory: &LightningCommandFactory,
+    global_buffers: &GlobalAppBuffers,
     ctx: &CommandFactoryContext,
     rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>,
@@ -109,13 +147,13 @@ fn add_lightning(
         PersistentDescriptorSet::start(layout_0.clone())
             .add_buffer(buffers.screen.clone())
             .unwrap()
-            .add_buffer(buffers.rays.clone())
+            .add_buffer(global_buffers.rays.clone())
             .unwrap()
             .add_buffer(rays.clone())
             .unwrap()
             .add_image(buffers.output_image.clone())
             .unwrap()
-            .add_buffer(buffers.intersections.clone())
+            .add_buffer(global_buffers.intersections.clone())
             .unwrap()
             .add_buffer(intersections.clone())
             .unwrap()
@@ -157,6 +195,7 @@ fn add_lightning(
 
 fn add_making_shadow_rays(
     factory: &LightningCommandFactory,
+    global_buffers: &GlobalAppBuffers,
     ctx: &CommandFactoryContext,
     command: &mut AutoCommandBufferBuilder,
 ) -> Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync> {
@@ -176,9 +215,9 @@ fn add_making_shadow_rays(
         PersistentDescriptorSet::start(layout_0.clone())
             .add_buffer(buffers.screen.clone())
             .unwrap()
-            .add_buffer(buffers.rays.clone())
+            .add_buffer(global_buffers.rays.clone())
             .unwrap()
-            .add_buffer(buffers.intersections.clone())
+            .add_buffer(global_buffers.intersections.clone())
             .unwrap()
             .add_buffer(new_rays_buffer.clone())
             .unwrap()

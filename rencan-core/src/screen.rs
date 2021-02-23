@@ -1,4 +1,4 @@
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, Clone)]
 pub struct Screen(pub [u32; 2]);
 

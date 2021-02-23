@@ -10,7 +10,9 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::core::{CommandFactory, CommandFactoryContext, BufferAccessData};
+use crate::core::app::GlobalAppBuffers;
+use crate::core::intersection::IntersectionUniform;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -21,17 +23,19 @@ mod cs {
 
 pub struct CheckBoardCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>
 }
 
 impl CheckBoardCommandFactory {
-    pub fn new(device: Arc<Device>, scale: f32) -> Self {
+    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>, scale: f32) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let constants = cs::SpecializationConstants { CHESSBOARD_SCALE: scale };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        CheckBoardCommandFactory { pipeline }
+        let intersections = buffers.intersections;
+        CheckBoardCommandFactory { pipeline, intersections }
     }
 }
 
@@ -48,7 +52,7 @@ impl CommandFactory for CheckBoardCommandFactory {
                 .unwrap()
                 .add_image(buffers.output_image.clone())
                 .unwrap()
-                .add_buffer(buffers.intersections.clone())
+                .add_buffer(self.intersections.clone())
                 .unwrap()
                 .add_buffer(buffers.direction_light.clone())
                 .unwrap()
@@ -91,5 +95,9 @@ impl CommandFactory for CheckBoardCommandFactory {
         let command = command.build().unwrap();
 
         command
+    }
+
+    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
+        self.intersections = buffers.intersections;
     }
 }
