@@ -45,7 +45,7 @@ pub struct LightningCommandFactory {
 }
 
 impl LightningCommandFactory {
-    pub fn new(device: Arc<Device>, buffers: GlobalAppBuffers) -> Self {
+    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
         let ray_trace_pipeline = Arc::new(
             ComputePipeline::new(
                 device.clone(),
@@ -76,13 +76,21 @@ impl LightningCommandFactory {
         let local_ray_buffer = DeviceLocalBuffer::array(
             device.clone(),
             buffers.rays.len(),
-            BufferUsage::all(),
+            BufferUsage {
+                storage_buffer: true,
+                transfer_destination: true,
+                ..BufferUsage::none()
+            },
             buffers.rays.queue_families()
         ).unwrap();
         let local_intersections_buffer = DeviceLocalBuffer::array(
             device.clone(),
             buffers.intersections.len(),
-            BufferUsage::all(),
+            BufferUsage {
+                storage_buffer: true,
+                transfer_destination: true,
+                ..BufferUsage::none()
+            },
             buffers.intersections.queue_families()
         ).unwrap();
         LightningCommandFactory {
@@ -105,8 +113,11 @@ impl CommandFactory for LightningCommandFactory {
         )
         .unwrap();
 
-        let rays = add_making_shadow_rays(self, &self.global_buffers, &ctx, &mut command);
-        let intersections = add_ray_tracing(self, &ctx, rays.clone(), &mut command);
+        command.fill_buffer(self.local_intersections_buffer.clone(), 0).unwrap();
+        command.fill_buffer(self.local_ray_buffer.clone(), 0).unwrap();
+
+        let rays = add_making_shadow_rays(self, &self.global_buffers, &ctx, self.local_ray_buffer.clone(), &mut command);
+        let intersections = add_ray_tracing(self, &ctx, rays.clone(), self.local_intersections_buffer.clone(), &mut command);
         add_lightning(self, &self.global_buffers, &ctx, rays, intersections, &mut command);
 
         let command = command.build().unwrap();
@@ -197,18 +208,10 @@ fn add_making_shadow_rays(
     factory: &LightningCommandFactory,
     global_buffers: &GlobalAppBuffers,
     ctx: &CommandFactoryContext,
+    new_rays_buffer: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     command: &mut AutoCommandBufferBuilder,
 ) -> Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync> {
-    let CommandFactoryContext { app_info, buffers, count_of_workgroups, .. } = ctx;
-    let device = app_info.device.clone();
-
-    let new_rays_buffer = DeviceLocalBuffer::array(
-        device.clone(),
-        app_info.size_of_image_array(),
-        BufferUsage::all(),
-        std::iter::once(app_info.graphics_queue.family()),
-    )
-    .unwrap();
+    let CommandFactoryContext { buffers, count_of_workgroups, .. } = ctx;
 
     let layout_0 = factory.make_shadow_rays_pipeline.layout().descriptor_set_layout(0).unwrap();
     let set_0 = Arc::new(
@@ -228,8 +231,6 @@ fn add_making_shadow_rays(
     );
 
     command
-        .fill_buffer(new_rays_buffer.clone(), 0)
-        .unwrap()
         .dispatch(
             [*count_of_workgroups, 1, 1],
             factory.make_shadow_rays_pipeline.clone(),
@@ -245,18 +246,11 @@ fn add_ray_tracing(
     factory: &LightningCommandFactory,
     ctx: &CommandFactoryContext,
     rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
+    intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     command: &mut AutoCommandBufferBuilder,
 ) -> Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync> {
     let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
     let device = app_info.device.clone();
-
-    let intersections = DeviceLocalBuffer::array(
-        device.clone(),
-        app_info.size_of_image_array(),
-        BufferUsage::all(),
-        std::iter::once(app_info.graphics_queue.family()),
-    )
-    .unwrap();
 
     let layout_0 = factory.ray_trace_pipeline.layout().descriptor_set_layout(0).unwrap();
     let set_0 = Arc::new(
@@ -270,8 +264,6 @@ fn add_ray_tracing(
             .build()
             .unwrap(),
     );
-
-    command.fill_buffer(intersections.clone(), 0).unwrap();
 
     let layout_1 = factory.ray_trace_pipeline.layout().descriptor_set_layout(1).unwrap();
 

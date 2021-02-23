@@ -8,14 +8,14 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(constant_id = 0) const float CHESSBOARD_SCALE = 1.0;
 
-layout(set = 0, binding = 0) uniform Info {
+layout(set = 0, binding = 0) readonly uniform Info {
     uvec2 screen;
 };
 layout(set = 0, binding = 1, rgba8) uniform image2D resultImage;
 layout(std140, set = 0, binding = 2) buffer Intersections {
     Intersection intersections[];
 };
-layout(std140, set = 0, binding = 3) buffer DirectLightInfo {
+layout(std140, set = 0, binding = 3) readonly uniform DirectLightInfo {
     DirectLight global_light;
 };
 layout(std140, set = 1, binding = 0) readonly buffer ModelInfo {

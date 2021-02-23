@@ -14,7 +14,7 @@ use crate::{
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
-use vulkano::command_buffer::AutoCommandBufferBuilder;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferExecError};
 use vulkano::format::ClearValue;
 use vulkano::buffer::CpuBufferPool;
 use vulkano::device::Device;
@@ -53,7 +53,7 @@ impl App {
         previous: Prev,
         scene: &Scene,
         image_create: F,
-    ) -> (impl GpuFuture, Arc<dyn ImageViewAccess + Send + Sync + 'static>)
+    ) -> Result<(impl GpuFuture + 'static, Arc<dyn ImageViewAccess + Send + Sync + 'static>), CommandBufferExecError>
     where
         Prev: GpuFuture + 'static,
         F: FnOnce(&AppInfo) -> Arc<dyn ImageViewAccess + Send + Sync + 'static>,
@@ -78,10 +78,11 @@ impl App {
 
         for factory in self.commands.iter() {
             let command = factory.make_command(ctx.clone());
-            fut = Box::new(fut.then_execute_same_queue(command).unwrap());
+            let f = fut.then_execute_same_queue(command)?;
+            fut = Box::new(f);
         }
 
-        (fut, image)
+        Ok((fut, image))
     }
     fn create_buffers(
         &self,
@@ -122,15 +123,15 @@ impl GlobalBuffers {
             ).unwrap(),
             camera: Arc::new(CpuBufferPool::new(
                 device.clone(),
-                BufferUsage::all()
+                BufferUsage::uniform_buffer(),
             )),
             screen: Arc::new(CpuBufferPool::new(
                 device.clone(),
-                BufferUsage::all()
+                BufferUsage::uniform_buffer(),
             )),
             direction_light: Arc::new(CpuBufferPool::new(
                 device.clone(),
-                BufferUsage::all()
+                BufferUsage::uniform_buffer(),
             ))
         }
     }
