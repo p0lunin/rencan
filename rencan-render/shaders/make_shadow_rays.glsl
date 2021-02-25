@@ -33,7 +33,9 @@ void main() {
         return;
     }
 
-    vec3 point = ray.origin + ray.direction.xyz * inter.distance + normalize(-global_light.direction.xyz) * 0.001;
+    vec3 direction_ray = -global_light.direction.xyz;
 
-    next_rays[idx] = Ray(point, vec4(-global_light.direction, 0.0));
+    vec3 point = ray.origin + ray.direction.xyz * inter.distance + direction_ray * 0.001;
+
+    next_rays[idx] = Ray(point, vec4(direction_ray, 0.0));
 }

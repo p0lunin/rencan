@@ -84,8 +84,9 @@ void main() {
     }
 
     Ray ray = rays[idx];
-    ray.origin = (inverse(isometry) * vec4(ray.origin, 0.0)).xyz;
-    ray.direction = vec4((inverse(mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * ray.direction.xyz, 0.0);
+    mat4 global_to_model = inverse(isometry);
+    ray.origin = (global_to_model * vec4(ray.origin, 0.0)).xyz;
+    ray.direction = global_to_model * ray.direction;
 
     for (int i = 0; i < indexes_length; i++) {
         uvec3 index = indexes[i];

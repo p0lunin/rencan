@@ -42,7 +42,7 @@ void main() {
     float x = (2 * ((this_point.x + 0.5) / float(screen_width)) - 1) * aspect_ratio * scale;
     float y = (1 - 2 * ((this_point.y + 0.5) / float(screen_height))) * scale;
 
-    vec4 direction = vec4(rotation * vec3(x, y, -1.0), 0.0);
+    vec4 direction = vec4(normalize(rotation * vec3(x, y, -1.0)), 0.0);
 
     rays.data[idx] = Ray(origin, direction);
 }
