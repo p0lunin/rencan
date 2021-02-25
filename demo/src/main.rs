@@ -73,7 +73,7 @@ fn main() {
         }
     });
 
-    app.run(event_loop, scene, move |event, app, scene| {
+    app.run(event_loop, scene, 60, move |event, app, scene| {
         while let Ok(rot) = rot_rx.try_recv() {
             scene.global_light.direction = rot * &scene.global_light.direction;
         }

@@ -61,13 +61,30 @@ impl GuiApp {
         mut self,
         event_loop: EventLoop<T>,
         mut scene: Scene,
+        fps: u32,
         mut pre_compute: PreCompute,
     ) where
         PreCompute: for<'a> FnMut(&Event<T>, &mut App, &'a mut Scene) + 'static,
     {
+        let microseconds_per_frame = (1000_000.0 / (fps as f32)) as u64;
+        let frame_duration = Duration::from_micros(microseconds_per_frame);
+
+        let (tx, rx) = std::sync::mpsc::sync_channel(10);
+        std::thread::spawn(move || {
+            let mut next = Instant::now() + frame_duration;
+            loop {
+                while next > Instant::now() {}
+                next = Instant::now() + frame_duration;
+
+                if let Err(_) = tx.send(()) {
+                    break;
+                }
+            }
+        });
+
         event_loop.run(move |event, _, control_flow| {
             pre_compute(&event, &mut self.app, &mut scene);
-            *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(5));
+            *control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
 
             match self.prev.as_mut() {
                 Some(fut) => fut.cleanup_finished(),
@@ -82,6 +99,8 @@ impl GuiApp {
                     self.must_recreate_swapchain = true;
                 }
                 Event::RedrawEventsCleared => {
+                    rx.recv().unwrap();
+
                     if self.must_recreate_swapchain {
                         let dimensions: [u32; 2] = self.surface.window().inner_size().into();
                         let (new_swapchain, new_images) =
