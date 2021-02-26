@@ -26,7 +26,7 @@ pub struct FacingRatioCommandFactory {
 }
 
 impl FacingRatioCommandFactory {
-    pub fn new(device: Arc<Device>, buffers: GlobalAppBuffers) -> Self {
+    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),

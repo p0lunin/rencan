@@ -1,4 +1,4 @@
-use nalgebra::{Point4, UnitQuaternion, Vector3};
+use nalgebra::{Point4, UnitQuaternion, Vector3, Point3};
 use rencan_render::core::{
     light::{DirectionLight, LightInfo},
     Model, Scene,
@@ -11,15 +11,7 @@ use winit::{
 };
 use rencan_render::core::model::AppModel;
 
-fn main() {
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().with_resizable(true);
-
-    let app = rencan_ui::GuiApp::new(window, &event_loop);
-
-    let mut frames = 0;
-    let mut next = Instant::now() + Duration::from_secs(1);
-
+fn make_pyramid(position: Point3<f32>, scale: f32) -> Model {
     let mut model = Model::new(
         vec![
             [-0.4, -0.3, -0.4, 0.0].into(), // A
@@ -37,24 +29,45 @@ fn main() {
             [1, 2, 3, 0].into(),
         ],
     );
-    model.scaling = 3.0;
+    model.position = position;
+    model.scaling = scale;
 
+    model
+}
+
+fn make_plane(position: Point3<f32>, scale: f32) -> Model {
     let mut plane = Model::new(
         vec![
-            [-0.4, -0.3, -0.4, 0.0].into(), // A
-            [0.4, -0.3, -0.4, 0.0].into(),  // B
-            [0.4, -0.3, 0.4, 0.0].into(),   // C
-            [-0.4, -0.3, 0.4, 0.0].into(),  // D
+            [-0.4, 0.0, -0.4, 0.0].into(), // A
+            [0.4, 0.0, -0.4, 0.0].into(),  // B
+            [0.4, 0.0, 0.4, 0.0].into(),   // C
+            [-0.4, 0.0, 0.4, 0.0].into(),  // D
         ],
         vec![[0, 2, 1, 0].into(), [0, 3, 2, 0].into(), [0, 1, 3, 0].into(), [1, 2, 3, 0].into()],
     );
-    plane.scaling = 5.0;
-    plane.position.y = -3.0;
+    plane.position = position;
+    plane.scaling = scale;
 
-    let models = vec![
-        AppModel::new(model),
-        AppModel::new(plane),
-    ];
+    plane
+}
+
+fn main() {
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new().with_resizable(true);
+
+    let app = rencan_ui::GuiApp::new(window, &event_loop);
+
+    let mut frames = 0;
+    let mut next = Instant::now() + Duration::from_secs(1);
+
+    let mut models = Vec::new();
+
+    for i in 0..5 {
+        let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
+        let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
+        models.push(AppModel::new(model));
+        models.push(AppModel::new(plane));
+    }
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 

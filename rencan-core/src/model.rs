@@ -1,5 +1,5 @@
 use crevice::std140::AsStd140;
-use nalgebra::{Point3, Point4, Similarity3, Translation3, UnitQuaternion};
+use nalgebra::{Point3, Point4, Similarity3, Translation3, UnitQuaternion, Isometry3};
 use std::sync::Arc;
 use vulkano::buffer::{CpuBufferPool, BufferUsage, ImmutableBuffer};
 use vulkano::device::{Device, Queue};
@@ -43,12 +43,11 @@ impl Model {
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         ModelUniformInfo {
-            isometry: Similarity3::from_parts(
+            isometry: (Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
-                self.scaling,
             )
-            .to_homogeneous()
+            .to_matrix() * self.scaling)
             .into(),
             model_id,
             indexes_length: self.indexes.len() as u32,
@@ -79,7 +78,7 @@ pub struct AppModel {
     buffer_info: OnceCell<Arc<CpuBufferPool<ModelUniformInfoStd140>>>,
     buffer_vertices: OnceCell<Arc<ImmutableBuffer<[Point4<f32>]>>>,
     buffer_indices: OnceCell<Arc<ImmutableBuffer<[Point4<u32>]>>>,
-    need_update_info: bool,
+    need_update_info: RefCell<bool>,
     need_update_vertices: bool,
     need_update_indices: bool,
     info_chunk: RefCell<Option<Arc<CpuBufferPoolSubbuffer<ModelUniformInfoStd140, Arc<StdMemoryPool>>>>>
@@ -92,7 +91,7 @@ impl AppModel {
             buffer_info: OnceCell::new(),
             buffer_vertices: OnceCell::new(),
             buffer_indices: OnceCell::new(),
-            need_update_info: true,
+            need_update_info: RefCell::new(true),
             need_update_vertices: true,
             need_update_indices: true,
             info_chunk: RefCell::new(None),
@@ -103,7 +102,7 @@ impl AppModel {
     }
     pub fn update_info(&mut self, f: impl FnOnce(&mut Model)) {
         f(&mut self.model);
-        self.need_update_info = true;
+        *self.need_update_info.borrow_mut() = true;
     }
     pub fn get_info_buffer(&self, device: &Arc<Device>, id: u32) -> Arc<dyn BufferAccessData<Data = ModelUniformInfoStd140> + Send + Sync> {
         let buf = match self.buffer_info.get() {
@@ -118,9 +117,10 @@ impl AppModel {
                 self.buffer_info.get().unwrap()
             }
         };
-        if self.need_update_info {
+        if *self.need_update_info.borrow() {
             let chunk = Arc::new(buf.next(self.model.get_uniform_info(id).as_std140()).unwrap());
             *self.info_chunk.borrow_mut() = Some(chunk.clone());
+            *self.need_update_info.borrow_mut() = false;
             chunk
         }
         else {

@@ -85,7 +85,7 @@ void main() {
 
     Ray ray = rays[idx];
     mat4 global_to_model = inverse(isometry);
-    ray.origin = (global_to_model * vec4(ray.origin, 0.0)).xyz;
+    ray.origin = (global_to_model * vec4(ray.origin, 1.0)).xyz;
     ray.direction = global_to_model * ray.direction;
 
     for (int i = 0; i < indexes_length; i++) {
