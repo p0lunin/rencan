@@ -62,7 +62,7 @@ fn main() {
 
     let mut models = Vec::new();
 
-    for i in 0..5 {
+    for i in 0..20 {
         let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
         let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
         models.push(AppModel::new(model));

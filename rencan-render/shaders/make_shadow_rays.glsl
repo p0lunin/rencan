@@ -12,10 +12,10 @@ layout(set = 0, binding = 0) readonly uniform Info {
 layout(std140, set = 0, binding = 1) readonly buffer PreviousRays {
     Ray previous_rays[];
 };
-layout(std140, set = 0, binding = 2) buffer Intersections {
+layout(std140, set = 0, binding = 2) readonly buffer Intersections {
     Intersection intersections[];
 };
-layout(std140, set = 0, binding = 3) buffer NextRays {
+layout(std140, set = 0, binding = 3) writeonly buffer NextRays {
     Ray next_rays[];
 };
 layout(std140, set = 0, binding = 4) readonly uniform DirectLightInfo {

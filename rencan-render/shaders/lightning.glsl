@@ -9,17 +9,17 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0) readonly uniform Info {
     uvec2 screen;
 };
-layout(std140, set = 0, binding = 1) buffer PrimaryRays {
+layout(std140, set = 0, binding = 1) readonly buffer PrimaryRays {
     Ray primary_rays[];
 };
-layout(std140, set = 0, binding = 2) buffer ShadowRays {
+layout(std140, set = 0, binding = 2) readonly buffer ShadowRays {
     Ray shadow_rays[];
 };
-layout(set = 0, binding = 3, rgba8) uniform image2D resultImage;
-layout(std140, set = 0, binding = 4) buffer PrimaryIntersections {
+layout(set = 0, binding = 3, rgba8) writeonly uniform image2D resultImage;
+layout(std140, set = 0, binding = 4) readonly buffer PrimaryIntersections {
     Intersection primary_rays_intersections[];
 };
-layout(std140, set = 0, binding = 5) buffer ShadowIntersections {
+layout(std140, set = 0, binding = 5) readonly buffer ShadowIntersections {
     Intersection shadow_rays_intersections[];
 };
 layout(std140, set = 0, binding = 6) readonly uniform DirectLightInfo {
