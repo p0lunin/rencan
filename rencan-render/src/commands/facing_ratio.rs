@@ -59,7 +59,7 @@ impl CommandFactory for FacingRatioCommandFactory {
         let mut command =
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
                 .unwrap();
-
+/*
         for (i, model) in scene.models.iter().enumerate() {
             let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
             let model_info_buffer = model.get_info_buffer(&device, i as u32);
@@ -86,7 +86,7 @@ impl CommandFactory for FacingRatioCommandFactory {
                 )
                 .unwrap();
         }
-
+*/
         let command = command.build().unwrap();
 
         command

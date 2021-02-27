@@ -11,7 +11,7 @@ use winit::{
 };
 use rencan_render::core::model::AppModel;
 
-fn make_pyramid(position: Point3<f32>, scale: f32) -> Model {
+fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
     let mut model = Model::new(
         vec![
             [-0.4, -0.3, -0.4, 0.0].into(), // A
@@ -32,10 +32,10 @@ fn make_pyramid(position: Point3<f32>, scale: f32) -> Model {
     model.position = position;
     model.scaling = scale;
 
-    model
+    AppModel::new(model)
 }
 
-fn make_plane(position: Point3<f32>, scale: f32) -> Model {
+fn make_plane(position: Point3<f32>, scale: f32) -> AppModel {
     let mut plane = Model::new(
         vec![
             [-0.4, 0.0, -0.4, 0.0].into(), // A
@@ -48,7 +48,7 @@ fn make_plane(position: Point3<f32>, scale: f32) -> Model {
     plane.position = position;
     plane.scaling = scale;
 
-    plane
+    AppModel::new(plane)
 }
 
 fn main() {
@@ -65,19 +65,20 @@ fn main() {
     for i in 0..20 {
         let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
         let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
-        models.push(AppModel::new(model));
-        models.push(AppModel::new(plane));
+        models.push(model);
+        models.push(plane);
     }
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
-    let scene = Scene {
+    let scene = Scene::new(
+        app.device(),
         models,
-        global_light: DirectionLight::new(
+        DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
             Vector3::new(0.0, -1.0, 0.0),
         ),
-    };
+    );
 
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_millis(10));

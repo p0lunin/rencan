@@ -20,6 +20,7 @@ use vulkano::buffer::CpuBufferPool;
 use vulkano::device::Device;
 use vulkano::instance::QueueFamily;
 use crate::light::DirectionLight;
+use crate::model_buffers::ModelsBuffers;
 
 pub struct App {
     info: AppInfo,
@@ -89,7 +90,7 @@ impl App {
         image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
         scene: &Scene,
     ) -> Buffers {
-        self.buffers.make_buffers(&self.info, &self.camera, image, &scene.global_light)
+        self.buffers.make_buffers(&self.info, &self.camera, image, &scene.global_light, &scene)
     }
 }
 
@@ -149,12 +150,14 @@ impl GlobalBuffers {
         camera: &Camera,
         image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
         light: &DirectionLight,
+        scene: &Scene,
     ) -> Buffers {
         Buffers {
             camera: Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             screen: Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             output_image: image,
-            direction_light: Arc::new(self.direction_light.next(light.clone().into_uniform()).unwrap())
+            direction_light: Arc::new(self.direction_light.next(light.clone().into_uniform()).unwrap()),
+            models_buffers: scene.frame_buffers(),
         }
     }
 
@@ -186,6 +189,7 @@ pub struct Buffers {
     pub output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
     pub direction_light:
         Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
+    pub models_buffers: ModelsBuffers,
 }
 
 impl Buffers {
@@ -198,8 +202,9 @@ impl Buffers {
         direction_light: Arc<
             dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
         >,
+        models_buffers: ModelsBuffers,
     ) -> Self {
-        Buffers { camera, screen, output_image, direction_light }
+        Buffers { camera, screen, output_image, direction_light, models_buffers }
     }
 }
 

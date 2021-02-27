@@ -58,36 +58,35 @@ impl CommandFactory for RayTraceCommandFactory {
         );
 
         let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
+
+        let set_1 = Arc::new(
+            PersistentDescriptorSet::start(layout_1.clone())
+                .add_buffer(buffers.models_buffers.count.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.infos.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.vertices.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.indices.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.hit_boxes.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
         let mut command =
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
                 .unwrap();
 
-        for (i, model) in scene.models.iter().enumerate() {
-                        let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
-            let model_info_buffer = model.get_info_buffer(&device, i as u32);
-            let indices_buffer = model.get_indices_buffer(&app_info.graphics_queue);
-
-            let set_1 = Arc::new(
-                PersistentDescriptorSet::start(layout_1.clone())
-                    .add_buffer(model_info_buffer)
-                    .unwrap()
-                    .add_buffer(vertices_buffer)
-                    .unwrap()
-                    .add_buffer(indices_buffer)
-                    .unwrap()
-                    .build()
-                    .unwrap(),
-            );
-
-            command
-                .dispatch(
-                    [count_of_workgroups, 1, 1],
-                    self.pipeline.clone(),
-                    (set_0.clone(), set_1),
-                    (),
-                )
-                .unwrap();
-        }
+        command
+            .dispatch(
+                [count_of_workgroups, 1, 1],
+                self.pipeline.clone(),
+                (set_0, set_1),
+                (),
+            )
+            .unwrap();
 
         let command = command.build().unwrap();
 

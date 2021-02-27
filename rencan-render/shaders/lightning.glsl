@@ -25,7 +25,7 @@ layout(std140, set = 0, binding = 5) readonly buffer ShadowIntersections {
 layout(std140, set = 0, binding = 6) readonly uniform DirectLightInfo {
     DirectLight global_light;
 };
-layout(std140, set = 1, binding = 0) readonly buffer ModelInfo {
+layout(std140, set = 1, binding = 0) readonly buffer ModelInfos {
     mat4 isometry;
     uint model_id;
     uint indexes_length;

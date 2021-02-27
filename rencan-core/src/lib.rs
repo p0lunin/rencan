@@ -17,4 +17,7 @@ pub mod queue_famile_ext;
 mod ray;
 mod scene;
 mod screen;
+mod model_buffers;
+mod hitbox;
+
 pub use scene::Scene;

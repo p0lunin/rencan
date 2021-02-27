@@ -12,20 +12,23 @@ layout(set = 0, binding = 0) readonly uniform Info {
 layout(std140, set = 0, binding = 1) readonly buffer Rays {
     Ray rays[];
 };
-layout(std140, set = 0, binding = 2) buffer Intersections {
+layout(std140, set = 0, binding = 2) writeonly buffer Intersections {
     Intersection intersections[];
 };
-layout(std140, set = 1, binding = 0) readonly buffer ModelInfo {
-    mat4 isometry;
-    uint model_id;
-    uint indexes_length;
-    float albedo;
+layout(std140, set = 1, binding = 0) readonly uniform SceneInfo {
+    uint model_counts;
 };
-layout(set = 1, binding = 1) readonly buffer Vertices {
+layout(std140, set = 1, binding = 1) readonly buffer ModelInfos {
+    ModelInfo models[];
+};
+layout(set = 1, binding = 2) readonly buffer Vertices {
     vec3[] vertices;
 };
-layout(std140, set = 1, binding = 2) readonly buffer Indexes {
+layout(std140, set = 1, binding = 3) readonly buffer Indexes {
     uvec3[] indexes;
+};
+layout(std140, set = 1, binding = 4) readonly buffer HitBoxes {
+    HitBoxRectangle[] hit_boxes;
 };
 
 const float eps = 0.001;
@@ -71,36 +74,100 @@ IntersectResult intersect(Ray ray, vec3[3] triangle) {
     return ret_intersect(vec2(u, v), t);
 }
 
+bool check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
+    vec3 tmin = (hit_box.min - ray.origin) / ray.direction.xyz;
+    vec3 tmax = (hit_box.max - ray.origin) / ray.direction.xyz;
+
+    if (tmin.x > tmax.x) {
+        float temp = tmin.x;
+        tmin.x = tmax.x;
+        tmax.x = temp;
+    }
+
+    if (tmin.y > tmax.y) {
+        float temp = tmin.y;
+        tmin.y = tmax.y;
+        tmax.y = temp;
+    }
+
+    if (tmin.z > tmax.z) {
+        float temp = tmin.z;
+        tmin.z = tmax.z;
+        tmax.z = temp;
+    }
+
+    if ((tmin.x > tmax.y) || (tmin.y > tmax.x))
+        return false;
+
+    if (tmin.y > tmin.x) {
+        tmin.x = tmin.y;
+    }
+
+    if (tmax.y < tmax.x) {
+        tmax.x = tmax.y;
+    }
+
+    if ((tmin.x > tmax.z) || (tmin.z > tmax.x))
+        return false;
+
+    if (tmin.z > tmin.x)
+        tmin.x = tmin.z;
+
+    if (tmax.z < tmax.x)
+        tmax.x = tmax.z;
+
+    return true;
+}
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
-    Intersection inter = intersections[idx];
-
+    Intersection inter = intersection_none();
     float distance = 1.0 / 0.0;
-    if (inter.is_intersect == 1) {
-        distance = inter.distance;
-    }
 
-    Ray ray = rays[idx];
-    mat4 global_to_model = inverse(isometry);
-    ray.origin = (global_to_model * vec4(ray.origin, 1.0)).xyz;
-    ray.direction = global_to_model * ray.direction;
+    Ray origin_ray = rays[idx];
+    Ray ray = origin_ray;
 
-    for (int i = 0; i < indexes_length; i++) {
-        uvec3 index = indexes[i];
-        vec3 triangle1 = vertices[index.x];
-        vec3 triangle2 = vertices[index.y];
-        vec3 triangle3 = vertices[index.z];
-        vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
-        IntersectResult res = intersect(ray, triangles);
-        if (res.intersect && res.distance < distance) {
-            distance = res.distance;
-            inter = intersection_succ(
-                model_id, i, res.barycentric_coords, res.distance
-            );
+    uint offset_vertices = 0;
+    uint offset_indexes = 0;
+
+    for (int model_idx = 0; model_idx < model_counts; model_idx++) {
+        HitBoxRectangle hit_box = hit_boxes[model_idx];
+
+        ModelInfo model = models[model_idx];
+
+        mat4 global_to_model = inverse(model.isometry);
+        ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
+        ray.direction = global_to_model * origin_ray.direction;
+
+        if (!check_intersect_hitbox(hit_box, ray)) {
+            offset_indexes += model.indexes_length;
+            offset_vertices += model.vertices_length;
+            continue;
         }
+
+        for (int i = 0; i < model.indexes_length; i++) {
+            uvec3 index = indexes[offset_indexes + i];
+            vec3 triangle1 = vertices[offset_vertices + index.x];
+            vec3 triangle2 = vertices[offset_vertices + index.y];
+            vec3 triangle3 = vertices[offset_vertices + index.z];
+            vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
+            IntersectResult res = intersect(ray, triangles);
+            if (res.intersect && res.distance < distance) {
+                distance = res.distance;
+                inter = intersection_succ(
+                    model_idx,
+                    offset_indexes + i,
+                    offset_vertices,
+                    res.barycentric_coords,
+                    res.distance
+                );
+            }
+        }
+        offset_indexes += model.indexes_length;
+        offset_vertices += model.vertices_length;
     }
 
     intersections[idx] = inter;

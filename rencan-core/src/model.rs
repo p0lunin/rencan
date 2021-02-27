@@ -9,6 +9,7 @@ use crate::BufferAccessData;
 use vulkano::sync::GpuFuture;
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
+use crate::hitbox::HitBoxRectangle;
 
 #[derive(Debug, Clone)]
 pub struct Model {
@@ -50,6 +51,7 @@ impl Model {
             .to_matrix() * self.scaling)
             .into(),
             model_id,
+            vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
             albedo: self.albedo,
         }
@@ -60,6 +62,7 @@ impl Model {
 pub struct ModelUniformInfo {
     pub isometry: mint::ColumnMatrix4<f32>,
     pub model_id: u32,
+    pub vertices_length: u32,
     pub indexes_length: u32,
     pub albedo: f32,
 }
@@ -75,26 +78,30 @@ type ModelUniformInfoStd140 = <ModelUniformInfo as AsStd140>::Std140Type;
 #[allow(dead_code)]
 pub struct AppModel {
     model: Model,
-    buffer_info: OnceCell<Arc<CpuBufferPool<ModelUniformInfoStd140>>>,
-    buffer_vertices: OnceCell<Arc<ImmutableBuffer<[Point4<f32>]>>>,
-    buffer_indices: OnceCell<Arc<ImmutableBuffer<[Point4<u32>]>>>,
-    need_update_info: RefCell<bool>,
+    hit_box: HitBoxRectangle,
+    need_update_info: bool,
     need_update_vertices: bool,
     need_update_indices: bool,
-    info_chunk: RefCell<Option<Arc<CpuBufferPoolSubbuffer<ModelUniformInfoStd140, Arc<StdMemoryPool>>>>>
+}
+
+impl AppModel {
+    pub fn hit_box(&self) -> &HitBoxRectangle {
+        &self.hit_box
+    }
 }
 
 impl AppModel {
     pub fn new(model: Model) -> Self {
+        let mut hit_box = HitBoxRectangle::new();
+        model.vertices.iter().for_each(|v| {
+            hit_box.update_by_point(&Point3::new(v.x, v.y, v.z))
+        });
         Self {
             model,
-            buffer_info: OnceCell::new(),
-            buffer_vertices: OnceCell::new(),
-            buffer_indices: OnceCell::new(),
-            need_update_info: RefCell::new(true),
+            hit_box,
+            need_update_info: true,
             need_update_vertices: true,
             need_update_indices: true,
-            info_chunk: RefCell::new(None),
         }
     }
     pub fn model(&self) -> &Model {
@@ -102,63 +109,6 @@ impl AppModel {
     }
     pub fn update_info(&mut self, f: impl FnOnce(&mut Model)) {
         f(&mut self.model);
-        *self.need_update_info.borrow_mut() = true;
-    }
-    pub fn get_info_buffer(&self, device: &Arc<Device>, id: u32) -> Arc<dyn BufferAccessData<Data = ModelUniformInfoStd140> + Send + Sync> {
-        let buf = match self.buffer_info.get() {
-            Some(buf) =>{
-                buf
-            }
-            None => {
-                self.buffer_info.set(Arc::new(CpuBufferPool::new(
-                    device.clone(),
-                    BufferUsage::all(),
-                ))).unwrap_or_else(|_| panic!("We already checks this"));
-                self.buffer_info.get().unwrap()
-            }
-        };
-        if *self.need_update_info.borrow() {
-            let chunk = Arc::new(buf.next(self.model.get_uniform_info(id).as_std140()).unwrap());
-            *self.info_chunk.borrow_mut() = Some(chunk.clone());
-            *self.need_update_info.borrow_mut() = false;
-            chunk
-        }
-        else {
-            self.info_chunk.borrow().as_ref().unwrap().clone()
-        }
-    }
-    pub fn get_vertices_buffer(&self, queue: &Arc<Queue>) -> Arc<dyn BufferAccessData<Data = [Point4<f32>]>  + Send + Sync> {
-        match self.buffer_vertices.get() {
-            Some(buf) => {
-                buf.clone()
-            }
-            None => {
-                let (buf, fut) = ImmutableBuffer::from_iter(
-                    self.model.vertices.iter().cloned(),
-                    BufferUsage::all(),
-                    queue.clone()
-                ).unwrap();
-                fut.then_signal_fence().wait(None).unwrap();
-                self.buffer_vertices.set(buf.clone()).unwrap_or_else(|_| panic!("We already check it above"));
-                buf
-            }
-        }
-    }
-    pub fn get_indices_buffer(&self, queue: &Arc<Queue>) -> Arc<dyn BufferAccessData<Data = [Point4<u32>]> + Send + Sync> {
-        match self.buffer_indices.get() {
-            Some(buf) => {
-                buf.clone()
-            }
-            None => {
-                let (buf, fut) = ImmutableBuffer::from_iter(
-                    self.model.indexes.iter().cloned(),
-                    BufferUsage::all(),
-                    queue.clone()
-                ).unwrap();
-                fut.then_signal_fence().wait(None).unwrap();
-                self.buffer_indices.set(buf.clone()).unwrap_or_else(|_| panic!("We already check it above"));
-                buf
-            }
-        }
+        self.need_update_info = true;
     }
 }

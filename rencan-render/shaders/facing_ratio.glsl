@@ -16,7 +16,7 @@ layout(set = 0, binding = 2, rgba8) uniform image2D resultImage;
 layout(std140, set = 0, binding = 3) buffer Intersections {
     Intersection intersections[];
 };
-layout(std140, set = 1, binding = 0) buffer ModelInfo {
+layout(std140, set = 1, binding = 0) buffer ModelInfos {
     mat4 isometry;
     uint model_id;
     uint indexes_length;

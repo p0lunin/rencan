@@ -175,7 +175,7 @@ fn add_lightning(
     );
 
     let layout_1 = factory.lightning_pipeline.layout().descriptor_set_layout(1).unwrap();
-
+/*
     for (i, model) in scene.models.iter().enumerate() {
         let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
         let model_info_buffer = model.get_info_buffer(&device, i as u32);
@@ -201,7 +201,7 @@ fn add_lightning(
                 (),
             )
             .unwrap();
-    }
+    }*/
 }
 
 fn add_making_shadow_rays(
@@ -266,7 +266,7 @@ fn add_ray_tracing(
     );
 
     let layout_1 = factory.ray_trace_pipeline.layout().descriptor_set_layout(1).unwrap();
-
+/*
     for (i, model) in scene.models.iter().enumerate() {
         let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
         let model_info_buffer = model.get_info_buffer(&device, i as u32);
@@ -293,6 +293,6 @@ fn add_ray_tracing(
             )
             .unwrap();
     }
-
+*/
     intersections
 }
