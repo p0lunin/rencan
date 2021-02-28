@@ -150,8 +150,7 @@ fn add_lightning(
     intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>,
     command: &mut AutoCommandBufferBuilder,
 ) {
-    let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
-    let device = app_info.device.clone();
+    let CommandFactoryContext { buffers, count_of_workgroups, .. } = ctx;
 
     let layout_0 = factory.lightning_pipeline.layout().descriptor_set_layout(0).unwrap();
     let set_0 = Arc::new(
@@ -175,33 +174,26 @@ fn add_lightning(
     );
 
     let layout_1 = factory.lightning_pipeline.layout().descriptor_set_layout(1).unwrap();
-/*
-    for (i, model) in scene.models.iter().enumerate() {
-        let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
-        let model_info_buffer = model.get_info_buffer(&device, i as u32);
-        let indices_buffer = model.get_indices_buffer(&app_info.graphics_queue);
+    let set_1 = Arc::new(
+        PersistentDescriptorSet::start(layout_1.clone())
+            .add_buffer(buffers.models_buffers.infos.clone())
+            .unwrap()
+            .add_buffer(buffers.models_buffers.vertices.clone())
+            .unwrap()
+            .add_buffer(buffers.models_buffers.indices.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+    );
 
-        let set_1 = Arc::new(
-            PersistentDescriptorSet::start(layout_1.clone())
-                .add_buffer(model_info_buffer)
-                .unwrap()
-                .add_buffer(vertices_buffer)
-                .unwrap()
-                .add_buffer(indices_buffer)
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
-
-        command
-            .dispatch(
-                [*count_of_workgroups, 1, 1],
-                factory.lightning_pipeline.clone(),
-                (set_0.clone(), set_1),
-                (),
-            )
-            .unwrap();
-    }*/
+    command
+        .dispatch(
+            [*count_of_workgroups, 1, 1],
+            factory.lightning_pipeline.clone(),
+            (set_0, set_1),
+            (),
+        )
+        .unwrap();
 }
 
 fn add_making_shadow_rays(
@@ -249,8 +241,7 @@ fn add_ray_tracing(
     intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     command: &mut AutoCommandBufferBuilder,
 ) -> Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync> {
-    let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
-    let device = app_info.device.clone();
+    let CommandFactoryContext { buffers, count_of_workgroups, .. } = ctx;
 
     let layout_0 = factory.ray_trace_pipeline.layout().descriptor_set_layout(0).unwrap();
     let set_0 = Arc::new(
@@ -266,33 +257,30 @@ fn add_ray_tracing(
     );
 
     let layout_1 = factory.ray_trace_pipeline.layout().descriptor_set_layout(1).unwrap();
-/*
-    for (i, model) in scene.models.iter().enumerate() {
-        let vertices_buffer = model.get_vertices_buffer(&app_info.graphics_queue);
-        let model_info_buffer = model.get_info_buffer(&device, i as u32);
-        let indices_buffer = model.get_indices_buffer(&app_info.graphics_queue);
-
-        let set_1 = Arc::new(
+     let set_1 = Arc::new(
             PersistentDescriptorSet::start(layout_1.clone())
-                .add_buffer(model_info_buffer)
+                .add_buffer(buffers.models_buffers.count.clone())
                 .unwrap()
-                .add_buffer(vertices_buffer)
+                .add_buffer(buffers.models_buffers.infos.clone())
                 .unwrap()
-                .add_buffer(indices_buffer)
+                .add_buffer(buffers.models_buffers.vertices.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.indices.clone())
+                .unwrap()
+                .add_buffer(buffers.models_buffers.hit_boxes.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
         );
 
-        command
-            .dispatch(
-                [*count_of_workgroups, 1, 1],
-                factory.ray_trace_pipeline.clone(),
-                (set_0.clone(), set_1),
-                (),
-            )
-            .unwrap();
-    }
-*/
+    command
+        .dispatch(
+            [*count_of_workgroups, 1, 1],
+            factory.ray_trace_pipeline.clone(),
+            (set_0, set_1),
+            (),
+        )
+        .unwrap();
+
     intersections
 }
