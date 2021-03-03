@@ -10,17 +10,18 @@ use vulkano::{
 use crate::{
     camera::{Camera, CameraUniform},
     intersection::IntersectionUniform,
-    light::DirectionLightUniform,
+    light::{DirectionLight, DirectionLightUniform},
+    model_buffers::SceneBuffers,
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
-use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferExecError};
-use vulkano::format::ClearValue;
-use vulkano::buffer::CpuBufferPool;
-use vulkano::device::Device;
-use vulkano::instance::QueueFamily;
-use crate::light::DirectionLight;
-use crate::model_buffers::SceneBuffers;
+use vulkano::{
+    buffer::CpuBufferPool,
+    command_buffer::{AutoCommandBufferBuilder, CommandBufferExecError},
+    device::Device,
+    format::ClearValue,
+    instance::QueueFamily,
+};
 
 pub struct App {
     info: AppInfo,
@@ -30,7 +31,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(info: AppInfo, camera: Camera, commands: Vec<Box<dyn CommandFactory>>, buffers: GlobalBuffers) -> Self {
+    pub fn new(
+        info: AppInfo,
+        camera: Camera,
+        commands: Vec<Box<dyn CommandFactory>>,
+        buffers: GlobalBuffers,
+    ) -> Self {
         Self { info, camera, commands, buffers }
     }
     pub fn info(&self) -> &AppInfo {
@@ -41,7 +47,11 @@ impl App {
     }
     pub fn update_screen(&mut self, screen: Screen) {
         self.info.screen = screen;
-        self.buffers.resize_buffers(&self.info.device, self.info.graphics_queue.family(), self.info.size_of_image_array());
+        self.buffers.resize_buffers(
+            &self.info.device,
+            self.info.graphics_queue.family(),
+            self.info.size_of_image_array(),
+        );
         for factory in self.commands.iter_mut() {
             factory.update_buffers(self.buffers.global_app_buffers());
         }
@@ -54,7 +64,10 @@ impl App {
         previous: Prev,
         scene: &Scene,
         image_create: F,
-    ) -> Result<(impl GpuFuture + 'static, Arc<dyn ImageViewAccess + Send + Sync + 'static>), CommandBufferExecError>
+    ) -> Result<
+        (impl GpuFuture + 'static, Arc<dyn ImageViewAccess + Send + Sync + 'static>),
+        CommandBufferExecError,
+    >
     where
         Prev: GpuFuture + 'static,
         F: FnOnce(&AppInfo) -> Arc<dyn ImageViewAccess + Send + Sync + 'static>,
@@ -68,14 +81,18 @@ impl App {
             scene,
         };
 
-        let mut fill_buffers = AutoCommandBufferBuilder::new(self.info.device.clone(), self.info.graphics_queue.family())
-            .unwrap();
+        let mut fill_buffers = AutoCommandBufferBuilder::new(
+            self.info.device.clone(),
+            self.info.graphics_queue.family(),
+        )
+        .unwrap();
         fill_buffers.fill_buffer(self.buffers.intersections.clone(), 0).unwrap();
         fill_buffers.fill_buffer(self.buffers.rays.clone(), 0).unwrap();
 
         let command = fill_buffers.build().unwrap();
 
-        let mut fut: Box<dyn GpuFuture> = Box::new(previous.then_execute(self.info.graphics_queue.clone(), command).unwrap());
+        let mut fut: Box<dyn GpuFuture> =
+            Box::new(previous.then_execute(self.info.graphics_queue.clone(), command).unwrap());
 
         for factory in self.commands.iter() {
             let command = factory.make_command(ctx.clone());
@@ -114,34 +131,27 @@ impl GlobalBuffers {
                 device.clone(),
                 size,
                 BufferUsage::all(),
-                std::iter::once(family.clone())
-            ).unwrap(),
+                std::iter::once(family.clone()),
+            )
+            .unwrap(),
             intersections: DeviceLocalBuffer::array(
                 device.clone(),
                 size,
                 BufferUsage::all(),
-                std::iter::once(family.clone())
-            ).unwrap(),
-            camera: Arc::new(CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::uniform_buffer(),
-            )),
-            screen: Arc::new(CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::uniform_buffer(),
-            )),
+                std::iter::once(family.clone()),
+            )
+            .unwrap(),
+            camera: Arc::new(CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer())),
+            screen: Arc::new(CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer())),
             direction_light: Arc::new(CpuBufferPool::new(
                 device.clone(),
                 BufferUsage::uniform_buffer(),
-            ))
+            )),
         }
     }
 
     pub fn global_app_buffers(&self) -> GlobalAppBuffers {
-        GlobalAppBuffers {
-            rays: self.rays.clone(),
-            intersections: self.intersections.clone()
-        }
+        GlobalAppBuffers { rays: self.rays.clone(), intersections: self.intersections.clone() }
     }
 
     pub fn make_buffers(
@@ -156,7 +166,9 @@ impl GlobalBuffers {
             camera: Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             screen: Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             output_image: image,
-            direction_light: Arc::new(self.direction_light.next(light.clone().into_uniform()).unwrap()),
+            direction_light: Arc::new(
+                self.direction_light.next(light.clone().into_uniform()).unwrap(),
+            ),
             models_buffers: scene.frame_buffers(),
         }
     }
@@ -166,14 +178,16 @@ impl GlobalBuffers {
             device.clone(),
             new_size,
             BufferUsage::all(),
-            std::iter::once(family.clone())
-        ).unwrap();
+            std::iter::once(family.clone()),
+        )
+        .unwrap();
         self.intersections = DeviceLocalBuffer::array(
             device.clone(),
             new_size,
             BufferUsage::all(),
-            std::iter::once(family.clone())
-        ).unwrap();
+            std::iter::once(family.clone()),
+        )
+        .unwrap();
     }
 }
 
@@ -238,7 +252,10 @@ impl AppBuilder {
         );
         Self { info, camera, commands: vec![], global_buffers: buffers }
     }
-    pub fn then_command(mut self, f: impl FnOnce(GlobalAppBuffers) -> Box<dyn CommandFactory>) -> Self {
+    pub fn then_command(
+        mut self,
+        f: impl FnOnce(GlobalAppBuffers) -> Box<dyn CommandFactory>,
+    ) -> Self {
         self.commands.push(f(self.global_buffers.global_app_buffers()));
         self
     }

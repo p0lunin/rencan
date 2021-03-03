@@ -1,15 +1,14 @@
+use crate::{hitbox::HitBoxRectangle, BufferAccessData};
 use crevice::std140::AsStd140;
-use nalgebra::{Point3, Point4, Similarity3, Translation3, UnitQuaternion, Isometry3};
-use std::sync::Arc;
-use vulkano::buffer::{CpuBufferPool, BufferUsage, ImmutableBuffer};
-use vulkano::device::{Device, Queue};
-use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
-use vulkano::memory::pool::StdMemoryPool;
-use crate::BufferAccessData;
-use vulkano::sync::GpuFuture;
+use nalgebra::{Isometry3, Point3, Point4, Similarity3, Translation3, UnitQuaternion};
 use once_cell::sync::OnceCell;
-use std::cell::RefCell;
-use crate::hitbox::HitBoxRectangle;
+use std::{cell::RefCell, sync::Arc};
+use vulkano::{
+    buffer::{cpu_pool::CpuBufferPoolSubbuffer, BufferUsage, CpuBufferPool, ImmutableBuffer},
+    device::{Device, Queue},
+    memory::pool::StdMemoryPool,
+    sync::GpuFuture,
+};
 
 #[derive(Debug, Clone)]
 pub struct Model {
@@ -48,8 +47,9 @@ impl Model {
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
             )
-            .to_matrix() * self.scaling)
-            .into(),
+            .to_matrix()
+                * self.scaling)
+                .into(),
             model_id,
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
@@ -93,9 +93,7 @@ impl AppModel {
 impl AppModel {
     pub fn new(model: Model) -> Self {
         let mut hit_box = HitBoxRectangle::new();
-        model.vertices.iter().for_each(|v| {
-            hit_box.update_by_point(&Point3::new(v.x, v.y, v.z))
-        });
+        model.vertices.iter().for_each(|v| hit_box.update_by_point(&Point3::new(v.x, v.y, v.z)));
         Self {
             model,
             hit_box,

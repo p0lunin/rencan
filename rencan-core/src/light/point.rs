@@ -27,4 +27,3 @@ pub struct PointLightUniform {
     position: mint::Vector3<f32>,
     intensity: f32,
 }
-

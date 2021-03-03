@@ -10,14 +10,14 @@ mod app_info;
 mod buffer;
 pub mod camera;
 mod command_factory;
+mod hitbox;
 pub mod intersection;
 pub mod light;
 pub mod model;
+mod model_buffers;
 pub mod queue_famile_ext;
 mod ray;
 mod scene;
 mod screen;
-mod model_buffers;
-mod hitbox;
 
 pub use scene::Scene;

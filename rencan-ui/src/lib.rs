@@ -46,14 +46,15 @@ impl GuiApp {
         let app = init_app(instance, screen);
         let (swap_chain, images) =
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());
-        let prev = Some(Box::new(vulkano::sync::now(app.info().device.clone())) as Box<dyn GpuFuture>);
+        let prev =
+            Some(Box::new(vulkano::sync::now(app.info().device.clone())) as Box<dyn GpuFuture>);
         GuiApp {
             app,
             surface,
             swap_chain,
             swap_chain_images: images,
             must_recreate_swapchain: false,
-            prev
+            prev,
         }
     }
 
@@ -142,7 +143,8 @@ impl GuiApp {
                         .unwrap();
                     let clear_image = clear_image.build().unwrap();
 
-                    let fut = self.prev
+                    let fut = self
+                        .prev
                         .take()
                         .unwrap()
                         .join(acquire_future)
@@ -150,21 +152,18 @@ impl GuiApp {
                         .unwrap();
 
                     let image = self.swap_chain_images[image_num].clone();
-                    let (fut, _) = self.app.render(
-                        fut,
-                        &scene,
-                        |_| image,
-                    ).unwrap();
+                    let (fut, _) = self.app.render(fut, &scene, |_| image).unwrap();
 
                     rx.recv().unwrap();
 
-                    let fut = fut.then_swapchain_present(
-                        self.present_queue(),
-                        self.swap_chain.clone(),
-                        image_num,
-                    )
-                    .then_signal_fence_and_flush()
-                    .unwrap();
+                    let fut = fut
+                        .then_swapchain_present(
+                            self.present_queue(),
+                            self.swap_chain.clone(),
+                            image_num,
+                        )
+                        .then_signal_fence_and_flush()
+                        .unwrap();
 
                     self.prev = Some(Box::new(fut));
                 }
@@ -229,7 +228,9 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
-    .then_command(|bufs| Box::new(rencan_render::commands::LightningCommandFactory::new(bufs, device.clone())))
+    .then_command(|bufs| {
+        Box::new(rencan_render::commands::LightningCommandFactory::new(bufs, device.clone()))
+    })
     .build()
 }
 

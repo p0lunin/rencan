@@ -1,6 +1,7 @@
-use nalgebra::{Point4, UnitQuaternion, Vector3, Point3};
+use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
 use rencan_render::core::{
-    light::{DirectionLight, LightInfo},
+    light::{DirectionLight, LightInfo, PointLight},
+    model::AppModel,
     Model, Scene,
 };
 use std::time::{Duration, Instant};
@@ -9,8 +10,6 @@ use winit::{
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-use rencan_render::core::model::AppModel;
-use rencan_render::core::light::PointLight;
 
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
     let mut model = Model::new(
@@ -79,12 +78,10 @@ fn main() {
             LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
             Vector3::new(0.0, -1.0, 0.0),
         ),
-        vec![
-            PointLight::new(
-                LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
-                Point3::new(0.0, 0.0, 3.0)
-            )
-        ]
+        vec![PointLight::new(
+            LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
+            Point3::new(0.0, 0.0, 3.0),
+        )],
     );
 
     std::thread::spawn(move || loop {

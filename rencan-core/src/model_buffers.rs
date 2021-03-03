@@ -1,14 +1,20 @@
-use vulkano::buffer::{CpuBufferPool, BufferUsage, TypedBufferAccess};
-use std::sync::Arc;
-use nalgebra::Point4;
-use crate::model::{AppModel, ModelUniformInfo};
+use crate::{
+    hitbox::HitBoxRectangleUniformStd140,
+    light::PointLightUniform,
+    model::{AppModel, ModelUniformInfo},
+    Scene,
+};
 use crevice::std140::AsStd140;
-use vulkano::device::Device;
-use vulkano::buffer::cpu_pool::{CpuBufferPoolSubbuffer, CpuBufferPoolChunk};
-use vulkano::memory::pool::StdMemoryPool;
-use crate::hitbox::HitBoxRectangleUniformStd140;
-use crate::light::PointLightUniform;
-use crate::Scene;
+use nalgebra::Point4;
+use std::sync::Arc;
+use vulkano::{
+    buffer::{
+        cpu_pool::{CpuBufferPoolChunk, CpuBufferPoolSubbuffer},
+        BufferUsage, CpuBufferPool, TypedBufferAccess,
+    },
+    device::Device,
+    memory::pool::StdMemoryPool,
+};
 
 type ModelUniformInfoStd140 = <ModelUniformInfo as AsStd140>::Std140Type;
 
@@ -25,51 +31,30 @@ pub struct SceneBuffersStorage {
 impl SceneBuffersStorage {
     pub fn init(device: Arc<Device>) -> Self {
         Self {
-            counts_u32: CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::uniform_buffer(),
-            ),
+            counts_u32: CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer()),
             model_infos: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer:true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
             vertices: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer:true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
             indices: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer:true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
             hit_boxes: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer:true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
             point_lights: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer:true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
             point_lights_count: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage {
-                    uniform_buffer: true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { uniform_buffer: true, ..BufferUsage::none() },
             ),
         }
     }
@@ -79,51 +64,44 @@ impl SceneBuffersStorage {
         let point_lights = &scene.point_lights;
 
         let count = self.counts_u32.next(models.len() as u32).unwrap();
-        let infos = self.model_infos.chunk(
-            models
-                .iter()
-                .enumerate()
-                .map(|(i, m)|
-                    m.model().get_uniform_info(i as u32).as_std140()
-                )
-        ).unwrap();
-        let vertices = self.vertices.chunk(
-            models
-                .iter()
-                .map(|m|
-                    m.model().vertices.iter().cloned()
-                )
-                .flatten()
-                .collect::<Vec<_>>()
-                .into_iter()
-        ).unwrap();
-        let indices = self.indices.chunk(
-            models
-                .iter()
-                .map(|m|
-                    m.model().indexes.iter().cloned()
-                )
-                .flatten()
-                .collect::<Vec<_>>()
-                .into_iter()
-        ).unwrap();
-        let hit_boxes = self.hit_boxes.chunk(
-            models
-                .iter()
-                .map(|m|
-                    m.hit_box().clone().into_uniform().as_std140()
-                )
-        ).unwrap();
-        let point_lights = self.point_lights.chunk(
-            point_lights
-                .iter()
-                .map(|l|
-                    l.clone().into_uniform()
-                )
-        ).unwrap();
-        let point_lights_count = self.point_lights_count.next(
-            point_lights.len() as u32
-        ).unwrap();
+        let infos = self
+            .model_infos
+            .chunk(
+                models
+                    .iter()
+                    .enumerate()
+                    .map(|(i, m)| m.model().get_uniform_info(i as u32).as_std140()),
+            )
+            .unwrap();
+        let vertices = self
+            .vertices
+            .chunk(
+                models
+                    .iter()
+                    .map(|m| m.model().vertices.iter().cloned())
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .into_iter(),
+            )
+            .unwrap();
+        let indices = self
+            .indices
+            .chunk(
+                models
+                    .iter()
+                    .map(|m| m.model().indexes.iter().cloned())
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .into_iter(),
+            )
+            .unwrap();
+        let hit_boxes = self
+            .hit_boxes
+            .chunk(models.iter().map(|m| m.hit_box().clone().into_uniform().as_std140()))
+            .unwrap();
+        let point_lights =
+            self.point_lights.chunk(point_lights.iter().map(|l| l.clone().into_uniform())).unwrap();
+        let point_lights_count = self.point_lights_count.next(point_lights.len() as u32).unwrap();
         SceneBuffers {
             count,
             infos,

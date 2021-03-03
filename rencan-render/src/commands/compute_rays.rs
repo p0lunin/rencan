@@ -11,9 +11,8 @@ use vulkano::{
 
 use rencan_core::CommandFactory;
 
-use crate::core::{CommandFactoryContext, BufferAccessData, Ray};
+use crate::core::{app::GlobalAppBuffers, BufferAccessData, CommandFactoryContext, Ray};
 use vulkano::descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract};
-use crate::core::app::GlobalAppBuffers;
 
 mod cs {
     vulkano_shaders::shader! {

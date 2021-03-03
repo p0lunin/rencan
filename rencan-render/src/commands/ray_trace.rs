@@ -10,8 +10,7 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext};
-use crate::core::app::GlobalAppBuffers;
+use crate::core::{app::GlobalAppBuffers, CommandFactory, CommandFactoryContext};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -80,12 +79,7 @@ impl CommandFactory for RayTraceCommandFactory {
                 .unwrap();
 
         command
-            .dispatch(
-                [count_of_workgroups, 1, 1],
-                self.pipeline.clone(),
-                (set_0, set_1),
-                (),
-            )
+            .dispatch([count_of_workgroups, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
             .unwrap();
 
         let command = command.build().unwrap();

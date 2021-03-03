@@ -1,6 +1,10 @@
-use vulkano::buffer::{BufferAccess, CpuAccessibleBuffer, DeviceLocalBuffer, ImmutableBuffer};
-use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
-use vulkano::memory::MemoryPool;
+use vulkano::{
+    buffer::{
+        cpu_pool::CpuBufferPoolSubbuffer, BufferAccess, CpuAccessibleBuffer, DeviceLocalBuffer,
+        ImmutableBuffer,
+    },
+    memory::MemoryPool,
+};
 
 pub trait BufferAccessData: BufferAccess {
     type Data: ?Sized;
@@ -21,4 +25,3 @@ impl<T: ?Sized + Sync + Send + 'static, A> BufferAccessData for ImmutableBuffer<
 impl<T: Sync + Send + 'static, A: MemoryPool> BufferAccessData for CpuBufferPoolSubbuffer<T, A> {
     type Data = T;
 }
-

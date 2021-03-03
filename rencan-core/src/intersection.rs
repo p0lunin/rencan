@@ -1,6 +1,12 @@
 #[derive(Debug, Clone)]
 pub enum Intersection {
-    Intersect { model_id: u32, triangle_idx: u32, vertices_offset: u32, barycentric_coords: [f32; 2], distance: f32 },
+    Intersect {
+        model_id: u32,
+        triangle_idx: u32,
+        vertices_offset: u32,
+        barycentric_coords: [f32; 2],
+        distance: f32,
+    },
     NotIntersect,
 }
 
@@ -16,17 +22,21 @@ impl Intersection {
                 distance: 0.0,
                 paddings: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
             },
-            Intersection::Intersect { model_id, triangle_idx, barycentric_coords, vertices_offset, distance } => {
-                IntersectionUniform {
-                    intersect: 1,
-                    model_id,
-                    triangle_idx,
-                    vertices_offset,
-                    barycentric_coords: mint::Vector2::from(barycentric_coords),
-                    distance,
-                    paddings: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
-                }
-            }
+            Intersection::Intersect {
+                model_id,
+                triangle_idx,
+                barycentric_coords,
+                vertices_offset,
+                distance,
+            } => IntersectionUniform {
+                intersect: 1,
+                model_id,
+                triangle_idx,
+                vertices_offset,
+                barycentric_coords: mint::Vector2::from(barycentric_coords),
+                distance,
+                paddings: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
+            },
         }
     }
 }

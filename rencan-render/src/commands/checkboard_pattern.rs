@@ -10,9 +10,10 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext, BufferAccessData};
-use crate::core::app::GlobalAppBuffers;
-use crate::core::intersection::IntersectionUniform;
+use crate::core::{
+    app::GlobalAppBuffers, intersection::IntersectionUniform, BufferAccessData, CommandFactory,
+    CommandFactoryContext,
+};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -23,7 +24,7 @@ mod cs {
 
 pub struct CheckBoardCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>
+    intersections: Arc<dyn BufferAccessData<Data = [IntersectionUniform]> + Send + Sync>,
 }
 
 impl CheckBoardCommandFactory {
@@ -79,12 +80,7 @@ impl CommandFactory for CheckBoardCommandFactory {
                 .unwrap();
 
         command
-            .dispatch(
-                [count_of_workgroups, 1, 1],
-                self.pipeline.clone(),
-                (set_0, set_1),
-                (),
-            )
+            .dispatch([count_of_workgroups, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
             .unwrap();
 
         let command = command.build().unwrap();
