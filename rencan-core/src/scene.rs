@@ -1,21 +1,23 @@
 use crate::{light::DirectionLight};
 use crate::model::AppModel;
-use crate::model_buffers::{ModelsBuffers, ModelsBuffersStorage};
+use crate::model_buffers::{SceneBuffers, SceneBuffersStorage};
 use std::sync::Arc;
 use vulkano::device::Device;
+use crate::light::PointLight;
 
 pub struct Scene {
     pub models: Vec<AppModel>,
     pub global_light: DirectionLight,
-    pub buffers: ModelsBuffersStorage,
+    pub buffers: SceneBuffersStorage,
+    pub point_lights: Vec<PointLight>
 }
 
 impl Scene {
-    pub fn new(device: Arc<Device>, models: Vec<AppModel>, global_light: DirectionLight) -> Self {
-        Scene { models, global_light, buffers: ModelsBuffersStorage::init(device) }
+    pub fn new(device: Arc<Device>, models: Vec<AppModel>, global_light: DirectionLight, point_lights: Vec<PointLight>) -> Self {
+        Scene { models, global_light, buffers: SceneBuffersStorage::init(device), point_lights }
     }
 
-    pub fn frame_buffers(&self) -> ModelsBuffers {
-        self.buffers.get_buffers(&self.models)
+    pub fn frame_buffers(&self) -> SceneBuffers {
+        self.buffers.get_buffers(self)
     }
 }

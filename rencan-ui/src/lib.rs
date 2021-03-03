@@ -99,8 +99,6 @@ impl GuiApp {
                     self.must_recreate_swapchain = true;
                 }
                 Event::RedrawEventsCleared => {
-                    rx.recv().unwrap();
-
                     if self.must_recreate_swapchain {
                         let dimensions: [u32; 2] = self.surface.window().inner_size().into();
                         let (new_swapchain, new_images) =
@@ -157,6 +155,8 @@ impl GuiApp {
                         &scene,
                         |_| image,
                     ).unwrap();
+
+                    rx.recv().unwrap();
 
                     let fut = fut.then_swapchain_present(
                         self.present_queue(),

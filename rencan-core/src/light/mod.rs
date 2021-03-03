@@ -4,4 +4,4 @@ mod point;
 
 pub use direction::{DirectionLight, DirectionLightUniform};
 pub use info::LightInfo;
-pub use point::PointLight;
+pub use point::{PointLight, PointLightUniform};

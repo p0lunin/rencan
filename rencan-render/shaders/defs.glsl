@@ -43,3 +43,9 @@ struct HitBoxRectangle {
     vec3 min;
     vec3 max;
 };
+
+struct PointLight {
+    vec3 color;
+    vec3 position;
+    float intensity;
+};

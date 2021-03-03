@@ -20,7 +20,7 @@ use vulkano::buffer::CpuBufferPool;
 use vulkano::device::Device;
 use vulkano::instance::QueueFamily;
 use crate::light::DirectionLight;
-use crate::model_buffers::ModelsBuffers;
+use crate::model_buffers::SceneBuffers;
 
 pub struct App {
     info: AppInfo,
@@ -189,7 +189,7 @@ pub struct Buffers {
     pub output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
     pub direction_light:
         Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
-    pub models_buffers: ModelsBuffers,
+    pub models_buffers: SceneBuffers,
 }
 
 impl Buffers {
@@ -202,7 +202,7 @@ impl Buffers {
         direction_light: Arc<
             dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
         >,
-        models_buffers: ModelsBuffers,
+        models_buffers: SceneBuffers,
     ) -> Self {
         Buffers { camera, screen, output_image, direction_light, models_buffers }
     }

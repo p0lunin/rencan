@@ -21,6 +21,29 @@ layout(std140, set = 0, binding = 3) writeonly buffer NextRays {
 layout(std140, set = 0, binding = 4) readonly uniform DirectLightInfo {
     DirectLight global_light;
 };
+layout(std140, set = 0, binding = 5) readonly uniform PointLightsInfo {
+    uint point_lights_count;
+};
+layout(std140, set = 0, binding = 6) readonly buffer PointLights {
+    PointLight[] point_lights;
+};
+
+Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
+    vec3 direction_ray = -global_light.direction.xyz;
+
+    vec3 point = previous.origin + previous.direction.xyz * inter.distance + direction_ray * 0.001;
+
+    return Ray(point, vec4(direction_ray, 0.0));
+}
+
+Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
+    vec3 inter_point = previous.origin + previous.direction.xyz * inter.distance;
+    vec3 direction_ray = light.position - inter_point;
+
+    vec3 point = inter_point + (-previous.direction.xyz) * 0.001;
+
+    return Ray(point, vec4(direction_ray, 0.0));
+}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
@@ -29,13 +52,14 @@ void main() {
 
     Intersection inter = intersections[idx];
     Ray ray = previous_rays[idx];
-    if (inter.is_intersect == 0) {
-        return;
+    if (inter.is_intersect == 1) {
+        next_rays[idx] = make_shadow_ray_for_direction_light(inter, ray);
     }
 
-    vec3 direction_ray = -global_light.direction.xyz;
+    for (int i = 0; i < point_lights_count; i++) {
+        PointLight light = point_lights[i];
+        uint offset = (i + 1) * screen.x * screen.y;
 
-    vec3 point = ray.origin + ray.direction.xyz * inter.distance + direction_ray * 0.001;
-
-    next_rays[idx] = Ray(point, vec4(direction_ray, 0.0));
+        next_rays[offset + idx] = make_shadow_ray_for_point_light(inter, ray, light);
+    }
 }

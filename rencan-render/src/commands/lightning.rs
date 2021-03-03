@@ -19,6 +19,7 @@ use crate::{
 };
 use vulkano::buffer::{DeviceLocalBuffer, BufferUsage, TypedBufferAccess};
 use crate::core::app::GlobalAppBuffers;
+use std::cell::{Cell, RefCell};
 
 mod lightning_cs {
     vulkano_shaders::shader! {
@@ -40,8 +41,9 @@ pub struct LightningCommandFactory {
     make_shadow_rays_pipeline: Arc<ComputePipeline<PipelineLayout<make_shadow_rays_cs::Layout>>>,
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
     global_buffers: GlobalAppBuffers,
-    local_ray_buffer: Arc<DeviceLocalBuffer<[Ray]>>,
-    local_intersections_buffer: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+    lights_count: Cell<u32>,
+    local_ray_buffer: RefCell<Arc<DeviceLocalBuffer<[Ray]>>>,
+    local_intersections_buffer: RefCell<Arc<DeviceLocalBuffer<[IntersectionUniform]>>>,
 }
 
 impl LightningCommandFactory {
@@ -73,7 +75,7 @@ impl LightningCommandFactory {
             )
             .unwrap(),
         );
-        let local_ray_buffer = DeviceLocalBuffer::array(
+        let local_ray_buffer = RefCell::new(DeviceLocalBuffer::array(
             device.clone(),
             buffers.rays.len(),
             BufferUsage {
@@ -82,8 +84,8 @@ impl LightningCommandFactory {
                 ..BufferUsage::none()
             },
             buffers.rays.queue_families()
-        ).unwrap();
-        let local_intersections_buffer = DeviceLocalBuffer::array(
+        ).unwrap());
+        let local_intersections_buffer = RefCell::new(DeviceLocalBuffer::array(
             device.clone(),
             buffers.intersections.len(),
             BufferUsage {
@@ -92,7 +94,7 @@ impl LightningCommandFactory {
                 ..BufferUsage::none()
             },
             buffers.intersections.queue_families()
-        ).unwrap();
+        ).unwrap());
         LightningCommandFactory {
             device,
             ray_trace_pipeline,
@@ -100,24 +102,42 @@ impl LightningCommandFactory {
             lightning_pipeline,
             global_buffers: buffers,
             local_ray_buffer,
-            local_intersections_buffer
+            local_intersections_buffer,
+            lights_count: Cell::new(1),
         }
     }
 }
 
 impl CommandFactory for LightningCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
+        let light_counts = ctx.scene.point_lights.len() as u32;
+        if self.lights_count.get() != light_counts + 1 {
+            *self.local_ray_buffer.borrow_mut() = DeviceLocalBuffer::array(
+                self.device.clone(),
+                ctx.app_info.size_of_image_array() * (1 + light_counts as usize),
+                BufferUsage::all(),
+                self.global_buffers.rays.queue_families(),
+            ).unwrap();
+            *self.local_intersections_buffer.borrow_mut() = DeviceLocalBuffer::array(
+                self.device.clone(),
+                ctx.app_info.size_of_image_array() * (1 + light_counts as usize),
+                BufferUsage::all(),
+                self.global_buffers.intersections.queue_families(),
+            ).unwrap();
+            self.lights_count.set(light_counts + 1);
+        }
+
         let mut command = AutoCommandBufferBuilder::new(
             ctx.app_info.device.clone(),
             ctx.app_info.graphics_queue.family(),
         )
         .unwrap();
 
-        command.fill_buffer(self.local_intersections_buffer.clone(), 0).unwrap();
-        command.fill_buffer(self.local_ray_buffer.clone(), 0).unwrap();
+        command.fill_buffer(self.local_intersections_buffer.borrow().clone(), 0).unwrap();
+        command.fill_buffer(self.local_ray_buffer.borrow().clone(), 0).unwrap();
 
-        let rays = add_making_shadow_rays(self, &self.global_buffers, &ctx, self.local_ray_buffer.clone(), &mut command);
-        let intersections = add_ray_tracing(self, &ctx, rays.clone(), self.local_intersections_buffer.clone(), &mut command);
+        let rays = add_making_shadow_rays(self, &self.global_buffers, &ctx, self.local_ray_buffer.borrow().clone(), &mut command);
+        let intersections = add_ray_tracing(self, light_counts, &ctx, rays.clone(), self.local_intersections_buffer.borrow().clone(), &mut command);
         add_lightning(self, &self.global_buffers, &ctx, rays, intersections, &mut command);
 
         let command = command.build().unwrap();
@@ -126,19 +146,8 @@ impl CommandFactory for LightningCommandFactory {
     }
 
     fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
-        self.local_ray_buffer = DeviceLocalBuffer::array(
-            self.device.clone(),
-            buffers.rays.len(),
-            BufferUsage::all(),
-            buffers.rays.queue_families()
-        ).unwrap();
-        self.local_intersections_buffer = DeviceLocalBuffer::array(
-            self.device.clone(),
-            buffers.intersections.len(),
-            BufferUsage::all(),
-            buffers.intersections.queue_families()
-        ).unwrap();
         self.global_buffers = buffers;
+        self.lights_count.set(0);
     }
 }
 
@@ -168,6 +177,10 @@ fn add_lightning(
             .add_buffer(intersections.clone())
             .unwrap()
             .add_buffer(buffers.direction_light.clone())
+            .unwrap()
+            .add_buffer(buffers.models_buffers.point_lights_count.clone())
+            .unwrap()
+            .add_buffer(buffers.models_buffers.point_lights.clone())
             .unwrap()
             .build()
             .unwrap(),
@@ -218,6 +231,10 @@ fn add_making_shadow_rays(
             .unwrap()
             .add_buffer(buffers.direction_light.clone())
             .unwrap()
+            .add_buffer(buffers.models_buffers.point_lights_count.clone())
+            .unwrap()
+            .add_buffer(buffers.models_buffers.point_lights.clone())
+            .unwrap()
             .build()
             .unwrap(),
     );
@@ -236,6 +253,7 @@ fn add_making_shadow_rays(
 
 fn add_ray_tracing(
     factory: &LightningCommandFactory,
+    lights_count: u32,
     ctx: &CommandFactoryContext,
     rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
@@ -275,7 +293,7 @@ fn add_ray_tracing(
 
     command
         .dispatch(
-            [*count_of_workgroups, 1, 1],
+            [*count_of_workgroups * (1 + lights_count), 1, 1],
             factory.ray_trace_pipeline.clone(),
             (set_0, set_1),
             (),
