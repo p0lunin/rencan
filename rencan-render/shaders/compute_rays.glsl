@@ -44,5 +44,5 @@ void main() {
 
     vec4 direction = vec4(normalize(rotation * vec3(x, y, -1.0)), 0.0);
 
-    rays.data[idx] = Ray(origin, direction);
+    rays.data[idx] = Ray(origin, direction, 1.0 / 0.0);
 }

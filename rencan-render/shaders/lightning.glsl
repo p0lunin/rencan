@@ -108,7 +108,7 @@ void main() {
             float distance_to_light = length(light.position - intersection_point);
 
             Intersection shadow_intersection = shadow_rays_intersections[offset + idx];
-            if (shadow_intersection.is_intersect == 1 && shadow_intersection.distance < distance_to_light) {
+            if (shadow_intersection.is_intersect == 1) {
                 continue;
             }
             color_from_point = compute_color_for_point_light(light, distance_to_light);

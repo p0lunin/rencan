@@ -74,7 +74,7 @@ IntersectResult intersect(Ray ray, vec3[3] triangle) {
     return ret_intersect(vec2(u, v), t);
 }
 
-bool check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
+vec4 check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     vec3 tmin = (hit_box.min - ray.origin) / ray.direction.xyz;
     vec3 tmax = (hit_box.max - ray.origin) / ray.direction.xyz;
 
@@ -97,7 +97,7 @@ bool check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     }
 
     if ((tmin.x > tmax.y) || (tmin.y > tmax.x))
-        return false;
+        return vec4(0.0);
 
     if (tmin.y > tmin.x) {
         tmin.x = tmin.y;
@@ -108,7 +108,7 @@ bool check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     }
 
     if ((tmin.x > tmax.z) || (tmin.z > tmax.x))
-        return false;
+        return vec4(0.0);
 
     if (tmin.z > tmin.x)
         tmin.x = tmin.z;
@@ -116,7 +116,7 @@ bool check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     if (tmax.z < tmax.x)
         tmax.x = tmax.z;
 
-    return true;
+    return vec4(1.0, tmin);
 }
 
 void main() {
@@ -142,7 +142,11 @@ void main() {
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
         ray.direction = global_to_model * origin_ray.direction;
 
-        if (!check_intersect_hitbox(hit_box, ray)) {
+        vec4 is_inter_hitbox = check_intersect_hitbox(hit_box, ray);
+
+        float distance_to_hitbox = length(is_inter_hitbox.yzw - ray.origin);
+
+        if (is_inter_hitbox.x == 0.0 || distance_to_hitbox > ray.max_distance) {
             offset_indexes += model.indexes_length;
             offset_vertices += model.vertices_length;
             continue;
@@ -155,7 +159,7 @@ void main() {
             vec3 triangle3 = vertices[offset_vertices + index.z];
             vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
             IntersectResult res = intersect(ray, triangles);
-            if (res.intersect && res.distance < distance) {
+            if (res.intersect && res.distance < distance && res.distance < ray.max_distance) {
                 distance = res.distance;
                 inter = intersection_succ(
                     model_idx,

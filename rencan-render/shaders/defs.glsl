@@ -1,6 +1,7 @@
 struct Ray {
     vec3 origin;
     vec4 direction;
+    float max_distance;
 };
 
 struct Intersection {

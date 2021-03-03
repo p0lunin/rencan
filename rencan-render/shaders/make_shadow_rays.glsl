@@ -33,7 +33,7 @@ Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
 
     vec3 point = previous.origin + previous.direction.xyz * inter.distance + direction_ray * 0.001;
 
-    return Ray(point, vec4(direction_ray, 0.0));
+    return Ray(point, vec4(direction_ray, 0.0), 1.0 / 0.0);
 }
 
 Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
@@ -42,7 +42,7 @@ Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight
 
     vec3 point = inter_point + (-previous.direction.xyz) * 0.001;
 
-    return Ray(point, vec4(direction_ray, 0.0));
+    return Ray(point, vec4(direction_ray, 0.0), length(direction_ray));
 }
 
 void main() {
