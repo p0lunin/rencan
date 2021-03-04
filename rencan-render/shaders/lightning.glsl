@@ -95,13 +95,13 @@ void main() {
         uvec3 index = indexes[inter.triangle_idx];
         vec3 normal = inter.normal;
 
-        vec3 color = vec3(0.0) /*compute_color_for_global_lights(
+        vec3 color = compute_color_for_global_lights(
             normal,
             inter,
             shadow_rays_intersections[idx],
             model,
             primary_ray
-        )*/;
+        );
 
         for (int i = 0; i < point_lights_count; i++) {
             uint offset = (i + 1) * screen.x * screen.y;
@@ -113,7 +113,7 @@ void main() {
             if (shadow_intersection.is_intersect == 1) {
                 continue;
             }
-            color = compute_color_for_point_light(
+            color = color + compute_color_for_point_light(
                 normal,
                 light_dir,
                 light,
