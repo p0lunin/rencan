@@ -144,9 +144,7 @@ void main() {
 
         vec4 is_inter_hitbox = check_intersect_hitbox(hit_box, ray);
 
-        float distance_to_hitbox = length(is_inter_hitbox.yzw - ray.origin);
-
-        if (is_inter_hitbox.x == 0.0 || distance_to_hitbox > ray.max_distance) {
+        if (is_inter_hitbox.x == 0.0) {
             offset_indexes += model.indexes_length;
             offset_vertices += model.vertices_length;
             continue;
