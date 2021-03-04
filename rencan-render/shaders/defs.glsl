@@ -5,6 +5,8 @@ struct Ray {
 };
 
 struct Intersection {
+    vec3 point;
+    vec3 normal;
     vec2 barycentric_coords;
     uint is_intersect;
     uint model_id;
@@ -13,17 +15,20 @@ struct Intersection {
     float distance;
 };
 
-Intersection intersection_succ(uint model_id,
+Intersection intersection_succ(
+    vec3 point,
+    vec3 normal,
+    uint model_id,
     uint triangle_idx,
     uint vertices_offset,
     vec2 barycentric_coords,
     float distance
 ) {
-    return Intersection(barycentric_coords, 1, model_id, triangle_idx, vertices_offset, distance);
+    return Intersection(point, normal, barycentric_coords, 1, model_id, triangle_idx, vertices_offset, distance);
 }
 
 Intersection intersection_none() {
-    return Intersection(vec2(0.0), 0, 0, 0, 0, 0.0);
+    return Intersection(vec3(0.0), vec3(0.0), vec2(0.0), 0, 0, 0, 0, 0.0);
 }
 
 struct DirectLight {

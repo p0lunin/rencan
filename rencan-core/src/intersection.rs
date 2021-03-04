@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+/*#[derive(Debug, Clone)]
 pub enum Intersection {
     Intersect {
         model_id: u32,
@@ -39,10 +39,14 @@ impl Intersection {
             },
         }
     }
-}
+}*/
 
 #[repr(C)]
 pub struct IntersectionUniform {
+    point: mint::Vector3<f32>,
+    padding1: f32,
+    normal: mint::Vector3<f32>,
+    padding2: f32,
     barycentric_coords: mint::Vector2<f32>,
     intersect: u32,
     model_id: u32,

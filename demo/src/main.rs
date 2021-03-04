@@ -80,7 +80,7 @@ fn main() {
         ),
         vec![PointLight::new(
             LightInfo::new(Point4::new(1.0, 1.0, 1.0, 0.0), 15.0),
-            Point3::new(0.0, 0.0, 3.0),
+            Point3::new(0.0, 0.0, 2.0),
         )],
     );
 

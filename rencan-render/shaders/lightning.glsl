@@ -45,22 +45,22 @@ const float eps = 0.001;
 
 #define PI radians(180)
 
-vec3 compute_color_for_global_lights(Intersection inter, Intersection shadow_intersect, ModelInfo model, Ray primary_ray) {
+vec3 compute_color_for_global_lights(
+    vec3 normal,
+    Intersection inter,
+    Intersection shadow_intersect,
+    ModelInfo model,
+    Ray primary_ray
+) {
     mat4 isometry = model.isometry;
     float albedo = model.albedo;
 
-    uvec3 index = indexes[inter.triangle_idx];
-
     vec3 light_dir = -global_light.direction;
 
-    vec3 normal = normalize(
-        cross(
-            vertices[inter.vertices_offset + index.y] - vertices[inter.vertices_offset + index.x],
-            vertices[inter.vertices_offset + index.z] - vertices[inter.vertices_offset + index.x]
-        )
+    vec3 ray_direction = normalize(
+        (inverse(
+            mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * primary_ray.direction.xyz
     );
-
-    vec3 ray_direction = normalize((inverse(mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * primary_ray.direction.xyz);
 
     float visibility = shadow_intersect.is_intersect == 1 ? 0.0 : 1.0;
 
@@ -69,18 +69,17 @@ vec3 compute_color_for_global_lights(Intersection inter, Intersection shadow_int
     return color;
 }
 
-vec3 compute_color_for_point_light(PointLight light, float distance) {
+vec3 compute_color_for_point_light(
+    vec3 normal,
+    vec3 light_dir,
+    PointLight light,
+    float albedo,
+    float distance
+) {
     vec3 intensity = light.intensity * light.color / (4 * PI * distance);
-    return intensity;
-}
 
-vec3 max_of_vecs(vec3 a, vec3 b) {
-    if (a.x + a.y + a.z > b.x + b.y + b.z) {
-        return a;
-    }
-    else {
-        return b;
-    }
+    vec3 color = albedo / PI * intensity * max(dot(normal, -light_dir), 0.0);
+    return intensity;
 }
 
 void main() {
@@ -92,29 +91,36 @@ void main() {
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
     if (inter.is_intersect == 1) {
-        vec3 color_from_global = compute_color_for_global_lights(
+        ModelInfo model = models[inter.model_id];
+        uvec3 index = indexes[inter.triangle_idx];
+        vec3 normal = inter.normal;
+
+        vec3 color = vec3(0.0) /*compute_color_for_global_lights(
+            normal,
             inter,
             shadow_rays_intersections[idx],
-            models[inter.model_id],
+            model,
             primary_ray
-        );
-
-        vec3 color_from_point = vec3(0.0);
+        )*/;
 
         for (int i = 0; i < point_lights_count; i++) {
             uint offset = (i + 1) * screen.x * screen.y;
             PointLight light = point_lights[i];
-            vec3 intersection_point = primary_ray.origin + primary_ray.direction.xyz * inter.distance;
-            float distance_to_light = length(light.position - intersection_point);
+            vec3 light_dir = light.position - inter.point;
+            float distance_to_light = length(light_dir);
 
             Intersection shadow_intersection = shadow_rays_intersections[offset + idx];
             if (shadow_intersection.is_intersect == 1) {
                 continue;
             }
-            color_from_point = compute_color_for_point_light(light, distance_to_light);
+            color = compute_color_for_point_light(
+                normal,
+                light_dir,
+                light,
+                model.albedo,
+                distance_to_light
+            );
         }
-
-        vec3 color = max_of_vecs(color_from_global, color_from_point);
 
         imageStore(resultImage, pos, vec4(color, 0.0));
     }

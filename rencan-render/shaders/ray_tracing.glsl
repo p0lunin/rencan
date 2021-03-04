@@ -160,8 +160,17 @@ void main() {
             vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
             IntersectResult res = intersect(ray, triangles);
             if (res.intersect && res.distance < distance && res.distance < ray.max_distance) {
+                vec3 normal = normalize(
+                    cross(
+                        triangle2 - triangle1,
+                        triangle3 - triangle1
+                    )
+                );
+                vec3 inter_point = origin_ray.origin + origin_ray.direction.xyz * res.distance;
                 distance = res.distance;
                 inter = intersection_succ(
+                    inter_point,
+                    normal,
                     model_idx,
                     offset_indexes + i,
                     offset_vertices,

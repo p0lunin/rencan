@@ -29,18 +29,15 @@ layout(std140, set = 0, binding = 6) readonly buffer PointLights {
 };
 
 Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
-    vec3 direction_ray = -global_light.direction.xyz;
+    vec3 point = inter.point + inter.normal * 0.001;
 
-    vec3 point = previous.origin + previous.direction.xyz * inter.distance + direction_ray * 0.001;
-
-    return Ray(point, vec4(direction_ray, 0.0), 1.0 / 0.0);
+    return Ray(point, vec4(-global_light.direction.xyz, 0.0), 1.0 / 0.0);
 }
 
 Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
-    vec3 inter_point = previous.origin + previous.direction.xyz * inter.distance;
-    vec3 direction_ray = light.position - inter_point;
+    vec3 direction_ray = light.position - inter.point;
 
-    vec3 point = inter_point + (-previous.direction.xyz) * 0.001;
+    vec3 point = inter.point + inter.normal * 0.001;
 
     return Ray(point, vec4(direction_ray, 0.0), length(direction_ray));
 }
@@ -54,12 +51,11 @@ void main() {
     Ray ray = previous_rays[idx];
     if (inter.is_intersect == 1) {
         next_rays[idx] = make_shadow_ray_for_direction_light(inter, ray);
-    }
+        for (int i = 0; i < point_lights_count; i++) {
+            PointLight light = point_lights[i];
+            uint offset = (i + 1) * screen.x * screen.y;
 
-    for (int i = 0; i < point_lights_count; i++) {
-        PointLight light = point_lights[i];
-        uint offset = (i + 1) * screen.x * screen.y;
-
-        next_rays[offset + idx] = make_shadow_ray_for_point_light(inter, ray, light);
+            next_rays[offset + idx] = make_shadow_ray_for_point_light(inter, ray, light);
+        }
     }
 }
