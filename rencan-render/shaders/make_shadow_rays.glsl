@@ -2,7 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : require
 
-#include "defs.glsl"
+#include "include/defs.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -28,19 +28,6 @@ layout(std140, set = 0, binding = 6) readonly buffer PointLights {
     PointLight[] point_lights;
 };
 
-Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
-    vec3 point = inter.point + inter.normal * 0.001;
-
-    return Ray(point, vec4(-global_light.direction.xyz, 0.0), 1.0 / 0.0);
-}
-
-Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
-    vec3 direction_ray = light.position - inter.point;
-
-    vec3 point = inter.point + inter.normal * 0.001;
-
-    return Ray(point, vec4(direction_ray, 0.0), length(direction_ray));
-}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
