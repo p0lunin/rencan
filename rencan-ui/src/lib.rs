@@ -58,120 +58,85 @@ impl GuiApp {
         }
     }
 
-    pub fn run<T, PreCompute>(
-        mut self,
-        event_loop: EventLoop<T>,
-        mut scene: Scene,
-        fps: u32,
-        mut pre_compute: PreCompute,
-    ) where
-        PreCompute: for<'a> FnMut(&Event<T>, &mut App, &'a mut Scene) + 'static,
-    {
-        let microseconds_per_frame = (1000_000.0 / (fps as f32)) as u64;
-        let frame_duration = Duration::from_micros(microseconds_per_frame);
-
-        let (tx, rx) = std::sync::mpsc::sync_channel(10);
-        std::thread::spawn(move || {
-            let mut next = Instant::now() + frame_duration;
-            loop {
-                while next > Instant::now() {}
-                next = Instant::now() + frame_duration;
-
-                if let Err(_) = tx.send(()) {
-                    break;
-                }
-            }
-        });
-
-        event_loop.run(move |event, _, control_flow| {
-            pre_compute(&event, &mut self.app, &mut scene);
-            *control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
-
-            match self.prev.as_mut() {
-                Some(fut) => fut.cleanup_finished(),
-                None => {}
-            };
-
-            match event {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
-                    self.must_recreate_swapchain = true;
-                }
-                Event::RedrawEventsCleared => {
-                    if self.must_recreate_swapchain {
-                        let dimensions: [u32; 2] = self.surface.window().inner_size().into();
-                        let (new_swapchain, new_images) =
-                            match self.swap_chain.recreate_with_dimensions(dimensions) {
-                                Ok(r) => r,
-                                Err(SwapchainCreationError::UnsupportedDimensions) => return,
-                                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
-                            };
-
-                        self.swap_chain = new_swapchain;
-                        self.swap_chain_images = new_images;
-                        self.must_recreate_swapchain = false;
-                        self.app.update_screen(Screen(dimensions));
-                    }
-
-                    let (image_num, suboptimal, acquire_future) =
-                        match vulkano::swapchain::acquire_next_image(self.swap_chain.clone(), None)
-                        {
-                            Ok(r) => r,
-                            Err(AcquireError::OutOfDate) => {
-                                self.must_recreate_swapchain = true;
-                                return;
-                            }
-                            Err(e) => panic!("Failed to acquire next image: {:?}", e),
-                        };
-
-                    if suboptimal {
-                        self.must_recreate_swapchain = true;
-                    }
-
-                    let mut clear_image = AutoCommandBufferBuilder::new(
-                        self.device(),
-                        self.graphics_queue().family(),
-                    )
-                    .unwrap();
-                    clear_image
-                        .clear_color_image(
-                            self.swap_chain_images[image_num].clone(),
-                            ClearValue::Float([0.0, 0.0, 0.0, 0.0]),
-                        )
-                        .unwrap();
-                    let clear_image = clear_image.build().unwrap();
-
-                    let fut = self
-                        .prev
-                        .take()
-                        .unwrap()
-                        .join(acquire_future)
-                        .then_execute(self.graphics_queue(), clear_image)
-                        .unwrap();
-
-                    let image = self.swap_chain_images[image_num].clone();
-                    let (fut, _) = self.app.render(fut, &scene, |_| image).unwrap();
-
-                    rx.recv().unwrap();
-
-                    let fut = fut
-                        .then_swapchain_present(
-                            self.present_queue(),
-                            self.swap_chain.clone(),
-                            image_num,
-                        )
-                        .then_signal_fence_and_flush()
-                        .unwrap();
-
-                    self.prev = Some(Box::new(fut));
-                }
-                _ => (),
-            }
-        })
+    pub fn reacreate_swapchain(&mut self) {
+        self.must_recreate_swapchain = true;
     }
 
+    pub fn render_frame(&mut self, scene: &Scene) {
+        match self.prev.as_mut() {
+            Some(fut) => fut.cleanup_finished(),
+            None => {}
+        };
+
+        if self.must_recreate_swapchain {
+            let dimensions: [u32; 2] = self.surface.window().inner_size().into();
+            let (new_swapchain, new_images) =
+                match self.swap_chain.recreate_with_dimensions(dimensions) {
+                    Ok(r) => r,
+                    Err(SwapchainCreationError::UnsupportedDimensions) => return,
+                    Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
+                };
+
+            self.swap_chain = new_swapchain;
+            self.swap_chain_images = new_images;
+            self.must_recreate_swapchain = false;
+            self.app.update_screen(Screen(dimensions));
+        }
+
+        let (image_num, suboptimal, acquire_future) =
+            match vulkano::swapchain::acquire_next_image(self.swap_chain.clone(), None)
+            {
+                Ok(r) => r,
+                Err(AcquireError::OutOfDate) => {
+                    self.must_recreate_swapchain = true;
+                    return;
+                }
+                Err(e) => panic!("Failed to acquire next image: {:?}", e),
+            };
+
+        if suboptimal {
+            self.must_recreate_swapchain = true;
+        }
+
+        let mut clear_image = AutoCommandBufferBuilder::new(
+            self.device(),
+            self.graphics_queue().family(),
+        )
+        .unwrap();
+        clear_image
+            .clear_color_image(
+                self.swap_chain_images[image_num].clone(),
+                ClearValue::Float([0.0, 0.0, 0.0, 0.0]),
+            )
+            .unwrap();
+        let clear_image = clear_image.build().unwrap();
+
+        let fut = self
+            .prev
+            .take()
+            .unwrap()
+            .join(acquire_future)
+            .then_execute(self.graphics_queue(), clear_image)
+            .unwrap();
+
+        let image = self.swap_chain_images[image_num].clone();
+        let (fut, _) = self.app.render(fut, &scene, |_| image).unwrap();
+
+        let fut = fut
+            .then_swapchain_present(
+                self.present_queue(),
+                self.swap_chain.clone(),
+                image_num,
+            )
+            .then_signal_fence_and_flush()
+            .unwrap();
+
+        self.prev = Some(Box::new(fut));
+    }
+
+    pub fn app_mut(&mut self) -> &mut App {
+        &mut self.app
+    }
     pub fn device(&self) -> Arc<Device> {
         self.app.info().device.clone()
     }

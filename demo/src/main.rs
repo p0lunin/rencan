@@ -10,6 +10,7 @@ use winit::{
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::event_loop::ControlFlow;
 
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
     let mut model = Model::new(
@@ -55,14 +56,14 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().with_resizable(true);
 
-    let app = rencan_ui::GuiApp::new(window, &event_loop);
+    let mut app = rencan_ui::GuiApp::new(window, &event_loop);
 
     let mut frames = 0;
     let mut next = Instant::now() + Duration::from_secs(1);
 
     let mut models = Vec::new();
 
-    for i in 0..3 {
+    for i in 0..20 {
         let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
         let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
         models.push(model);
@@ -71,7 +72,7 @@ fn main() {
 
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
-    let scene = Scene::new(
+    let mut scene = Scene::new(
         app.device(),
         models,
         DirectionLight::new(
@@ -91,17 +92,45 @@ fn main() {
         }
     });
 
-    app.run(event_loop, scene, 60, move |event, app, scene| {
-        while let Ok(rot) = rot_rx.try_recv() {
-            scene.global_light.direction = rot * &scene.global_light.direction;
+    let microseconds_per_frame = (1000_000.0 / 60.0) as u64;
+    let frame_duration = Duration::from_micros(microseconds_per_frame);
+
+    let (tx, rx) = std::sync::mpsc::sync_channel(10);
+    std::thread::spawn(move || {
+        let mut next = Instant::now() + frame_duration;
+        loop {
+            while next > Instant::now() {}
+            next = Instant::now() + frame_duration;
+
+            if let Err(_) = tx.send(()) {
+                break;
+            }
         }
-        frames += 1;
-        if Instant::now() >= next {
-            println!("fps: {}", frames);
-            next = Instant::now() + Duration::from_secs(1);
-            frames = 0;
-        }
+    });
+
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
+
         match event {
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                *control_flow = ControlFlow::Exit;
+            }
+            Event::WindowEvent { event: WindowEvent::Resized(_), .. } => {
+                app.reacreate_swapchain();
+            }
+            Event::RedrawEventsCleared => {
+                rx.recv().unwrap();
+                while let Ok(rot) = rot_rx.try_recv() {
+                    scene.global_light.direction = rot * &scene.global_light.direction;
+                }
+                frames += 1;
+                if Instant::now() >= next {
+                    println!("fps: {}", frames);
+                    next = Instant::now() + Duration::from_secs(1);
+                    frames = 0;
+                }
+                app.render_frame(&scene);
+            }
             Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
@@ -111,6 +140,7 @@ fn main() {
                 ..
             } => {
                 println!("{:?}", input.virtual_keycode.as_ref());
+                let app = app.app_mut();
                 match input.virtual_keycode.unwrap() {
                     VirtualKeyCode::Left => {
                         app.update_camera(|cam| cam.rotate(0.0, 0.05, 0.0));
@@ -139,7 +169,7 @@ fn main() {
                     _ => {}
                 }
             }
-            _ => {}
-        };
-    })
+            _ => (),
+        }
+    });
 }
