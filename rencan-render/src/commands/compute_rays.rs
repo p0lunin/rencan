@@ -23,17 +23,15 @@ mod cs {
 
 pub struct ComputeRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
 }
 
 impl ComputeRaysCommandFactory {
-    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        let rays = buffers.rays;
-        ComputeRaysCommandFactory { pipeline, rays }
+        ComputeRaysCommandFactory { pipeline }
     }
 }
 
@@ -49,18 +47,7 @@ impl CommandFactory for ComputeRaysCommandFactory {
         )
         .unwrap();
 
-        let layout_0 = self.pipeline.layout().descriptor_set_layout(0).unwrap();
-        let set_0 = Arc::new(
-            PersistentDescriptorSet::start(layout_0.clone())
-                .add_buffer(buffers.screen.clone())
-                .unwrap()
-                .add_buffer(buffers.camera.clone())
-                .unwrap()
-                .add_buffer(self.rays.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
+        let set_0 = buffers.global_app_set.clone();
 
         calc_rays
             .dispatch([ctx.count_of_workgroups, 1, 1], self.pipeline.clone(), set_0, ())
@@ -68,10 +55,6 @@ impl CommandFactory for ComputeRaysCommandFactory {
         let calc_rays_command = calc_rays.build().unwrap();
 
         calc_rays_command
-    }
-
-    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
-        self.rays = buffers.rays;
     }
 }
 

@@ -22,6 +22,7 @@ use vulkano::{
     format::ClearValue,
     instance::QueueFamily,
 };
+use vulkano::descriptor::{DescriptorSet, PipelineLayoutAbstract};
 
 pub struct App {
     info: AppInfo,
@@ -52,9 +53,6 @@ impl App {
             self.info.graphics_queue.family(),
             self.info.size_of_image_array(),
         );
-        for factory in self.commands.iter_mut() {
-            factory.update_buffers(self.buffers.global_app_buffers());
-        }
     }
     pub fn update_camera(&mut self, update_cam: impl FnOnce(Camera) -> Camera) {
         self.camera = update_cam(self.camera.clone());
@@ -107,7 +105,14 @@ impl App {
         image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
         scene: &Scene,
     ) -> Buffers {
-        self.buffers.make_buffers(&self.info, &self.camera, image, &scene.global_light, &scene)
+        self.buffers.make_buffers(
+            self.info.device.clone(),
+            &self.info,
+            &self.camera,
+            image,
+            &scene.global_light,
+            &scene
+        )
     }
 }
 
@@ -156,21 +161,25 @@ impl GlobalBuffers {
 
     pub fn make_buffers(
         &self,
+        device: Arc<Device>,
         app: &AppInfo,
         camera: &Camera,
         image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
         light: &DirectionLight,
         scene: &Scene,
     ) -> Buffers {
-        Buffers {
-            camera: Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
-            screen: Arc::new(self.screen.next(app.screen.clone()).unwrap()),
-            output_image: image,
-            direction_light: Arc::new(
+        Buffers::new(
+            device,
+            self.rays.clone(),
+            self.intersections.clone(),
+            Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
+            Arc::new(self.screen.next(app.screen.clone()).unwrap()),
+            image,
+            Arc::new(
                 self.direction_light.next(light.clone().into_uniform()).unwrap(),
             ),
-            models_buffers: scene.frame_buffers(),
-        }
+            scene.frame_buffers(),
+        )
     }
 
     pub fn resize_buffers(&mut self, device: &Arc<Device>, family: QueueFamily, new_size: usize) {
@@ -193,21 +202,17 @@ impl GlobalBuffers {
 
 #[derive(Clone)]
 pub struct Buffers {
-    pub camera: Arc<
-        dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type>
-            + Send
-            + Sync
-            + 'static,
-    >,
-    pub screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync + 'static>,
-    pub output_image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-    pub direction_light:
-        Arc<dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static>,
-    pub models_buffers: SceneBuffers,
+    pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
+use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
 impl Buffers {
     pub fn new(
+        device: Arc<Device>,
+        rays: Arc<DeviceLocalBuffer<[Ray]>>,
+        intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
         camera: Arc<
             dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
         >,
@@ -218,7 +223,64 @@ impl Buffers {
         >,
         models_buffers: SceneBuffers,
     ) -> Self {
-        Buffers { camera, screen, output_image, direction_light, models_buffers }
+
+        mod cs {
+            vulkano_shaders::shader! {
+                ty: "compute",
+                path: "../rencan-render/shaders/lightning.glsl"
+            }
+        }
+
+        let shader = cs::Shader::load(device.clone()).unwrap();
+        let pipeline = Arc::new(
+            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &(), None).unwrap(),
+        );
+
+        let global_app_set = Arc::new(
+            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(0).unwrap().clone())
+                .add_buffer(screen.clone())
+                .unwrap()
+                .add_buffer(camera.clone())
+                .unwrap()
+                .add_buffer(rays.clone())
+                .unwrap()
+                .add_buffer(intersections.clone())
+                .unwrap()
+                .add_image(output_image.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
+        let models_set = Arc::new(
+            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(1).unwrap().clone())
+                .add_buffer(models_buffers.count.clone())
+                .unwrap()
+                .add_buffer(models_buffers.infos.clone())
+                .unwrap()
+                .add_buffer(models_buffers.vertices.clone())
+                .unwrap()
+                .add_buffer(models_buffers.indices.clone())
+                .unwrap()
+                .add_buffer(models_buffers.hit_boxes.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
+        let lights_set = Arc::new(
+            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(2).unwrap().clone())
+                .add_buffer(direction_light)
+                .unwrap()
+                .add_buffer(models_buffers.point_lights_count.clone())
+                .unwrap()
+                .add_buffer(models_buffers.point_lights.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
+
+        Buffers { global_app_set, models_set, lights_set }
     }
 }
 
@@ -254,9 +316,9 @@ impl AppBuilder {
     }
     pub fn then_command(
         mut self,
-        f: impl FnOnce(GlobalAppBuffers) -> Box<dyn CommandFactory>,
+        f: Box<dyn CommandFactory>,
     ) -> Self {
-        self.commands.push(f(self.global_buffers.global_app_buffers()));
+        self.commands.push(f);
         self
     }
     pub fn build(self) -> App {

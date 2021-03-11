@@ -14,9 +14,13 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     mat3 rotation;
     float fov;
 };
-layout(std140, set = 0, binding = 2) writeonly buffer RaysInfo {
-    Ray data[];
-} rays;
+layout(std140, set = 0, binding = 2) writeonly buffer Rays {
+    Ray rays[];
+};
+layout(std140, set = 0, binding = 3) readonly buffer Intersections {
+    Intersection intersections[];
+};
+layout(set = 0, binding = 4, rgba8) readonly uniform image2D resultImage;
 
 uint compute_x(uint screen_width) {
     return gl_GlobalInvocationID.x % screen_width;
@@ -44,5 +48,5 @@ void main() {
 
     vec4 direction = vec4(normalize(rotation * vec3(x, y, -1.0)), 0.0);
 
-    rays.data[idx] = Ray(origin, direction, 1.0 / 0.0);
+    rays[idx] = Ray(origin, direction, 1.0 / 0.0);
 }

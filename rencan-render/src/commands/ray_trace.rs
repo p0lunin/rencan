@@ -25,16 +25,15 @@ pub mod ray_trace_shader {
 
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    buffers: GlobalAppBuffers,
 }
 
 impl RayTraceCommandFactory {
-    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        RayTraceCommandFactory { buffers, pipeline }
+        RayTraceCommandFactory { pipeline }
     }
 }
 
@@ -43,36 +42,9 @@ impl CommandFactory for RayTraceCommandFactory {
         let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
         let device = app_info.device.clone();
 
-        let layout_0 = self.pipeline.layout().descriptor_set_layout(0).unwrap();
-        let set_0 = Arc::new(
-            PersistentDescriptorSet::start(layout_0.clone())
-                .add_buffer(buffers.screen.clone())
-                .unwrap()
-                .add_buffer(self.buffers.rays.clone())
-                .unwrap()
-                .add_buffer(self.buffers.intersections.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
+        let set_0 = buffers.global_app_set.clone();
 
-        let layout_1 = self.pipeline.layout().descriptor_set_layout(1).unwrap();
-
-        let set_1 = Arc::new(
-            PersistentDescriptorSet::start(layout_1.clone())
-                .add_buffer(buffers.models_buffers.count.clone())
-                .unwrap()
-                .add_buffer(buffers.models_buffers.infos.clone())
-                .unwrap()
-                .add_buffer(buffers.models_buffers.vertices.clone())
-                .unwrap()
-                .add_buffer(buffers.models_buffers.indices.clone())
-                .unwrap()
-                .add_buffer(buffers.models_buffers.hit_boxes.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
+        let set_1 = buffers.models_set.clone();
 
         let mut command =
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
@@ -85,10 +57,6 @@ impl CommandFactory for RayTraceCommandFactory {
         let command = command.build().unwrap();
 
         command
-    }
-
-    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
-        self.buffers = buffers;
     }
 }
 /*

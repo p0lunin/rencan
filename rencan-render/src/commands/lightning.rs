@@ -20,7 +20,7 @@ use crate::{
 use std::cell::{Cell, RefCell};
 use vulkano::buffer::{BufferUsage, DeviceLocalBuffer, TypedBufferAccess};
 
-mod lightning_cs {
+pub mod lightning_cs {
     vulkano_shaders::shader! {
         ty: "compute",
         path: "shaders/lightning.glsl"
@@ -31,11 +31,10 @@ mod lightning_cs {
 pub struct LightningCommandFactory {
     device: Arc<Device>,
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
-    global_buffers: GlobalAppBuffers,
 }
 
 impl LightningCommandFactory {
-    pub fn new(buffers: GlobalAppBuffers, device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>) -> Self {
         let lightning_pipeline = Arc::new(
             ComputePipeline::new(
                 device.clone(),
@@ -48,7 +47,6 @@ impl LightningCommandFactory {
         LightningCommandFactory {
             device,
             lightning_pipeline,
-            global_buffers: buffers,
         }
     }
 }
@@ -61,69 +59,30 @@ impl CommandFactory for LightningCommandFactory {
         )
         .unwrap();
 
-        add_lightning(self, &self.global_buffers, &ctx, &mut command);
+        add_lightning(self, &ctx, &mut command);
 
         let command = command.build().unwrap();
 
         command
     }
-
-    fn update_buffers(&mut self, buffers: GlobalAppBuffers) {
-        self.global_buffers = buffers;
-    }
 }
 
 fn add_lightning(
     factory: &LightningCommandFactory,
-    global_buffers: &GlobalAppBuffers,
     ctx: &CommandFactoryContext,
     command: &mut AutoCommandBufferBuilder,
 ) {
     let CommandFactoryContext { buffers, count_of_workgroups, .. } = ctx;
 
-    let layout_0 = factory.lightning_pipeline.layout().descriptor_set_layout(0).unwrap();
-    let set_0 = Arc::new(
-        PersistentDescriptorSet::start(layout_0.clone())
-            .add_buffer(buffers.screen.clone())
-            .unwrap()
-            .add_buffer(global_buffers.rays.clone())
-            .unwrap()
-            .add_image(buffers.output_image.clone())
-            .unwrap()
-            .add_buffer(global_buffers.intersections.clone())
-            .unwrap()
-            .add_buffer(buffers.direction_light.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.point_lights_count.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.point_lights.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
-    );
-
-    let layout_1 = factory.lightning_pipeline.layout().descriptor_set_layout(1).unwrap();
-    let set_1 = Arc::new(
-        PersistentDescriptorSet::start(layout_1.clone())
-            .add_buffer(buffers.models_buffers.count.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.infos.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.vertices.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.indices.clone())
-            .unwrap()
-            .add_buffer(buffers.models_buffers.hit_boxes.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
-    );
+    let set_0 = buffers.global_app_set.clone();
+    let set_1 = buffers.models_set.clone();
+    let set_2 = buffers.lights_set.clone();
 
     command
         .dispatch(
             [*count_of_workgroups, 1, 1],
             factory.lightning_pipeline.clone(),
-            (set_0, set_1),
+            (set_0, set_1, set_2),
             (),
         )
         .unwrap();

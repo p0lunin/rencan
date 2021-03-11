@@ -6,25 +6,24 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+// set0 is global for app
 layout(set = 0, binding = 0) readonly uniform Info {
     uvec2 screen;
 };
-layout(std140, set = 0, binding = 1) readonly buffer PrimaryRays {
+layout(std140, set = 0, binding = 1) readonly uniform Camera {
+    vec3 pos;
+    mat3 rotation;
+    float fov;
+};
+layout(std140, set = 0, binding = 2) readonly buffer PrimaryRays {
     Ray primary_rays[];
 };
-layout(set = 0, binding = 2, rgba8) writeonly uniform image2D resultImage;
 layout(std140, set = 0, binding = 3) readonly buffer PrimaryIntersections {
     Intersection primary_rays_intersections[];
 };
-layout(std140, set = 0, binding = 4) readonly uniform DirectLightInfo {
-    DirectLight global_light;
-};
-layout(std140, set = 0, binding = 5) readonly uniform PointLightsInfo {
-    uint point_lights_count;
-};
-layout(std140, set = 0, binding = 6) readonly buffer PointLights {
-    PointLight[] point_lights;
-};
+layout(set = 0, binding = 4, rgba8) writeonly uniform image2D resultImage;
+
+// set1 for models
 layout(std140, set = 1, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
 };
@@ -39,6 +38,17 @@ layout(std140, set = 1, binding = 3) readonly buffer Indexes {
 };
 layout(std140, set = 1, binding = 4) readonly buffer HitBoxes {
     HitBoxRectangle[] hit_boxes;
+};
+
+// set2 for lights
+layout(std140, set = 2, binding = 0) readonly uniform DirectLightInfo {
+    DirectLight global_light;
+};
+layout(std140, set = 2, binding = 1) readonly uniform PointLightsInfo {
+    uint point_lights_count;
+};
+layout(std140, set = 2, binding = 2) readonly buffer PointLights {
+    PointLight[] point_lights;
 };
 
 #include "include/ray_tracing.glsl"

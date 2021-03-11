@@ -6,7 +6,6 @@ use vulkano::command_buffer::AutoCommandBuffer;
 
 pub trait CommandFactory {
     fn make_command<'m>(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer;
-    fn update_buffers(&mut self, buffers: GlobalAppBuffers);
 }
 
 #[derive(Clone)]
