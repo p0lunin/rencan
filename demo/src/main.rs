@@ -128,7 +128,7 @@ fn main() {
                 app.reacreate_swapchain();
             }
             Event::RedrawEventsCleared => {
-                rx.recv().unwrap();
+                //rx.recv().unwrap();
                 while let Ok(rot) = rot_rx.try_recv() {
                     scene.global_light.direction = rot * &scene.global_light.direction;
                 }
