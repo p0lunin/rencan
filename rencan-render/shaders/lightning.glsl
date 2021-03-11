@@ -101,7 +101,7 @@ Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight
 
     vec3 point = inter.point + inter.normal * 0.001;
 
-    return Ray(point, vec4(direction_ray, 0.0), length(direction_ray));
+    return Ray(point, vec4(normalize(direction_ray), 0.0), length(direction_ray));
 }
 
 vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray primary_ray) {

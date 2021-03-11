@@ -1,3 +1,5 @@
+mod models;
+
 use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
 use rencan_render::core::{
     light::{DirectionLight, LightInfo, PointLight},
@@ -61,28 +63,35 @@ fn main() {
     let mut frames = 0;
     let mut next = Instant::now() + Duration::from_secs(1);
 
-    let mut models = Vec::new();
-
+    let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
+    models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
+    /*
     for i in 0..20 {
         let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
         let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
         models.push(model);
         models.push(plane);
     }
-
+*/
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
     let mut scene = Scene::new(
         app.device(),
         models,
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 15.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 5.0),
             Vector3::new(0.0, -1.0, 0.0),
         ),
-        vec![PointLight::new(
-            LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 15.0),
-            Point3::new(0.0, 0.0, 2.0),
-        )],
+        vec![
+            PointLight::new(
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 30.0),
+                Point3::new(0.0, 2.49, 0.0),
+            ),
+            PointLight::new(
+                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 10.0),
+                Point3::new(0.0, -2.0, 0.0),
+            )
+        ],
     );
 
     std::thread::spawn(move || loop {
