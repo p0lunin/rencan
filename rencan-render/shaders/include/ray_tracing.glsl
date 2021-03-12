@@ -1,16 +1,18 @@
 const float eps = 0.0001;
 
 struct IntersectResult {
+    vec3 normal;
     vec2 barycentric_coords;
     float distance;
     bool intersect;
 };
 
 IntersectResult not_intersect() {
-    return IntersectResult(vec2(0.0), 0.0, false);
+    const IntersectResult empty = IntersectResult(vec3(0.0), vec2(0.0), 0.0, false);
+    return empty;
 }
-IntersectResult ret_intersect(vec2 coords, float t) {
-    return IntersectResult(coords, t, true);
+IntersectResult ret_intersect(vec3 normal, vec2 coords, float t) {
+    return IntersectResult(normal, coords, t, true);
 }
 
 IntersectResult _intersect(Ray ray, vec3[3] triangle) {
@@ -34,7 +36,9 @@ IntersectResult _intersect(Ray ray, vec3[3] triangle) {
     float t = dot(v0v2, vvec) * inv_det;
     if (t < 0) return not_intersect();
 
-    return ret_intersect(vec2(u, v), t);
+    vec3 normal = cross(v0v1, v0v2);
+
+    return ret_intersect(normal, vec2(u, v), t);
 }
 
 vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
@@ -84,23 +88,17 @@ Intersection trace(
 
         for (int i = 0; i < model.indexes_length; i++) {
             uvec3 index = indexes[offset_indexes + i];
-            vec3 triangle1 = vertices[offset_vertices + index.x];
-            vec3 triangle2 = vertices[offset_vertices + index.y];
-            vec3 triangle3 = vertices[offset_vertices + index.z];
-            vec3[3] triangles = vec3[](triangle1, triangle2, triangle3);
-            IntersectResult res = _intersect(ray, triangles);
+            vec3 vertice1 = vertices[offset_vertices + index.x];
+            vec3 vertice2 = vertices[offset_vertices + index.y];
+            vec3 vertice3 = vertices[offset_vertices + index.z];
+            vec3[3] vertices = vec3[](vertice1, vertice2, vertice3);
+            IntersectResult res = _intersect(ray, vertices);
             if (res.intersect && res.distance < distance && res.distance < ray.max_distance) {
-                vec3 normal = normalize(
-                    cross(
-                        triangle2 - triangle1,
-                        triangle3 - triangle1
-                    )
-                );
                 vec3 inter_point = origin_ray.origin + origin_ray.direction.xyz * res.distance;
                 distance = res.distance;
                 inter = intersection_succ(
                     inter_point,
-                    normal,
+                    res.normal,
                     model_idx,
                     offset_indexes + i,
                     offset_vertices,
