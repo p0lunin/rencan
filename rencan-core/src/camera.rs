@@ -1,6 +1,6 @@
 use nalgebra::{Point3, Rotation3, Vector3};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Camera {
     position: Point3<f32>,
     rotation: (f32, f32, f32),

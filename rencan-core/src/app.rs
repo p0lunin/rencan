@@ -77,6 +77,7 @@ impl App {
             buffers: buffers.clone(),
             count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
             scene,
+            camera: &self.camera
         };
 
         let mut fill_buffers = AutoCommandBufferBuilder::new(
@@ -84,8 +85,6 @@ impl App {
             self.info.graphics_queue.family(),
         )
         .unwrap();
-        fill_buffers.fill_buffer(self.buffers.intersections.clone(), 0).unwrap();
-        fill_buffers.fill_buffer(self.buffers.rays.clone(), 0).unwrap();
 
         let command = fill_buffers.build().unwrap();
 
@@ -202,6 +201,8 @@ impl GlobalBuffers {
 
 #[derive(Clone)]
 pub struct Buffers {
+    pub rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
+    pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
@@ -280,7 +281,7 @@ impl Buffers {
                 .unwrap(),
         );
 
-        Buffers { global_app_set, models_set, lights_set }
+        Buffers { rays, intersections, global_app_set, models_set, lights_set }
     }
 }
 

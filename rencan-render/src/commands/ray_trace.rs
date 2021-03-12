@@ -39,7 +39,7 @@ impl RayTraceCommandFactory {
 
 impl CommandFactory for RayTraceCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
-        let CommandFactoryContext { app_info, buffers, count_of_workgroups, scene } = ctx;
+        let CommandFactoryContext { app_info, buffers, count_of_workgroups, .. } = ctx;
         let device = app_info.device.clone();
 
         let set_0 = buffers.global_app_set.clone();

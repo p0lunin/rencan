@@ -1,5 +1,5 @@
 #[repr(transparent)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Screen(pub [u32; 2]);
 
 impl Screen {
