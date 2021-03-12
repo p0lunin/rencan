@@ -55,55 +55,6 @@ vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
     return vec3(1.0, tN, tF);
 }
 
-vec3[3] _check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
-    float temp;
-    vec3[3] empty_result;
-    empty_result[0].x = 0.0;
-
-    vec3 tmin = (hit_box.min - ray.origin) / ray.direction.xyz;
-    vec3 tmax = (hit_box.max - ray.origin) / ray.direction.xyz;
-
-    if (tmin.x > tmax.x) {
-        temp = tmin.x;
-        tmin.x = tmax.x;
-        tmax.x = temp;
-    }
-
-    if (tmin.y > tmax.y) {
-        temp = tmin.y;
-        tmin.y = tmax.y;
-        tmax.y = temp;
-    }
-
-    if (tmin.z > tmax.z) {
-        temp = tmin.z;
-        tmin.z = tmax.z;
-        tmax.z = temp;
-    }
-
-    if ((tmin.x > tmax.y) || (tmin.y > tmax.x))
-        return empty_result;
-
-    if (tmin.y > tmin.x) {
-        tmin.x = tmin.y;
-    }
-
-    if (tmax.y < tmax.x) {
-        tmax.x = tmax.y;
-    }
-
-    if ((tmin.x > tmax.z) || (tmin.z > tmax.x))
-        return empty_result;
-
-    if (tmin.z > tmin.x)
-        tmin.x = tmin.z;
-
-    if (tmax.z < tmax.x)
-        tmax.x = tmax.z;
-
-    return vec3[3](vec3(1.0), tmin, tmax);
-}
-
 Intersection trace(
     Ray origin_ray
 ) {
