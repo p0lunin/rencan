@@ -68,7 +68,7 @@ impl CommandFactory for ComputeRaysCommandFactory {
             let set_0 = buffers.global_app_set.clone();
 
             calc_rays
-                .dispatch([ctx.count_of_workgroups, 1, 1], self.pipeline.clone(), set_0, ())
+                .dispatch([ctx.app_info.size_of_image_array() as u32 / 32, 1, 1], self.pipeline.clone(), set_0, ())
                 .unwrap();
         }
 

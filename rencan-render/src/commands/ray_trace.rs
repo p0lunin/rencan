@@ -36,7 +36,7 @@ impl RayTraceCommandFactory {
 
 impl CommandFactory for RayTraceCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
-        let CommandFactoryContext { app_info, buffers, count_of_workgroups, .. } = ctx;
+        let CommandFactoryContext { app_info, buffers, .. } = ctx;
         let device = app_info.device.clone();
 
         let set_0 = buffers.global_app_set.clone();
@@ -48,7 +48,7 @@ impl CommandFactory for RayTraceCommandFactory {
                 .unwrap();
 
         command
-            .dispatch([count_of_workgroups, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
+            .dispatch([ctx.app_info.size_of_image_array() as u32 / 128, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
             .unwrap();
 
         let command = command.build().unwrap();

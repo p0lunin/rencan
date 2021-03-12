@@ -9,7 +9,6 @@ pub trait CommandFactory {
 pub struct CommandFactoryContext<'a> {
     pub app_info: &'a AppInfo,
     pub buffers: Buffers,
-    pub count_of_workgroups: u32,
     pub scene: &'a Scene,
     pub camera: &'a Camera,
 }

@@ -56,7 +56,7 @@ fn add_lightning(
     ctx: &CommandFactoryContext,
     command: &mut AutoCommandBufferBuilder,
 ) {
-    let CommandFactoryContext { buffers, count_of_workgroups, .. } = ctx;
+    let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
     let set_1 = buffers.models_set.clone();
@@ -64,7 +64,7 @@ fn add_lightning(
 
     command
         .dispatch(
-            [*count_of_workgroups, 1, 1],
+            [ctx.app_info.size_of_image_array() as u32 / 128, 1, 1],
             factory.lightning_pipeline.clone(),
             (set_0, set_1, set_2),
             (),

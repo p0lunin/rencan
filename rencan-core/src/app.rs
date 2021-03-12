@@ -74,7 +74,6 @@ impl App {
         let ctx = CommandFactoryContext {
             app_info: &self.info,
             buffers: buffers.clone(),
-            count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
             scene,
             camera: &self.camera,
         };
