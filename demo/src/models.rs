@@ -1,7 +1,5 @@
-use rencan_render::core::model::AppModel;
-use nalgebra::Point3;
-use rencan_render::core::Model;
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
+use rencan_render::core::{model::AppModel, Model};
 
 macro_rules! indices {
     ($($x:ident, $y:ident, $z:ident,)*) => {
@@ -14,30 +12,22 @@ macro_rules! indices {
 pub fn make_desk(position: Point3<f32>, scale: f32) -> Vec<AppModel> {
     let mut models = vec![];
     models.push(make_top_desk(position.clone(), scale));
-    models.push(
-        make_desk_leg(
-            position.clone() + Vector3::new(-0.4 * scale, 0.0, -0.4 * scale),
-            scale / 3.0
-        )
-    );
-    models.push(
-        make_desk_leg(
-            position.clone() + Vector3::new(0.4 * scale, 0.0, -0.4 * scale),
-            scale / 3.0
-        )
-    );
-    models.push(
-        make_desk_leg(
-            position.clone() + Vector3::new(-0.4 * scale, 0.0, 0.4 * scale),
-            scale / 3.0
-        )
-    );
-    models.push(
-        make_desk_leg(
-            position.clone() + Vector3::new(0.4 * scale, 0.0, 0.4 * scale),
-            scale / 3.0
-        )
-    );
+    models.push(make_desk_leg(
+        position.clone() + Vector3::new(-0.4 * scale, 0.0, -0.4 * scale),
+        scale / 3.0,
+    ));
+    models.push(make_desk_leg(
+        position.clone() + Vector3::new(0.4 * scale, 0.0, -0.4 * scale),
+        scale / 3.0,
+    ));
+    models.push(make_desk_leg(
+        position.clone() + Vector3::new(-0.4 * scale, 0.0, 0.4 * scale),
+        scale / 3.0,
+    ));
+    models.push(make_desk_leg(
+        position.clone() + Vector3::new(0.4 * scale, 0.0, 0.4 * scale),
+        scale / 3.0,
+    ));
 
     models
 }
@@ -61,30 +51,14 @@ fn make_top_desk(position: Point3<f32>, scale: f32) -> AppModel {
             [0.4, 0.0, -0.4, 0.0].into(),  // B1 - 1
             [0.4, 0.0, 0.4, 0.0].into(),   // C1 - 2
             [-0.4, 0.0, 0.4, 0.0].into(),  // D1 - 3
-
             [-0.4, -0.1, -0.4, 0.0].into(), // A2 - 4
-            [0.4, -0.1, -0.4, 0.0].into(),  // B2 - 5
-            [0.4, -0.1, 0.4, 0.0].into(),   // C2 - 6
-            [-0.4, -0.1, 0.4, 0.0].into(),  // D2 - 7
+            [0.4, -0.1, -0.4, 0.0].into(), // B2 - 5
+            [0.4, -0.1, 0.4, 0.0].into(),  // C2 - 6
+            [-0.4, -0.1, 0.4, 0.0].into(), // D2 - 7
         ],
         indices![
-            A1, C1, B1,
-            A1, D1, C1,
-
-            D2, B2, C2,
-            D2, A2, B2,
-
-            B2, A1, B1,
-            B2, A2, A1,
-
-            A2, D1, A1,
-            A2, D2, D1,
-
-            D2, C1, D1,
-            D2, C2, C1,
-
-            C2, B1, C1,
-            C2, B2, B1,
+            A1, C1, B1, A1, D1, C1, D2, B2, C2, D2, A2, B2, B2, A1, B1, B2, A2, A1, A2, D1, A1, A2,
+            D2, D1, D2, C1, D1, D2, C2, C1, C2, B1, C1, C2, B2, B1,
         ],
     );
     model.position = position;
@@ -112,30 +86,14 @@ fn make_desk_leg(position: Point3<f32>, scale: f32) -> AppModel {
             [0.1, 0.0, -0.1, 0.0].into(),  // B1 - 1
             [0.1, 0.0, 0.1, 0.0].into(),   // C1 - 2
             [-0.1, 0.0, 0.1, 0.0].into(),  // D1 - 3
-
             [-0.1, -1.0, -0.1, 0.0].into(), // A2 - 4
-            [0.1, -1.0, -0.1, 0.0].into(),  // B2 - 5
-            [0.1, -1.0, 0.1, 0.0].into(),   // C2 - 6
-            [-0.1, -1.0, 0.1, 0.0].into(),  // D2 - 7
+            [0.1, -1.0, -0.1, 0.0].into(), // B2 - 5
+            [0.1, -1.0, 0.1, 0.0].into(),  // C2 - 6
+            [-0.1, -1.0, 0.1, 0.0].into(), // D2 - 7
         ],
         indices![
-            A1, C1, B1,
-            A1, D1, C1,
-
-            D2, B2, C2,
-            D2, A2, B2,
-
-            B2, A1, B1,
-            B2, A2, A1,
-
-            A2, D1, A1,
-            A2, D2, D1,
-
-            D2, C1, D1,
-            D2, C2, C1,
-
-            C2, B1, C1,
-            C2, B2, B1,
+            A1, C1, B1, A1, D1, C1, D2, B2, C2, D2, A2, B2, B2, A1, B1, B2, A2, A1, A2, D1, A1, A2,
+            D2, D1, D2, C1, D1, D2, C2, C1, C2, B1, C1, C2, B2, B1,
         ],
     );
     model.position = position;
@@ -163,30 +121,18 @@ pub fn make_room(position: Point3<f32>, scale: f32) -> AppModel {
             [1.0, 0.0, -1.0, 0.0].into(),  // B1 - 1
             [1.0, 0.0, 1.0, 0.0].into(),   // C1 - 2
             [-1.0, 0.0, 1.0, 0.0].into(),  // D1 - 3
-
             [-1.0, -1.0, -1.0, 0.0].into(), // A2 - 4
-            [1.0, -1.0, -1.0, 0.0].into(),  // B2 - 5
-            [1.0, -1.0, 1.0, 0.0].into(),   // C2 - 6
-            [-1.0, -1.0, 1.0, 0.0].into(),  // D2 - 7
+            [1.0, -1.0, -1.0, 0.0].into(), // B2 - 5
+            [1.0, -1.0, 1.0, 0.0].into(),  // C2 - 6
+            [-1.0, -1.0, 1.0, 0.0].into(), // D2 - 7
         ],
         indices![
-            A2, C2, B2,
-            A2, D2, C2,
-/*
-            D1, B1, C1,
-            D1, A1, B1,
-*/
-            B1, A2, B2,
-            B1, A1, A2,
-
-            A1, D2, A2,
-            A1, D1, D2,
-
-            D1, C2, D2,
-            D1, C1, C2,
-
-            C1, B2, C2,
-            C1, B1, B2,
+            A2, C2, B2, A2, D2, C2, /*
+                        D1, B1, C1,
+                        D1, A1, B1,
+            */
+            B1, A2, B2, B1, A1, A2, A1, D2, A2, A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2, C1,
+            B1, B2,
         ],
     );
     model.position = position;

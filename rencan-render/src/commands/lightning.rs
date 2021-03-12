@@ -2,23 +2,12 @@ use std::sync::Arc;
 
 use vulkano::{
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-    descriptor::{
-        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout,
-        PipelineLayoutAbstract,
-    },
+    descriptor::pipeline_layout::PipelineLayout,
     device::Device,
     pipeline::ComputePipeline,
 };
 
-use crate::{
-    commands::shaders::ray_trace_shader,
-    core::{
-        app::GlobalAppBuffers, intersection::IntersectionUniform, BufferAccessData, CommandFactory,
-        CommandFactoryContext, Ray,
-    },
-};
-use std::cell::{Cell, RefCell};
-use vulkano::buffer::{BufferUsage, DeviceLocalBuffer, TypedBufferAccess};
+use crate::core::{CommandFactory, CommandFactoryContext};
 
 pub mod lightning_cs {
     vulkano_shaders::shader! {
@@ -27,9 +16,7 @@ pub mod lightning_cs {
     }
 }
 
-
 pub struct LightningCommandFactory {
-    device: Arc<Device>,
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
 }
 
@@ -38,16 +25,13 @@ impl LightningCommandFactory {
         let lightning_pipeline = Arc::new(
             ComputePipeline::new(
                 device.clone(),
-                &lightning_cs::Shader::load(device.clone()).unwrap().main_entry_point(),
+                &lightning_cs::Shader::load(device).unwrap().main_entry_point(),
                 &(),
                 None,
             )
             .unwrap(),
         );
-        LightningCommandFactory {
-            device,
-            lightning_pipeline,
-        }
+        LightningCommandFactory { lightning_pipeline }
     }
 }
 

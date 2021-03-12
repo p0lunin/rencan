@@ -1,8 +1,5 @@
 use crate::{
-    hitbox::HitBoxRectangleUniformStd140,
-    light::PointLightUniform,
-    model::{AppModel, ModelUniformInfo},
-    Scene,
+    hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo, Scene,
 };
 use crevice::std140::AsStd140;
 use nalgebra::Point4;

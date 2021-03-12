@@ -1,9 +1,5 @@
-use crate::{
-    app::{Buffers, GlobalAppBuffers},
-    AppInfo, Scene,
-};
+use crate::{app::Buffers, camera::Camera, AppInfo, Scene};
 use vulkano::command_buffer::AutoCommandBuffer;
-use crate::camera::Camera;
 
 pub trait CommandFactory {
     fn make_command<'m>(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer;

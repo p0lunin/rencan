@@ -9,11 +9,11 @@ use rencan_render::core::{
 use std::time::{Duration, Instant};
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-    event_loop::EventLoop,
+    event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use winit::event_loop::ControlFlow;
 
+#[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
     let mut model = Model::new(
         vec![
@@ -38,6 +38,7 @@ fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
     AppModel::new(model)
 }
 
+#[allow(unused)]
 fn make_plane(position: Point3<f32>, scale: f32) -> AppModel {
     let mut plane = Model::new(
         vec![
@@ -66,13 +67,13 @@ fn main() {
     let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
     /*
-    for i in 0..20 {
-        let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
-        let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
-        models.push(model);
-        models.push(plane);
-    }
-*/
+        for i in 0..20 {
+            let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
+            let plane = make_plane(Point3::new((i * 5) as f32, -1.8, 0.0), 5.0);
+            models.push(model);
+            models.push(plane);
+        }
+    */
     let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
 
     let mut scene = Scene::new(
@@ -90,7 +91,7 @@ fn main() {
             PointLight::new(
                 LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 10.0),
                 Point3::new(0.0, -2.0, 0.0),
-            )
+            ),
         ],
     );
 
@@ -103,19 +104,6 @@ fn main() {
 
     let microseconds_per_frame = (1000_000.0 / 60.0) as u64;
     let frame_duration = Duration::from_micros(microseconds_per_frame);
-
-    let (tx, rx) = std::sync::mpsc::sync_channel(10);
-    std::thread::spawn(move || {
-        let mut next = Instant::now() + frame_duration;
-        loop {
-            while next > Instant::now() {}
-            next = Instant::now() + frame_duration;
-
-            if let Err(_) = tx.send(()) {
-                break;
-            }
-        }
-    });
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);

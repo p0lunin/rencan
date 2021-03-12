@@ -2,15 +2,12 @@ use std::sync::Arc;
 
 use vulkano::{
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-    descriptor::{
-        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout,
-        PipelineLayoutAbstract,
-    },
+    descriptor::pipeline_layout::PipelineLayout,
     device::Device,
     pipeline::ComputePipeline,
 };
 
-use crate::core::{app::GlobalAppBuffers, CommandFactory, CommandFactoryContext};
+use crate::core::{CommandFactory, CommandFactoryContext};
 
 mod cs {
     vulkano_shaders::shader! {

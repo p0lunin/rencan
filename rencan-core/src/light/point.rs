@@ -1,5 +1,5 @@
 use crate::light::info::LightInfo;
-use nalgebra::{Point3, UnitQuaternion};
+use nalgebra::Point3;
 
 #[derive(Debug, Clone)]
 pub struct PointLight {

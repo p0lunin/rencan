@@ -11,9 +11,7 @@ use vulkano::{
 
 use rencan_core::CommandFactory;
 
-use crate::core::{app::GlobalAppBuffers, BufferAccessData, CommandFactoryContext, Ray, Screen};
-use vulkano::descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract};
-use crate::core::camera::Camera;
+use crate::core::{camera::Camera, CommandFactoryContext, Screen};
 use nalgebra::Point3;
 use std::cell::RefCell;
 
@@ -61,7 +59,9 @@ impl CommandFactory for ComputeRaysCommandFactory {
 
         let buffers = ctx.buffers.clone();
 
-        if *self.prev_screen.borrow() != ctx.app_info.screen || *self.prev_camera.borrow() != *ctx.camera {
+        if *self.prev_screen.borrow() != ctx.app_info.screen
+            || *self.prev_camera.borrow() != *ctx.camera
+        {
             *self.prev_camera.borrow_mut() = ctx.camera.clone();
             *self.prev_screen.borrow_mut() = ctx.app_info.screen.clone();
 

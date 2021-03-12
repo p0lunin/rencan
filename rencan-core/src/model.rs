@@ -1,14 +1,6 @@
-use crate::{hitbox::HitBoxRectangle, BufferAccessData};
+use crate::hitbox::HitBoxRectangle;
 use crevice::std140::AsStd140;
-use nalgebra::{Isometry3, Point3, Point4, Similarity3, Translation3, UnitQuaternion};
-use once_cell::sync::OnceCell;
-use std::{cell::RefCell, sync::Arc};
-use vulkano::{
-    buffer::{cpu_pool::CpuBufferPoolSubbuffer, BufferUsage, CpuBufferPool, ImmutableBuffer},
-    device::{Device, Queue},
-    memory::pool::StdMemoryPool,
-    sync::GpuFuture,
-};
+use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
 pub struct Model {
@@ -72,8 +64,6 @@ impl ModelUniformInfo {
         AsStd140::as_std140(self)
     }
 }
-
-type ModelUniformInfoStd140 = <ModelUniformInfo as AsStd140>::Std140Type;
 
 #[allow(dead_code)]
 pub struct AppModel {

@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 
 use vulkano::{
     command_buffer::AutoCommandBufferBuilder,
@@ -18,8 +15,7 @@ use vulkano::{
 use vulkano_win::VkSurfaceBuild;
 use winit::{
     dpi::{PhysicalSize, Size},
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
 
@@ -84,8 +80,7 @@ impl GuiApp {
         }
 
         let (image_num, suboptimal, acquire_future) =
-            match vulkano::swapchain::acquire_next_image(self.swap_chain.clone(), None)
-            {
+            match vulkano::swapchain::acquire_next_image(self.swap_chain.clone(), None) {
                 Ok(r) => r,
                 Err(AcquireError::OutOfDate) => {
                     self.must_recreate_swapchain = true;
@@ -98,11 +93,8 @@ impl GuiApp {
             self.must_recreate_swapchain = true;
         }
 
-        let mut clear_image = AutoCommandBufferBuilder::new(
-            self.device(),
-            self.graphics_queue().family(),
-        )
-        .unwrap();
+        let mut clear_image =
+            AutoCommandBufferBuilder::new(self.device(), self.graphics_queue().family()).unwrap();
         clear_image
             .clear_color_image(
                 self.swap_chain_images[image_num].clone(),
@@ -123,11 +115,7 @@ impl GuiApp {
         let (fut, _) = self.app.render(fut, &scene, |_| image).unwrap();
 
         let fut = fut
-            .then_swapchain_present(
-                self.present_queue(),
-                self.swap_chain.clone(),
-                image_num,
-            )
+            .then_swapchain_present(self.present_queue(), self.swap_chain.clone(), image_num)
             .then_signal_fence_and_flush()
             .unwrap();
 
@@ -193,9 +181,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
-    .then_command(
-        Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone()))
-    )
+    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
     .build()
 }
 

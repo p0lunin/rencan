@@ -11,6 +11,5 @@ pub use lightning::LightningCommandFactory;
 pub use ray_trace::RayTraceCommandFactory;
 
 pub mod shaders {
-    pub use super::ray_trace::ray_trace_shader;
-    pub use super::lightning::lightning_cs as lightning_shader;
+    pub use super::{lightning::lightning_cs as lightning_shader, ray_trace::ray_trace_shader};
 }

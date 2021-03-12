@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crevice::std140::AsStd140;
 use vulkano::{
-    buffer::{BufferUsage, CpuAccessibleBuffer, DeviceLocalBuffer},
+    buffer::{BufferUsage, DeviceLocalBuffer},
     image::ImageViewAccess,
     sync::GpuFuture,
 };
@@ -17,12 +17,11 @@ use crate::{
 };
 use vulkano::{
     buffer::CpuBufferPool,
-    command_buffer::{AutoCommandBufferBuilder, CommandBufferExecError},
+    command_buffer::CommandBufferExecError,
+    descriptor::{DescriptorSet, PipelineLayoutAbstract},
     device::Device,
-    format::ClearValue,
     instance::QueueFamily,
 };
-use vulkano::descriptor::{DescriptorSet, PipelineLayoutAbstract};
 
 pub struct App {
     info: AppInfo,
@@ -77,19 +76,10 @@ impl App {
             buffers: buffers.clone(),
             count_of_workgroups: (self.info.size_of_image_array() / 64) as u32,
             scene,
-            camera: &self.camera
+            camera: &self.camera,
         };
 
-        let mut fill_buffers = AutoCommandBufferBuilder::new(
-            self.info.device.clone(),
-            self.info.graphics_queue.family(),
-        )
-        .unwrap();
-
-        let command = fill_buffers.build().unwrap();
-
-        let mut fut: Box<dyn GpuFuture> =
-            Box::new(previous.then_execute(self.info.graphics_queue.clone(), command).unwrap());
+        let mut fut: Box<dyn GpuFuture> = Box::new(previous);
 
         for factory in self.commands.iter() {
             let command = factory.make_command(ctx.clone());
@@ -110,7 +100,7 @@ impl App {
             &self.camera,
             image,
             &scene.global_light,
-            &scene
+            &scene,
         )
     }
 }
@@ -174,9 +164,7 @@ impl GlobalBuffers {
             Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
-            Arc::new(
-                self.direction_light.next(light.clone().into_uniform()).unwrap(),
-            ),
+            Arc::new(self.direction_light.next(light.clone().into_uniform()).unwrap()),
             scene.frame_buffers(),
         )
     }
@@ -224,7 +212,6 @@ impl Buffers {
         >,
         models_buffers: SceneBuffers,
     ) -> Self {
-
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
@@ -234,51 +221,58 @@ impl Buffers {
 
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
-            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &(), None).unwrap(),
+            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &(), None)
+                .unwrap(),
         );
 
         let global_app_set = Arc::new(
-            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(0).unwrap().clone())
-                .add_buffer(screen.clone())
-                .unwrap()
-                .add_buffer(camera.clone())
-                .unwrap()
-                .add_buffer(rays.clone())
-                .unwrap()
-                .add_buffer(intersections.clone())
-                .unwrap()
-                .add_image(output_image.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
+            PersistentDescriptorSet::start(
+                pipeline.layout().descriptor_set_layout(0).unwrap().clone(),
+            )
+            .add_buffer(screen.clone())
+            .unwrap()
+            .add_buffer(camera.clone())
+            .unwrap()
+            .add_buffer(rays.clone())
+            .unwrap()
+            .add_buffer(intersections.clone())
+            .unwrap()
+            .add_image(output_image.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
         );
 
         let models_set = Arc::new(
-            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(1).unwrap().clone())
-                .add_buffer(models_buffers.count.clone())
-                .unwrap()
-                .add_buffer(models_buffers.infos.clone())
-                .unwrap()
-                .add_buffer(models_buffers.vertices.clone())
-                .unwrap()
-                .add_buffer(models_buffers.indices.clone())
-                .unwrap()
-                .add_buffer(models_buffers.hit_boxes.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
+            PersistentDescriptorSet::start(
+                pipeline.layout().descriptor_set_layout(1).unwrap().clone(),
+            )
+            .add_buffer(models_buffers.count.clone())
+            .unwrap()
+            .add_buffer(models_buffers.infos.clone())
+            .unwrap()
+            .add_buffer(models_buffers.vertices.clone())
+            .unwrap()
+            .add_buffer(models_buffers.indices.clone())
+            .unwrap()
+            .add_buffer(models_buffers.hit_boxes.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
         );
 
         let lights_set = Arc::new(
-            PersistentDescriptorSet::start(pipeline.layout().descriptor_set_layout(2).unwrap().clone())
-                .add_buffer(direction_light)
-                .unwrap()
-                .add_buffer(models_buffers.point_lights_count.clone())
-                .unwrap()
-                .add_buffer(models_buffers.point_lights.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
+            PersistentDescriptorSet::start(
+                pipeline.layout().descriptor_set_layout(2).unwrap().clone(),
+            )
+            .add_buffer(direction_light)
+            .unwrap()
+            .add_buffer(models_buffers.point_lights_count.clone())
+            .unwrap()
+            .add_buffer(models_buffers.point_lights.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
         );
 
         Buffers { rays, intersections, global_app_set, models_set, lights_set }
@@ -315,10 +309,7 @@ impl AppBuilder {
         );
         Self { info, camera, commands: vec![], global_buffers: buffers }
     }
-    pub fn then_command(
-        mut self,
-        f: Box<dyn CommandFactory>,
-    ) -> Self {
+    pub fn then_command(mut self, f: Box<dyn CommandFactory>) -> Self {
         self.commands.push(f);
         self
     }
