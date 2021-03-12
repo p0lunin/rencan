@@ -50,7 +50,14 @@ impl CommandFactory for ComputeRaysCommandFactory {
     fn make_command(
         &self,
         ctx: CommandFactoryContext,
-    ) -> AutoCommandBuffer<StandardCommandPoolAlloc> {
+        commands: &mut Vec<AutoCommandBuffer>,
+    ) {
+        if *self.prev_screen.borrow() == ctx.app_info.screen
+            && *self.prev_camera.borrow() == *ctx.camera
+        {
+            return;
+        }
+
         let mut calc_rays = AutoCommandBufferBuilder::new(
             ctx.app_info.device.clone(),
             ctx.app_info.graphics_queue.family(),
@@ -74,6 +81,6 @@ impl CommandFactory for ComputeRaysCommandFactory {
 
         let calc_rays_command = calc_rays.build().unwrap();
 
-        calc_rays_command
+        commands.push(calc_rays_command);
     }
 }

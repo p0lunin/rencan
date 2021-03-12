@@ -35,7 +35,8 @@ impl RayTraceCommandFactory {
 }
 
 impl CommandFactory for RayTraceCommandFactory {
-    fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
+    fn make_command(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
+    )  {
         let CommandFactoryContext { app_info, buffers, .. } = ctx;
         let device = app_info.device.clone();
 
@@ -53,7 +54,7 @@ impl CommandFactory for RayTraceCommandFactory {
 
         let command = command.build().unwrap();
 
-        command
+        commands.push(command);
     }
 }
 /*

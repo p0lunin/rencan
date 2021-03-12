@@ -36,7 +36,7 @@ impl LightningCommandFactory {
 }
 
 impl CommandFactory for LightningCommandFactory {
-    fn make_command(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer {
+    fn make_command(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
         let mut command = AutoCommandBufferBuilder::new(
             ctx.app_info.device.clone(),
             ctx.app_info.graphics_queue.family(),
@@ -47,7 +47,7 @@ impl CommandFactory for LightningCommandFactory {
 
         let command = command.build().unwrap();
 
-        command
+        commands.push(command)
     }
 }
 

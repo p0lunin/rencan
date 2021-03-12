@@ -78,10 +78,14 @@ impl App {
             camera: &self.camera,
         };
 
+        let mut commands = vec![];
+        for factory in self.commands.iter() {
+            factory.make_command(ctx.clone(), &mut commands);
+        }
+
         let mut fut: Box<dyn GpuFuture> = Box::new(previous);
 
-        for factory in self.commands.iter() {
-            let command = factory.make_command(ctx.clone());
+        for command in commands {
             let f = fut.then_execute_same_queue(command)?;
             fut = Box::new(f);
         }

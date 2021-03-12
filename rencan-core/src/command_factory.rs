@@ -2,7 +2,7 @@ use crate::{app::Buffers, camera::Camera, AppInfo, Scene};
 use vulkano::command_buffer::AutoCommandBuffer;
 
 pub trait CommandFactory {
-    fn make_command<'m>(&self, ctx: CommandFactoryContext) -> AutoCommandBuffer;
+    fn make_command<'m>(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>);
 }
 
 #[derive(Clone)]
