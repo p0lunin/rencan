@@ -37,30 +37,52 @@ IntersectResult _intersect(Ray ray, vec3[3] triangle) {
     return ret_intersect(vec2(u, v), t);
 }
 
-vec4 _check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
+vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
+    vec3 rad = hit_box.max - hit_box.min;
+    ray.origin = ray.origin - hit_box.min;
+
+    vec3 m = 1.0/ray.direction.xyz;
+    vec3 n = m*ray.origin;
+    vec3 k = abs(m)*rad;
+    vec3 t1 = -n - k;
+    vec3 t2 = -n + k;
+
+    float tN = max( max( t1.x, t1.y ), t1.z );
+    float tF = min( min( t2.x, t2.y ), t2.z );
+
+    if( tN>tF || tF<0.0) return vec3(0.0);
+
+    return vec3(1.0, tN, tF);
+}
+
+vec3[3] _check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
+    float temp;
+    vec3[3] empty_result;
+    empty_result[0].x = 0.0;
+
     vec3 tmin = (hit_box.min - ray.origin) / ray.direction.xyz;
     vec3 tmax = (hit_box.max - ray.origin) / ray.direction.xyz;
 
     if (tmin.x > tmax.x) {
-        float temp = tmin.x;
+        temp = tmin.x;
         tmin.x = tmax.x;
         tmax.x = temp;
     }
 
     if (tmin.y > tmax.y) {
-        float temp = tmin.y;
+        temp = tmin.y;
         tmin.y = tmax.y;
         tmax.y = temp;
     }
 
     if (tmin.z > tmax.z) {
-        float temp = tmin.z;
+        temp = tmin.z;
         tmin.z = tmax.z;
         tmax.z = temp;
     }
 
     if ((tmin.x > tmax.y) || (tmin.y > tmax.x))
-        return vec4(0.0);
+        return empty_result;
 
     if (tmin.y > tmin.x) {
         tmin.x = tmin.y;
@@ -71,7 +93,7 @@ vec4 _check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     }
 
     if ((tmin.x > tmax.z) || (tmin.z > tmax.x))
-        return vec4(0.0);
+        return empty_result;
 
     if (tmin.z > tmin.x)
         tmin.x = tmin.z;
@@ -79,7 +101,7 @@ vec4 _check_intersect_hitbox(HitBoxRectangle hit_box, Ray ray) {
     if (tmax.z < tmax.x)
         tmax.x = tmax.z;
 
-    return vec4(1.0, tmin);
+    return vec3[3](vec3(1.0), tmin, tmax);
 }
 
 Intersection trace(
@@ -95,16 +117,15 @@ Intersection trace(
 
     for (int model_idx = 0; model_idx < model_counts; model_idx++) {
         HitBoxRectangle hit_box = hit_boxes[model_idx];
-
         ModelInfo model = models[model_idx];
 
         mat4 global_to_model = inverse(model.isometry);
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
         ray.direction = global_to_model * origin_ray.direction;
 
-        vec4 is_inter_hitbox = _check_intersect_hitbox(hit_box, ray);
+        vec3 is_inter_hitbox = _intersect_box(hit_box, ray);
 
-        if (is_inter_hitbox.x == 0.0) {
+        if (is_inter_hitbox.x == 0.0 || is_inter_hitbox.y > ray.max_distance) {
             offset_indexes += model.indexes_length;
             offset_vertices += model.vertices_length;
             continue;
