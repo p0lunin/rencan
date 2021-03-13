@@ -21,6 +21,7 @@ use winit::{
 
 use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder};
+use vulkano::image::AttachmentImage;
 
 pub struct GuiApp {
     app: App,
@@ -111,10 +112,44 @@ impl GuiApp {
             .then_execute(self.graphics_queue(), clear_image)
             .unwrap();
 
-        let image = self.swap_chain_images[image_num].clone();
-        let (fut, _) = self.app.render(fut, &scene, |_| image).unwrap();
+        let image = AttachmentImage::with_usage(
+            self.device(),
+            self.swap_chain.dimensions(),
+            self.swap_chain.format(),
+            ImageUsage {
+                storage: true,
+                transfer_source: true,
+                ..ImageUsage::none()
+            }
+        ).unwrap();
+        let swapchain_image = self.swap_chain_images[image_num].clone();
+        let (fut, _) = self.app.render(fut, &scene, {
+            let image = image.clone();
+            move |_| image
+        }).unwrap();
+
+        let mut copy_command = AutoCommandBufferBuilder::new(
+            self.device(),
+            self.graphics_queue().family()
+        ).unwrap();
+        let extent = [image.dimensions()[0], image.dimensions()[1], 1];
+        copy_command.copy_image(
+            image,
+            [0, 0, 0],
+            0,
+            0,
+            swapchain_image,
+            [0,0,0],
+            0,
+            0,
+            extent,
+            1
+        ).unwrap();
+        let copy_command = copy_command.build().unwrap();
 
         let fut = fut
+            .then_execute(self.graphics_queue(), copy_command)
+            .unwrap()
             .then_swapchain_present(self.present_queue(), self.swap_chain.clone(), image_num)
             .then_signal_fence_and_flush()
             .unwrap();
