@@ -41,10 +41,9 @@ impl GuiApp {
     pub fn new(window: WindowBuilder, event_loop: &EventLoop<()>) -> Self {
         let instance = init_vulkan();
         let surface = window
-            .with_inner_size(Size::Physical(PhysicalSize::new(512, 512)))
             .build_vk_surface(event_loop, instance.clone())
             .unwrap();
-        let screen = Screen::new(512, 512);
+        let screen = Screen(surface.window().inner_size().into());
         let (app, present_queue) = init_app(&surface, instance, screen);
         let (swap_chain, images) =
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());

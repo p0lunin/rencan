@@ -12,6 +12,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+use winit::dpi::{Size, PhysicalSize};
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -57,7 +58,7 @@ fn make_plane(position: Point3<f32>, scale: f32) -> AppModel {
 
 fn main() {
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().with_resizable(true);
+    let window = WindowBuilder::new().with_resizable(true).with_inner_size(Size::Physical(PhysicalSize::new(512, 512)));
 
     let mut app = rencan_ui::GuiApp::new(window, &event_loop);
 
