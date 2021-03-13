@@ -58,26 +58,20 @@ impl CommandFactory for ComputeRaysCommandFactory {
             return;
         }
 
+        *self.prev_camera.borrow_mut() = ctx.camera.clone();
+        *self.prev_screen.borrow_mut() = ctx.app_info.screen.clone();
+
         let mut calc_rays = AutoCommandBufferBuilder::new(
             ctx.app_info.device.clone(),
             ctx.app_info.graphics_queue.family(),
         )
         .unwrap();
 
-        let buffers = ctx.buffers.clone();
+        let set_0 = ctx.buffers.global_app_set.clone();
 
-        if *self.prev_screen.borrow() != ctx.app_info.screen
-            || *self.prev_camera.borrow() != *ctx.camera
-        {
-            *self.prev_camera.borrow_mut() = ctx.camera.clone();
-            *self.prev_screen.borrow_mut() = ctx.app_info.screen.clone();
-
-            let set_0 = buffers.global_app_set.clone();
-
-            calc_rays
-                .dispatch([ctx.app_info.size_of_image_array() as u32 / 32, 1, 1], self.pipeline.clone(), set_0, ())
-                .unwrap();
-        }
+        calc_rays
+            .dispatch([ctx.app_info.size_of_image_array() as u32 / 32, 1, 1], self.pipeline.clone(), set_0, ())
+            .unwrap();
 
         let calc_rays_command = calc_rays.build().unwrap();
 

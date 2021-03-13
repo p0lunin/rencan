@@ -7,7 +7,10 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::core::{CommandFactory, CommandFactoryContext, Screen};
+use std::cell::RefCell;
+use crate::core::camera::Camera;
+use nalgebra::Point3;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -22,6 +25,8 @@ pub mod ray_trace_shader {
 
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    prev_camera: RefCell<Camera>,
+    prev_screen: RefCell<Screen>,
 }
 
 impl RayTraceCommandFactory {
@@ -30,13 +35,30 @@ impl RayTraceCommandFactory {
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
         );
-        RayTraceCommandFactory { pipeline }
+        RayTraceCommandFactory {
+            pipeline,
+            prev_camera: RefCell::new(Camera::new(
+                Point3::new(f32::NAN, f32::NAN, f32::NAN),
+                (f32::NAN, f32::NAN, f32::NAN),
+                0.0,
+            )),
+            prev_screen: RefCell::new(Screen::new(0, 0)),
+        }
     }
 }
 
 impl CommandFactory for RayTraceCommandFactory {
     fn make_command(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
     )  {
+        if *self.prev_screen.borrow() == ctx.app_info.screen
+            && *self.prev_camera.borrow() == *ctx.camera
+        {
+            return;
+        }
+
+        *self.prev_camera.borrow_mut() = ctx.camera.clone();
+        *self.prev_screen.borrow_mut() = ctx.app_info.screen.clone();
+
         let CommandFactoryContext { app_info, buffers, .. } = ctx;
         let device = app_info.device.clone();
 
