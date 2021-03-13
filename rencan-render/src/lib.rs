@@ -5,5 +5,3 @@ pub use rencan_core::app::{App, AppBuilder, Buffers};
 
 mod app_builder_rt_ext;
 pub mod commands;
-#[cfg(test)]
-mod test_utils;

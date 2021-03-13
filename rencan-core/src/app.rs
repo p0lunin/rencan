@@ -127,14 +127,20 @@ impl GlobalBuffers {
             rays: DeviceLocalBuffer::array(
                 device.clone(),
                 size,
-                BufferUsage::all(),
+                BufferUsage {
+                    storage_buffer: true,
+                    ..BufferUsage::none()
+                },
                 std::iter::once(family.clone()),
             )
             .unwrap(),
             intersections: DeviceLocalBuffer::array(
                 device.clone(),
                 size,
-                BufferUsage::all(),
+                BufferUsage {
+                    storage_buffer: true,
+                    ..BufferUsage::none()
+                },
                 std::iter::once(family.clone()),
             )
             .unwrap(),
@@ -176,14 +182,20 @@ impl GlobalBuffers {
         self.rays = DeviceLocalBuffer::array(
             device.clone(),
             new_size,
-            BufferUsage::all(),
+            BufferUsage {
+                    storage_buffer: true,
+                    ..BufferUsage::none()
+                },
             std::iter::once(family.clone()),
         )
         .unwrap();
         self.intersections = DeviceLocalBuffer::array(
             device.clone(),
             new_size,
-            BufferUsage::all(),
+            BufferUsage {
+                    storage_buffer: true,
+                    ..BufferUsage::none()
+                },
             std::iter::once(family.clone()),
         )
         .unwrap();
