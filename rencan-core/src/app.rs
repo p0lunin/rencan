@@ -86,7 +86,7 @@ impl App {
         let mut fut: Box<dyn GpuFuture> = Box::new(previous);
 
         for command in commands {
-            let f = fut.then_execute_same_queue(command)?;
+            let f = fut.then_execute(self.info.graphics_queue.clone(), command)?;
             fut = Box::new(f);
         }
 

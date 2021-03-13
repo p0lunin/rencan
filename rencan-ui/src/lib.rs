@@ -22,14 +22,19 @@ use winit::{
 use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder};
 use vulkano::image::AttachmentImage;
+use vulkano::swapchain::SupportedPresentModes;
+use std::collections::HashSet;
 
 pub struct GuiApp {
     app: App,
+    present_queue: Arc<Queue>,
     surface: Arc<Surface<Window>>,
     swap_chain: Arc<Swapchain<Window>>,
     swap_chain_images: Vec<Arc<SwapchainImage<Window>>>,
     must_recreate_swapchain: bool,
     prev: Option<Box<dyn GpuFuture>>,
+
+    buffer_image: Arc<AttachmentImage>,
 }
 
 impl GuiApp {
@@ -40,18 +45,31 @@ impl GuiApp {
             .build_vk_surface(event_loop, instance.clone())
             .unwrap();
         let screen = Screen::new(512, 512);
-        let app = init_app(instance, screen);
+        let (app, present_queue) = init_app(&surface, instance, screen);
         let (swap_chain, images) =
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());
         let prev =
             Some(Box::new(vulkano::sync::now(app.info().device.clone())) as Box<dyn GpuFuture>);
+        let buffer_image = AttachmentImage::with_usage(
+            app.info().device.clone(),
+            swap_chain.dimensions(),
+            swap_chain.format(),
+            ImageUsage {
+                storage: true,
+                transfer_source: true,
+                ..ImageUsage::none()
+            }
+        ).unwrap();
+
         GuiApp {
             app,
+            present_queue,
             surface,
             swap_chain,
             swap_chain_images: images,
             must_recreate_swapchain: false,
             prev,
+            buffer_image
         }
     }
 
@@ -78,6 +96,16 @@ impl GuiApp {
             self.swap_chain_images = new_images;
             self.must_recreate_swapchain = false;
             self.app.update_screen(Screen(dimensions));
+            self.buffer_image = AttachmentImage::with_usage(
+                self.device(),
+                self.swap_chain.dimensions(),
+                self.swap_chain.format(),
+                ImageUsage {
+                    storage: true,
+                    transfer_source: true,
+                    ..ImageUsage::none()
+                }
+            ).unwrap();
         }
 
         let (image_num, suboptimal, acquire_future) =
@@ -94,37 +122,15 @@ impl GuiApp {
             self.must_recreate_swapchain = true;
         }
 
-        let mut clear_image =
-            AutoCommandBufferBuilder::new(self.device(), self.graphics_queue().family()).unwrap();
-        clear_image
-            .clear_color_image(
-                self.swap_chain_images[image_num].clone(),
-                ClearValue::Float([0.0, 0.0, 0.0, 0.0]),
-            )
-            .unwrap();
-        let clear_image = clear_image.build().unwrap();
-
         let fut = self
             .prev
             .take()
             .unwrap()
-            .join(acquire_future)
-            .then_execute(self.graphics_queue(), clear_image)
-            .unwrap();
+            .join(acquire_future);;
 
-        let image = AttachmentImage::with_usage(
-            self.device(),
-            self.swap_chain.dimensions(),
-            self.swap_chain.format(),
-            ImageUsage {
-                storage: true,
-                transfer_source: true,
-                ..ImageUsage::none()
-            }
-        ).unwrap();
         let swapchain_image = self.swap_chain_images[image_num].clone();
         let (fut, _) = self.app.render(fut, &scene, {
-            let image = image.clone();
+            let image = self.buffer_image.clone();
             move |_| image
         }).unwrap();
 
@@ -132,9 +138,9 @@ impl GuiApp {
             self.device(),
             self.graphics_queue().family()
         ).unwrap();
-        let extent = [image.dimensions()[0], image.dimensions()[1], 1];
+        let extent = [self.buffer_image.dimensions()[0], self.buffer_image.dimensions()[1], 1];
         copy_command.copy_image(
-            image,
+            self.buffer_image.clone(),
             [0, 0, 0],
             0,
             0,
@@ -167,7 +173,7 @@ impl GuiApp {
         self.app.info().graphics_queue.clone()
     }
     pub fn present_queue(&self) -> Arc<Queue> {
-        self.app.info().graphics_queue.clone()
+        self.present_queue.clone()
     }
 }
 
@@ -199,7 +205,7 @@ fn init_swapchain(
         &queue,
         SurfaceTransform::Identity,
         alpha,
-        PresentMode::Fifo,
+        choose_swap_present_mode(caps.present_modes),
         FullscreenExclusive::Default,
         true,
         ColorSpace::SrgbNonLinear,
@@ -207,17 +213,19 @@ fn init_swapchain(
     .unwrap()
 }
 
-fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
+fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Screen) -> (App, Arc<Queue>) {
     use rencan_render::AppBuilderRtExt;
-    let (device, queue) = init_device_and_queues(&instance);
+    let (device, graphics_queue, present_queue) = init_device_and_queues(window, &instance);
 
-    AppBuilder::new(
-        AppInfo::new(instance, queue, device.clone(), screen),
+    let app = AppBuilder::new(
+        AppInfo::new(instance, graphics_queue, device.clone(), screen),
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
     .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
-    .build()
+    .build();
+
+    (app, present_queue)
 }
 
 fn init_vulkan() -> Arc<Instance> {
@@ -225,11 +233,18 @@ fn init_vulkan() -> Arc<Instance> {
     Instance::new(None, &extensions, None).unwrap()
 }
 
-fn init_device_and_queues(instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>) {
+fn init_device_and_queues(window: &Arc<Surface<Window>>,instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>, Arc<Queue>) {
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
 
-    let queue_family = physical.queue_families().find(|&q| q.supports_graphics()).unwrap();
+    let indices = find_queue_families(window, &physical);
+    let families = [indices.graphics_family, indices.present_family];
+    use std::iter::FromIterator;
+    let unique_queue_families: HashSet<&i32> = HashSet::from_iter(families.iter());
 
+    let queue_priority = 1.0;
+    let queue_families = unique_queue_families.iter().map(|i| {
+        (physical.queue_families().nth(**i as usize).unwrap(), queue_priority)
+    });
     let (device, mut queues) = Device::new(
         physical,
         &Features::none(),
@@ -238,11 +253,56 @@ fn init_device_and_queues(instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>)
             khr_storage_buffer_storage_class: true,
             ..DeviceExtensions::none()
         },
-        [(queue_family, 0.5)].iter().cloned(),
+        queue_families,
     )
     .unwrap();
 
-    let queue = queues.next().unwrap();
+    let graphics_queue = queues.next().unwrap();
+    let present_queue = queues.next().unwrap_or_else(|| graphics_queue.clone());
 
-    (device, queue)
+    (device, graphics_queue, present_queue)
+}
+
+fn choose_swap_present_mode(available_present_modes: SupportedPresentModes) -> PresentMode {
+    if available_present_modes.mailbox {
+        PresentMode::Mailbox
+    } else if available_present_modes.immediate {
+        PresentMode::Immediate
+    } else {
+        PresentMode::Fifo
+    }
+}
+
+fn find_queue_families(surface: &Arc<Surface<Window>>, device: &PhysicalDevice) -> QueueFamilyIndices {
+    let mut indices = QueueFamilyIndices::new();
+
+    for (i, queue_family) in device.queue_families().enumerate() {
+        if queue_family.supports_compute() {
+            indices.graphics_family = i as i32;
+        }
+
+        if surface.is_supported(queue_family).unwrap() {
+            indices.present_family = i as i32;
+        }
+
+        if indices.is_complete() {
+            break;
+        }
+    }
+
+    indices
+}
+
+struct QueueFamilyIndices {
+    graphics_family: i32,
+    present_family: i32,
+}
+impl QueueFamilyIndices {
+    fn new() -> Self {
+        Self { graphics_family: -1, present_family: -1 }
+    }
+
+    fn is_complete(&self) -> bool {
+        self.graphics_family >= 0 && self.present_family >= 0
+    }
 }
