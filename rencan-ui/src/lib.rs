@@ -181,7 +181,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
-    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
+    //.then_command(Box::new(rencan_render::commands::CheckBoardCommandFactory::new(device.clone(), 0.5)))
     .build()
 }
 
