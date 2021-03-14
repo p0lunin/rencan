@@ -26,13 +26,19 @@ pub struct ComputeRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
     prev_camera: RefCell<Camera>,
     prev_screen: RefCell<Screen>,
+    local_size_x: u32,
 }
 
 impl ComputeRaysCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
+        let local_size_x = device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+
+        let constants = cs::SpecializationConstants {
+            constant_0: local_size_x,
+        };
         let pipeline = Arc::new(
-            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None).unwrap(),
         );
         ComputeRaysCommandFactory {
             pipeline,
@@ -42,6 +48,7 @@ impl ComputeRaysCommandFactory {
                 0.0,
             )),
             prev_screen: RefCell::new(Screen::new(0, 0)),
+            local_size_x
         }
     }
 }
@@ -70,7 +77,7 @@ impl CommandFactory for ComputeRaysCommandFactory {
         let set_0 = ctx.buffers.global_app_set.clone();
 
         calc_rays
-            .dispatch([ctx.app_info.size_of_image_array() as u32 / 32, 1, 1], self.pipeline.clone(), set_0, ())
+            .dispatch([ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1], self.pipeline.clone(), set_0, ())
             .unwrap();
 
         let calc_rays_command = calc_rays.build().unwrap();

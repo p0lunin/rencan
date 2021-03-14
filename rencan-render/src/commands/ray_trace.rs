@@ -27,13 +27,20 @@ pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
     prev_camera: RefCell<Camera>,
     prev_screen: RefCell<Screen>,
+    local_size_x: u32,
 }
 
 impl RayTraceCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
+        let local_size_x = device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+
+        let constants = cs::SpecializationConstants {
+            constant_0: local_size_x,
+        };
+
         let pipeline = Arc::new(
-            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).unwrap(),
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None).unwrap(),
         );
         RayTraceCommandFactory {
             pipeline,
@@ -43,6 +50,7 @@ impl RayTraceCommandFactory {
                 0.0,
             )),
             prev_screen: RefCell::new(Screen::new(0, 0)),
+            local_size_x,
         }
     }
 }
@@ -71,7 +79,7 @@ impl CommandFactory for RayTraceCommandFactory {
                 .unwrap();
 
         command
-            .dispatch([ctx.app_info.size_of_image_array() as u32 / 128, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
+            .dispatch([ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
             .unwrap();
 
         let command = command.build().unwrap();

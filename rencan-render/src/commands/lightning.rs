@@ -18,20 +18,27 @@ pub mod lightning_cs {
 
 pub struct LightningCommandFactory {
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
+    local_size_x: u32,
 }
 
 impl LightningCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
+        let local_size_x = device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+
+        let constants = lightning_cs::SpecializationConstants {
+            constant_0: local_size_x,
+        };
+
         let lightning_pipeline = Arc::new(
             ComputePipeline::new(
                 device.clone(),
                 &lightning_cs::Shader::load(device).unwrap().main_entry_point(),
-                &(),
+                &constants,
                 None,
             )
             .unwrap(),
         );
-        LightningCommandFactory { lightning_pipeline }
+        LightningCommandFactory { lightning_pipeline, local_size_x }
     }
 }
 
@@ -64,7 +71,7 @@ fn add_lightning(
 
     command
         .dispatch(
-            [ctx.app_info.size_of_image_array() as u32 / 128, 1, 1],
+            [ctx.app_info.size_of_image_array() as u32 / factory.local_size_x, 1, 1],
             factory.lightning_pipeline.clone(),
             (set_0, set_1, set_2),
             (),
