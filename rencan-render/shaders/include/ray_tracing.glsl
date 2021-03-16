@@ -36,7 +36,7 @@ IntersectResult _intersect(Ray ray, vec3[3] triangle) {
     float t = dot(v0v2, vvec) * inv_det;
     if (t < 0) return not_intersect();
 
-    vec3 normal = cross(v0v1, v0v2);
+    vec3 normal = normalize(cross(v0v1, v0v2));
 
     return ret_intersect(normal, vec2(u, v), t);
 }
