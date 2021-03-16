@@ -10,6 +10,7 @@ pub struct Model {
     pub position: Point3<f32>,
     pub scaling: f32,
     pub albedo: f32,
+    pub specularity: f32,
 }
 
 impl Model {
@@ -21,6 +22,7 @@ impl Model {
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
             albedo: 0.18,
+            specularity: 0.0,
         }
     }
     pub fn with_isometry(
@@ -30,8 +32,9 @@ impl Model {
         position: Point3<f32>,
         scaling: f32,
         albedo: f32,
+        specularity: f32,
     ) -> Self {
-        Model { vertices, indexes, rotation, position, scaling, albedo }
+        Model { vertices, indexes, rotation, position, scaling, albedo, specularity }
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         ModelUniformInfo {
@@ -46,6 +49,11 @@ impl Model {
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
             albedo: self.albedo,
+            specularity: self.specularity,
+            offsets: mint::Vector2 {
+                x: 0.0,
+                y: 0.0,
+            }
         }
     }
 }
@@ -57,6 +65,8 @@ pub struct ModelUniformInfo {
     pub vertices_length: u32,
     pub indexes_length: u32,
     pub albedo: f32,
+    pub specularity: f32,
+    pub offsets: mint::Vector2<f32>,
 }
 
 impl ModelUniformInfo {

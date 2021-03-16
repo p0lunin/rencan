@@ -140,3 +140,33 @@ pub fn make_room(position: Point3<f32>, scale: f32) -> AppModel {
 
     AppModel::new(model)
 }
+
+pub fn make_mirror(position: Point3<f32>, scale: f32) -> AppModel {
+    enum Vert {
+        A = 0,
+        B = 1,
+        C = 2,
+        D = 3,
+    }
+    use Vert::*;
+
+    #[rustfmt::skip]
+    let mut model = Model::new(
+        vec![
+            [-1.0, -1.0, 0.0, 0.0].into(),  // A - 0
+            [1.0, -1.0, 0.0, 0.0].into(),   // B - 1
+            [1.0, 1.0, 0.0, 0.0].into(),    // C - 2
+            [-1.0, 1.0, 0.0, 0.0].into(),   // D - 3
+        ],
+        indices![
+            A, C, D,
+            A, B, C,
+        ],
+    );
+    model.position = position;
+    model.scaling = scale;
+    model.albedo = 0.0;
+    model.specularity = 1.0;
+
+    AppModel::new(model)
+}

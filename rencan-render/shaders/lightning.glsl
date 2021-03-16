@@ -152,11 +152,29 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
     return color;
 }
 
+vec3 compute_color_for_reflect_ray(ModelInfo model, Ray reflect_ray) {
+    Intersection inter = trace(reflect_ray);
+    if (inter.is_intersect == 0.0) {
+        return model.specularity * vec3(0.0, 0.7, 0.4);
+    }
+    vec3 color = vec3(0.0);
+    if (model.specularity > 0.01) {
+        color += model.specularity * compute_color_diffuse_material(models[inter.model_id], inter, reflect_ray);
+    }
+
+    return color;
+}
+
 void lights(uint idx, Intersection inter, Ray primary_ray, ivec2 pos) {
     ModelInfo model = models[inter.model_id];
     uvec3 index = indexes[inter.triangle_idx];
 
     vec3 color = compute_color_diffuse_material(model, inter, primary_ray);
+
+    vec3 next_direction = reflect(primary_ray.direction.xyz, inter.normal);
+    vec3 reflect_color = compute_color_for_reflect_ray(model, Ray(inter.point + inter.normal * 0.1, vec4(next_direction, 0.0), 1.0 / 0.0));
+
+    color = color + reflect_color;
 
     imageStore(resultImage, pos, vec4(color, 0.0));
 }

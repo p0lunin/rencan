@@ -43,6 +43,7 @@ struct ModelInfo {
     uint vertices_length;
     uint indexes_length;
     float albedo;
+    float specularity;
 };
 
 struct HitBoxRectangle {

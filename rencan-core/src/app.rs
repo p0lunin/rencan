@@ -236,7 +236,9 @@ impl Buffers {
 
         let shader = cs::Shader::load(device.clone()).unwrap();
         let pipeline = Arc::new(
-            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &(), None)
+            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &cs::SpecializationConstants {
+                constant_0: 1,
+            }, None)
                 .unwrap(),
         );
 

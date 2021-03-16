@@ -67,6 +67,7 @@ fn main() {
 
     let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
+    models.push(models::make_mirror(Point3::new(0.0, 0.0, -4.9), 2.5));
     /*
         for i in 0..20 {
             let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);
