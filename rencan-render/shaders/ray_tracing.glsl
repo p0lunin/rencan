@@ -14,27 +14,27 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     mat3 rotation;
     float fov;
 };
-layout(std140, set = 0, binding = 2) readonly buffer Rays {
+
+layout(std140, set = 1, binding = 0) readonly buffer Rays {
     Ray rays[];
 };
-layout(std140, set = 0, binding = 3) writeonly buffer Intersections {
+layout(std140, set = 1, binding = 1) writeonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 0, binding = 4, rgba8) writeonly uniform image2D resultImage;
 
-layout(std140, set = 1, binding = 0) readonly uniform SceneInfo {
+layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
 };
-layout(std140, set = 1, binding = 1) readonly buffer ModelInfos {
+layout(std140, set = 2, binding = 1) readonly buffer ModelInfos {
     ModelInfo models[];
 };
-layout(set = 1, binding = 2) readonly buffer Vertices {
+layout(set = 2, binding = 2) readonly buffer Vertices {
     vec3[] vertices;
 };
-layout(std140, set = 1, binding = 3) readonly buffer Indexes {
+layout(std140, set = 2, binding = 3) readonly buffer Indexes {
     uvec3[] indexes;
 };
-layout(std140, set = 1, binding = 4) readonly buffer HitBoxes {
+layout(std140, set = 2, binding = 4) readonly buffer HitBoxes {
     HitBoxRectangle[] hit_boxes;
 };
 

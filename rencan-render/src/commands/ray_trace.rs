@@ -71,15 +71,17 @@ impl CommandFactory for RayTraceCommandFactory {
         let device = app_info.device.clone();
 
         let set_0 = buffers.global_app_set.clone();
+        let set_1 = buffers.rays_set.clone();
+        let set_2 = buffers.models_set.clone();
 
-        let set_1 = buffers.models_set.clone();
+        let sets = (set_0, set_1, set_2);
 
         let mut command =
             AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
                 .unwrap();
 
         command
-            .dispatch([ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1], self.pipeline.clone(), (set_0, set_1), ())
+            .dispatch([ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1], self.pipeline.clone(), sets, ())
             .unwrap();
 
         let command = command.build().unwrap();

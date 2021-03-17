@@ -66,14 +66,16 @@ fn add_lightning(
     let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
-    let set_1 = buffers.models_set.clone();
-    let set_2 = buffers.lights_set.clone();
+    let set_1 = buffers.rays_set.clone();
+    let set_2 = buffers.models_set.clone();
+    let set_3 = buffers.lights_set.clone();
+    let set_4 = buffers.image_set.clone();
 
     command
         .dispatch(
             [ctx.app_info.size_of_image_array() as u32 / factory.local_size_x, 1, 1],
             factory.lightning_pipeline.clone(),
-            (set_0, set_1, set_2),
+            (set_0, set_1, set_2, set_3, set_4),
             (),
         )
         .unwrap();

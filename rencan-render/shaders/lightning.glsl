@@ -6,7 +6,6 @@
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
-// set0 is global for app
 layout(set = 0, binding = 0) readonly uniform Info {
     uvec2 screen;
 };
@@ -15,41 +14,41 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     mat3 rotation;
     float fov;
 };
-layout(std140, set = 0, binding = 2) readonly buffer PrimaryRays {
+
+layout(std140, set = 1, binding = 0) readonly buffer Rays {
     Ray primary_rays[];
 };
-layout(std140, set = 0, binding = 3) readonly buffer PrimaryIntersections {
+layout(std140, set = 1, binding = 1) readonly buffer Intersections {
     Intersection primary_rays_intersections[];
 };
-layout(set = 0, binding = 4, rgba8) writeonly uniform image2D resultImage;
 
-// set1 for models
-layout(std140, set = 1, binding = 0) readonly uniform SceneInfo {
+layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
 };
-layout(std140, set = 1, binding = 1) readonly buffer ModelInfos {
+layout(std140, set = 2, binding = 1) readonly buffer ModelInfos {
     ModelInfo[] models;
 };
-layout(set = 1, binding = 2) readonly buffer Vertices {
+layout(set = 2, binding = 2) readonly buffer Vertices {
     vec3[] vertices;
 };
-layout(std140, set = 1, binding = 3) readonly buffer Indexes {
+layout(std140, set = 2, binding = 3) readonly buffer Indexes {
     uvec3[] indexes;
 };
-layout(std140, set = 1, binding = 4) readonly buffer HitBoxes {
+layout(std140, set = 2, binding = 4) readonly buffer HitBoxes {
     HitBoxRectangle[] hit_boxes;
 };
 
-// set2 for lights
-layout(std140, set = 2, binding = 0) readonly uniform DirectLightInfo {
+layout(std140, set = 3, binding = 0) readonly uniform DirectLightInfo {
     DirectLight global_light;
 };
-layout(std140, set = 2, binding = 1) readonly uniform PointLightsInfo {
+layout(std140, set = 3, binding = 1) readonly uniform PointLightsInfo {
     uint point_lights_count;
 };
-layout(std140, set = 2, binding = 2) readonly buffer PointLights {
+layout(std140, set = 3, binding = 2) readonly buffer PointLights {
     PointLight[] point_lights;
 };
+
+layout(set = 4, binding = 0, rgba8) writeonly uniform image2D resultImage;
 
 #include "include/ray_tracing.glsl"
 

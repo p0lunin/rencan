@@ -207,8 +207,10 @@ pub struct Buffers {
     pub rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
@@ -250,19 +252,13 @@ impl Buffers {
             .unwrap()
             .add_buffer(camera.clone())
             .unwrap()
-            .add_buffer(rays.clone())
-            .unwrap()
-            .add_buffer(intersections.clone())
-            .unwrap()
-            .add_image(output_image.clone())
-            .unwrap()
             .build()
             .unwrap(),
         );
 
         let models_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(1).unwrap().clone(),
+                pipeline.layout().descriptor_set_layout(2).unwrap().clone(),
             )
             .add_buffer(models_buffers.count.clone())
             .unwrap()
@@ -280,7 +276,7 @@ impl Buffers {
 
         let lights_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(2).unwrap().clone(),
+                pipeline.layout().descriptor_set_layout(3).unwrap().clone(),
             )
             .add_buffer(direction_light)
             .unwrap()
@@ -292,7 +288,29 @@ impl Buffers {
             .unwrap(),
         );
 
-        Buffers { rays, intersections, global_app_set, models_set, lights_set }
+        let rays_set = Arc::new(
+            PersistentDescriptorSet::start(
+                pipeline.layout().descriptor_set_layout(1).unwrap().clone(),
+            )
+            .add_buffer(rays.clone())
+            .unwrap()
+            .add_buffer(intersections.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+        );
+
+        let image_set = Arc::new(
+            PersistentDescriptorSet::start(
+                pipeline.layout().descriptor_set_layout(4).unwrap().clone(),
+            )
+            .add_image(output_image.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+        );
+
+        Buffers { rays, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
     }
 }
 

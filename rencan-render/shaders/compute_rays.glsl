@@ -14,13 +14,13 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     mat3 rotation;
     float fov;
 };
-layout(std140, set = 0, binding = 2) writeonly buffer Rays {
+
+layout(std140, set = 1, binding = 0) writeonly buffer Rays {
     Ray rays[];
 };
-layout(std140, set = 0, binding = 3) readonly buffer Intersections {
+layout(std140, set = 1, binding = 1) readonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 0, binding = 4, rgba8) readonly uniform image2D resultImage;
 
 uint compute_x(uint screen_width) {
     return gl_GlobalInvocationID.x % screen_width;
