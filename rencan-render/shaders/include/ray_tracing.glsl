@@ -105,6 +105,7 @@ Intersection trace(
                     res.barycentric_coords,
                     res.distance
                 );
+                break;
             }
         }
         offset_indexes += model.indexes_length;
@@ -113,3 +114,61 @@ Intersection trace(
 
     return inter;
 }
+
+Intersection trace_first(
+    Ray origin_ray
+) {
+    Intersection inter = intersection_none();
+
+    Ray ray = origin_ray;
+
+    uint offset_vertices = 0;
+    uint offset_indexes = 0;
+
+    for (int model_idx = 0; model_idx < model_counts; model_idx++) {
+        HitBoxRectangle hit_box = hit_boxes[model_idx];
+        ModelInfo model = models[model_idx];
+
+        mat4 global_to_model = inverse(model.isometry);
+        ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
+        ray.direction = global_to_model * origin_ray.direction;
+
+        vec3 is_inter_hitbox = _intersect_box(hit_box, ray);
+
+        if (is_inter_hitbox.x == 0.0 || is_inter_hitbox.y > ray.max_distance) {
+            offset_indexes += model.indexes_length;
+            offset_vertices += model.vertices_length;
+            continue;
+        }
+
+        for (int i = 0; i < model.indexes_length; i++) {
+            uvec3 index = indexes[offset_indexes + i];
+            vec3 vertice1 = vertices[offset_vertices + index.x];
+            vec3 vertice2 = vertices[offset_vertices + index.y];
+            vec3 vertice3 = vertices[offset_vertices + index.z];
+            vec3[3] vertices = vec3[](vertice1, vertice2, vertice3);
+            IntersectResult res = _intersect(ray, vertices);
+            if (res.intersect && res.distance < ray.max_distance) {
+                vec3 inter_point = origin_ray.origin + origin_ray.direction.xyz * res.distance;
+                inter = intersection_succ(
+                    inter_point,
+                    res.normal,
+                    model_idx,
+                    offset_indexes + i,
+                    offset_vertices,
+                    res.barycentric_coords,
+                    res.distance
+                );
+                break;
+            }
+        }
+        if (inter.is_intersect == 1) {
+            break;
+        }
+        offset_indexes += model.indexes_length;
+        offset_vertices += model.vertices_length;
+    }
+
+    return inter;
+}
+

@@ -82,12 +82,12 @@ fn main() {
         app.device(),
         models,
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 2.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 7.0),
             Vector3::new(0.2, -0.4, 0.3),
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 30.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 100.0),
                 Point3::new(0.0, 2.49, 0.0),
             ),
             PointLight::new(

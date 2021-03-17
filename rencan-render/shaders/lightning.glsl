@@ -84,7 +84,7 @@ vec3 compute_color_for_point_light(
     float albedo,
     float distance
 ) {
-    vec3 intensity = light.intensity * light.color / (4 * PI * distance);
+    vec3 intensity = light.intensity * light.color / (4 * PI * distance * distance);
 
     vec3 color = albedo / PI * intensity * max(dot(normal, -light_dir), 0.0);
     return intensity;
@@ -106,7 +106,7 @@ Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight
 
 vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray primary_ray) {
     vec3 normal = inter.normal;
-    Intersection global_light_inter = trace(
+    Intersection global_light_inter = trace_first(
         make_shadow_ray_for_direction_light(inter, primary_ray)
     );
 
@@ -130,7 +130,7 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
         vec3 light_dir = light.position - inter.point;
         float distance_to_light = length(light_dir);
 
-        Intersection shadow_intersection = trace(
+        Intersection shadow_intersection = trace_first(
             make_shadow_ray_for_point_light(
                 inter,
                 primary_ray,
@@ -153,12 +153,12 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
 }
 
 vec3 compute_color_for_reflect_ray(ModelInfo model, Ray reflect_ray) {
-    Intersection inter = trace(reflect_ray);
-    if (inter.is_intersect == 0.0) {
-        return model.specularity * vec3(0.0, 0.7, 0.4);
-    }
     vec3 color = vec3(0.0);
     if (model.specularity > 0.01) {
+        Intersection inter = trace(reflect_ray);
+        if (inter.is_intersect == 0.0) {
+            return model.specularity * vec3(0.0, 0.7, 0.4);
+        }
         color += model.specularity * compute_color_diffuse_material(models[inter.model_id], inter, reflect_ray);
     }
 
