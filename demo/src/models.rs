@@ -1,5 +1,6 @@
 use nalgebra::{Point3, Vector3};
 use rencan_render::core::{model::AppModel, Model};
+use rencan_render::core::model::Material;
 
 macro_rules! indices {
     ($($x:ident, $y:ident, $z:ident,)*) => {
@@ -165,8 +166,7 @@ pub fn make_mirror(position: Point3<f32>, scale: f32) -> AppModel {
     );
     model.position = position;
     model.scaling = scale;
-    model.albedo = 0.0;
-    model.specularity = 1.0;
+    model.material = Material::Mirror;
 
     AppModel::new(model)
 }

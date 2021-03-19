@@ -3,14 +3,28 @@ use crevice::std140::AsStd140;
 use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
+pub enum Material {
+    Diffuse { albedo: f32 },
+    Mirror,
+}
+
+impl Material {
+    fn into_uniform(self) -> (f32, u32) {
+        match self {
+            Material::Diffuse { albedo } => (albedo, 1),
+            Material::Mirror => (0.0, 2),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Model {
     pub vertices: Vec<Point4<f32>>,
     pub indexes: Vec<Point4<u32>>,
     pub rotation: UnitQuaternion<f32>,
     pub position: Point3<f32>,
     pub scaling: f32,
-    pub albedo: f32,
-    pub specularity: f32,
+    pub material: Material,
 }
 
 impl Model {
@@ -21,8 +35,7 @@ impl Model {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            albedo: 0.18,
-            specularity: 0.0,
+            material: Material::Diffuse { albedo: 0.18 }
         }
     }
     pub fn with_isometry(
@@ -31,12 +44,12 @@ impl Model {
         rotation: UnitQuaternion<f32>,
         position: Point3<f32>,
         scaling: f32,
-        albedo: f32,
-        specularity: f32,
+        material: Material
     ) -> Self {
-        Model { vertices, indexes, rotation, position, scaling, albedo, specularity }
+        Model { vertices, indexes, rotation, position, scaling, material }
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
+        let (albedo, material) = self.material.clone().into_uniform();
         ModelUniformInfo {
             isometry: (Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
@@ -48,8 +61,8 @@ impl Model {
             model_id,
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
-            albedo: self.albedo,
-            specularity: self.specularity,
+            albedo,
+            material,
             offsets: mint::Vector2 {
                 x: 0.0,
                 y: 0.0,
@@ -65,7 +78,7 @@ pub struct ModelUniformInfo {
     pub vertices_length: u32,
     pub indexes_length: u32,
     pub albedo: f32,
-    pub specularity: f32,
+    pub material: u32,
     pub offsets: mint::Vector2<f32>,
 }
 
