@@ -66,10 +66,7 @@ vec3 compute_color_for_global_lights(
 
     vec3 light_dir = -global_light.direction;
 
-    vec3 ray_direction = normalize(
-        (inverse(
-            mat3(isometry[0].xyz, isometry[1].xyz, isometry[2].xyz))) * primary_ray.direction.xyz
-    );
+    vec3 ray_direction = (inverse(isometry) * primary_ray.direction).xyz;
 
     vec3 color = albedo / PI * global_light.intensity * global_light.color * max(dot(normal, -global_light.direction.xyz), 0.0);
 
@@ -90,17 +87,13 @@ vec3 compute_color_for_point_light(
 }
 
 Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
-    vec3 point = inter.point + inter.normal * 0.001;
-
-    return Ray(point, vec4(-global_light.direction.xyz, 0.0), 1.0 / 0.0);
+    return Ray(inter.point, vec4(-global_light.direction.xyz, 0.0), 1.0 / 0.0);
 }
 
 Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
     vec3 direction_ray = light.position - inter.point;
 
-    vec3 point = inter.point + inter.normal * 0.001;
-
-    return Ray(point, vec4(normalize(direction_ray), 0.0), length(direction_ray));
+    return Ray(inter.point, vec4(normalize(direction_ray), 0.0), length(direction_ray));
 }
 
 vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray primary_ray) {
