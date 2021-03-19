@@ -43,7 +43,7 @@ struct ModelInfo {
     uint vertices_length;
     uint indexes_length;
     float albedo;
-    float specularity;
+    uint material;
 };
 
 struct HitBoxRectangle {
@@ -56,3 +56,6 @@ struct PointLight {
     vec3 position;
     float intensity;
 };
+
+const uint MATERIAL_DIFFUSE = 1;
+const uint MATERIAL_MIRROR = 2;

@@ -94,14 +94,15 @@ Intersection trace(
             vec3[3] vertices = vec3[](vertice1, vertice2, vertice3);
             IntersectResult res = _intersect(ray, vertices);
             if (res.intersect && res.distance < distance && res.distance < ray.max_distance) {
+                vec3 normal = normalize((model.isometry * vec4(res.normal, 0.0)).xyz);
                 vec3 inter_point =
                     origin_ray.origin +
                     origin_ray.direction.xyz * res.distance +
-                    res.normal * 0.001;
+                    normal * 0.001;
                 distance = res.distance;
                 inter = intersection_succ(
                     inter_point,
-                    res.normal,
+                    normal,
                     model_idx,
                     offset_indexes + i,
                     offset_vertices,

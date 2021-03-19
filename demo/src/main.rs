@@ -67,7 +67,16 @@ fn main() {
 
     let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
-    models.push(models::make_mirror(Point3::new(0.0, 0.0, -4.9), 2.5));
+    models.push(models::make_mirror(
+        Point3::new(-2.49, 0.0, 0.0),
+        UnitQuaternion::from_euler_angles(0.0, std::f32::consts::FRAC_PI_2, 0.0),
+        2.0)
+    );
+    models.push(models::make_mirror(
+        Point3::new(2.49, 0.0, 0.0),
+        UnitQuaternion::from_euler_angles(0.0, -std::f32::consts::FRAC_PI_2, 0.0),
+        2.0)
+    );
     /*
         for i in 0..20 {
             let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);

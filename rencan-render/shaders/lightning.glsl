@@ -145,28 +145,45 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
 }
 
 vec3 compute_color_for_reflect_ray(ModelInfo model, Ray reflect_ray) {
-    vec3 color = vec3(0.0);
-    if (model.specularity > 0.01) {
-        Intersection inter = trace(reflect_ray);
-        if (inter.is_intersect == 0.0) {
-            return model.specularity * vec3(0.0, 0.7, 0.4);
-        }
-        color += model.specularity * compute_color_diffuse_material(models[inter.model_id], inter, reflect_ray);
+    Intersection inter = trace(reflect_ray);
+    if (inter.is_intersect == 0.0) {
+        return vec3(0.0, 0.7, 0.4);
     }
+    vec3 color = compute_color_diffuse_material(models[inter.model_id], inter, reflect_ray);
 
     return color;
 }
 
 void lights(uint idx, Intersection inter, Ray primary_ray, ivec2 pos) {
     ModelInfo model = models[inter.model_id];
-    uvec3 index = indexes[inter.triangle_idx];
 
-    vec3 color = compute_color_diffuse_material(model, inter, primary_ray);
-
-    vec3 next_direction = reflect(primary_ray.direction.xyz, inter.normal);
-    vec3 reflect_color = compute_color_for_reflect_ray(model, Ray(inter.point + inter.normal * 0.1, vec4(next_direction, 0.0), 1.0 / 0.0));
-
-    color = color + reflect_color;
+    bool computed = false;
+    vec3 color = vec3(0.0);
+    for (int i = 0; !computed && i < 10; i ++) {
+        switch (model.material) {
+            case MATERIAL_DIFFUSE:
+                color = compute_color_diffuse_material(model, inter, primary_ray);
+                computed = true;
+                break;
+            case MATERIAL_MIRROR:
+                vec3 next_direction = reflect(primary_ray.direction.xyz, inter.normal);
+                Ray reflect_ray = Ray(inter.point, vec4(next_direction, 0.0), 1.0 / 0.0);
+                Intersection mirror_inter = trace(reflect_ray);
+                if (mirror_inter.is_intersect == 0.0) {
+                    color = vec3(0.0, 0.7, 0.4);
+                    computed = true;
+                }
+                else {
+                    inter = mirror_inter;
+                    primary_ray = reflect_ray;
+                    model = models[mirror_inter.model_id];
+                }
+                break;
+            default:
+                color = vec3(0.0, 0.0, 1.0);
+                break;
+        }
+    }
 
     imageStore(resultImage, pos, vec4(color, 0.0));
 }

@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Vector3, UnitQuaternion};
 use rencan_render::core::{model::AppModel, Model};
 use rencan_render::core::model::Material;
 
@@ -142,7 +142,7 @@ pub fn make_room(position: Point3<f32>, scale: f32) -> AppModel {
     AppModel::new(model)
 }
 
-pub fn make_mirror(position: Point3<f32>, scale: f32) -> AppModel {
+pub fn make_mirror(position: Point3<f32>, rotation: UnitQuaternion<f32>, scale: f32) -> AppModel {
     enum Vert {
         A = 0,
         B = 1,
@@ -164,6 +164,7 @@ pub fn make_mirror(position: Point3<f32>, scale: f32) -> AppModel {
             A, B, C,
         ],
     );
+    model.rotation = rotation;
     model.position = position;
     model.scaling = scale;
     model.material = Material::Mirror;
