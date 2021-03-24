@@ -56,7 +56,7 @@ impl RayTraceCommandFactory {
 }
 
 impl CommandFactory for RayTraceCommandFactory {
-    fn make_command(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
     )  {
         if *self.prev_screen.borrow() == ctx.app_info.screen
             && *self.prev_camera.borrow() == *ctx.camera

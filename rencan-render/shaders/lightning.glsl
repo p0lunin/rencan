@@ -159,7 +159,7 @@ void lights(uint idx, Intersection inter, Ray primary_ray, ivec2 pos) {
 
     bool computed = false;
     vec3 color = vec3(0.0);
-    for (int i = 0; !computed && i < 10; i ++) {
+    for (int i = 0; !computed && i < 100; i ++) {
         switch (model.material) {
             case MATERIAL_DIFFUSE:
                 color = compute_color_diffuse_material(model, inter, primary_ray);

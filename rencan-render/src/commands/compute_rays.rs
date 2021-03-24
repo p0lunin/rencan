@@ -55,7 +55,7 @@ impl ComputeRaysCommandFactory {
 
 impl CommandFactory for ComputeRaysCommandFactory {
     fn make_command(
-        &self,
+        &mut self,
         ctx: CommandFactoryContext,
         commands: &mut Vec<AutoCommandBuffer>,
     ) {

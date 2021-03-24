@@ -39,7 +39,7 @@ impl CheckBoardCommandFactory {
 }
 
 impl CommandFactory for CheckBoardCommandFactory {
-    fn make_command(&self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
         let CommandFactoryContext { app_info, buffers, .. } = ctx;
         let device = app_info.device.clone();
 

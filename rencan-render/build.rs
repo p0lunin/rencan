@@ -9,5 +9,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=shaders/checkboard_pattern.glsl");
     println!("cargo:rerun-if-changed=shaders/facing_ratio.glsl");
     println!("cargo:rerun-if-changed=shaders/lightning.glsl");
+    println!("cargo:rerun-if-changed=shaders/squeeze.glsl");
     Ok(())
 }

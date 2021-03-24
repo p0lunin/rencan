@@ -57,7 +57,7 @@ impl App {
         self.camera = update_cam(self.camera.clone());
     }
     pub fn render<Prev, F>(
-        &self,
+        &mut self,
         previous: Prev,
         scene: &Scene,
         image_create: F,
@@ -67,7 +67,7 @@ impl App {
     >
     where
         Prev: GpuFuture + 'static,
-        F: FnOnce(&AppInfo) -> Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+        F: FnOnce(&AppInfo) -> Arc<AttachmentImage>,
     {
         let image = image_create(&self.info);
         let buffers = self.create_buffers(image.clone(), scene);
@@ -79,7 +79,7 @@ impl App {
         };
 
         let mut commands = vec![];
-        for factory in self.commands.iter() {
+        for factory in self.commands.iter_mut() {
             factory.make_command(ctx.clone(), &mut commands);
         }
 
@@ -94,7 +94,7 @@ impl App {
     }
     fn create_buffers(
         &self,
-        image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+        image: Arc<AttachmentImage>,
         scene: &Scene,
     ) -> Buffers {
         self.buffers.make_buffers(
@@ -162,7 +162,7 @@ impl GlobalBuffers {
         device: Arc<Device>,
         app: &AppInfo,
         camera: &Camera,
-        image: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
+        image: Arc<AttachmentImage>,
         light: &DirectionLight,
         scene: &Scene,
     ) -> Buffers {
@@ -206,6 +206,8 @@ impl GlobalBuffers {
 pub struct Buffers {
     pub rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+    pub image: Arc<AttachmentImage>,
+
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
@@ -213,6 +215,7 @@ pub struct Buffers {
     pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
+use vulkano::image::AttachmentImage;
 
 impl Buffers {
     pub fn new(
@@ -223,7 +226,7 @@ impl Buffers {
             dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
         >,
         screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
-        output_image: Arc<dyn ImageViewAccess + Send + Sync>,
+        output_image: Arc<AttachmentImage>,
         direction_light: Arc<
             dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
         >,
@@ -310,7 +313,7 @@ impl Buffers {
             .unwrap(),
         );
 
-        Buffers { rays, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
+        Buffers { image: output_image, rays, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
     }
 }
 
