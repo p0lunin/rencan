@@ -80,7 +80,7 @@ Intersection trace(
 
         vec3 is_inter_hitbox = _intersect_box(hit_box, ray);
 
-        if (is_inter_hitbox.x == 0.0 || is_inter_hitbox.y > ray.max_distance) {
+        if (is_inter_hitbox.x == 0.0 || is_inter_hitbox.y > ray.max_distance || is_inter_hitbox.y > distance) {
             offset_indexes += model.indexes_length;
             offset_vertices += model.vertices_length;
             continue;
