@@ -4,15 +4,15 @@ use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
 pub enum Material {
-    Diffuse { albedo: f32 },
+    Phong { albedo: f32, diffuse: f32, specular: f32 },
     Mirror,
 }
 
 impl Material {
-    fn into_uniform(self) -> (f32, u32) {
+    fn into_uniform(self) -> (f32, f32, f32, u32) {
         match self {
-            Material::Diffuse { albedo } => (albedo, 1),
-            Material::Mirror => (0.0, 2),
+            Material::Phong { albedo, diffuse, specular } => (albedo, diffuse, specular, 1),
+            Material::Mirror => (0.0, 0.0, 0.0, 2),
         }
     }
 }
@@ -35,7 +35,7 @@ impl Model {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            material: Material::Diffuse { albedo: 0.18 }
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 }
         }
     }
     pub fn with_isometry(
@@ -49,7 +49,7 @@ impl Model {
         Model { vertices, indexes, rotation, position, scaling, material }
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
-        let (albedo, material) = self.material.clone().into_uniform();
+        let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
         ModelUniformInfo {
             isometry: (Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
@@ -62,30 +62,25 @@ impl Model {
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
             albedo,
+            diffuse,
+            specular,
             material,
-            offsets: mint::Vector2 {
-                x: 0.0,
-                y: 0.0,
-            }
+            offset: 0.0,
         }
     }
 }
 
-#[derive(AsStd140)]
+#[repr(C, packed)]
 pub struct ModelUniformInfo {
     pub isometry: mint::ColumnMatrix4<f32>,
     pub model_id: u32,
     pub vertices_length: u32,
     pub indexes_length: u32,
-    pub albedo: f32,
     pub material: u32,
-    pub offsets: mint::Vector2<f32>,
-}
-
-impl ModelUniformInfo {
-    pub fn as_std140(&self) -> <Self as AsStd140>::Std140Type {
-        AsStd140::as_std140(self)
-    }
+    pub albedo: f32,
+    pub diffuse: f32,
+    pub specular: f32,
+    pub offset: f32,
 }
 
 #[allow(dead_code)]

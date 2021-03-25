@@ -224,7 +224,7 @@ fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Scree
     )
     .then_ray_tracing_pipeline()
     .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
-    .then_command(Box::new(rencan_render::commands::SqueezeCommandFactory::new(device.clone())))
+    //.then_command(Box::new(rencan_render::commands::SqueezeCommandFactory::new(device.clone())))
     .build();
 
     (app, present_queue)

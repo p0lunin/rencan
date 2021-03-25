@@ -13,11 +13,9 @@ use vulkano::{
     memory::pool::StdMemoryPool,
 };
 
-type ModelUniformInfoStd140 = <ModelUniformInfo as AsStd140>::Std140Type;
-
 pub struct SceneBuffersStorage {
     pub counts_u32: CpuBufferPool<u32>,
-    pub model_infos: CpuBufferPool<ModelUniformInfoStd140>,
+    pub model_infos: CpuBufferPool<ModelUniformInfo>,
     pub vertices: CpuBufferPool<Point4<f32>>,
     pub indices: CpuBufferPool<Point4<u32>>,
     pub hit_boxes: CpuBufferPool<HitBoxRectangleUniformStd140>,
@@ -67,7 +65,7 @@ impl SceneBuffersStorage {
                 models
                     .iter()
                     .enumerate()
-                    .map(|(i, m)| m.model().get_uniform_info(i as u32).as_std140()),
+                    .map(|(i, m)| m.model().get_uniform_info(i as u32)),
             )
             .unwrap();
         let vertices = self
@@ -114,7 +112,7 @@ impl SceneBuffersStorage {
 #[derive(Clone)]
 pub struct SceneBuffers {
     pub count: CpuBufferPoolSubbuffer<u32, Arc<StdMemoryPool>>,
-    pub infos: CpuBufferPoolChunk<ModelUniformInfoStd140, Arc<StdMemoryPool>>,
+    pub infos: CpuBufferPoolChunk<ModelUniformInfo, Arc<StdMemoryPool>>,
     pub vertices: CpuBufferPoolChunk<Point4<f32>, Arc<StdMemoryPool>>,
     pub indices: CpuBufferPoolChunk<Point4<u32>, Arc<StdMemoryPool>>,
     pub hit_boxes: CpuBufferPoolChunk<HitBoxRectangleUniformStd140, Arc<StdMemoryPool>>,

@@ -4,6 +4,8 @@
 
 #include "include/defs.glsl"
 
+const uint SPECULAR_EXPONENT = 200;
+
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) readonly uniform Info {
@@ -96,21 +98,39 @@ Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight
     return Ray(inter.point, vec4(normalize(direction_ray), 0.0), length(direction_ray));
 }
 
+float compute_specular_component(vec3 primary_ray, vec3 light_ray, vec3 surface_normal) {
+    vec3 reflected_ray = reflect(light_ray, surface_normal);
+    float specular_component = pow(max(dot(reflected_ray, primary_ray), 0.0), SPECULAR_EXPONENT);
+    return specular_component;
+}
+
+vec3 compute_specular_color(vec3 primary_ray, vec3 light_ray, vec3 surface_normal, vec3 light_color) {
+    float component = compute_specular_component(primary_ray, light_ray, surface_normal);
+    return light_color * component;
+}
+
 vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray primary_ray) {
     vec3 normal = inter.normal;
+    Ray global_light_ray = make_shadow_ray_for_direction_light(inter, primary_ray);
     Intersection global_light_inter = trace_first(
-        make_shadow_ray_for_direction_light(inter, primary_ray)
+        global_light_ray
     );
 
     vec3 color;
 
     if (global_light_inter.is_intersect == 0) {
-        color = compute_color_for_global_lights(
+        color = model.diffuse * compute_color_for_global_lights(
             normal,
             inter,
             global_light_inter,
             model,
             primary_ray
+        );
+        color += model.specular * compute_specular_color(
+            primary_ray.direction.xyz,
+            global_light_ray.direction.xyz,
+            inter.normal,
+            global_light.color * global_light.intensity
         );
     }
     else {
@@ -122,34 +142,31 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
         vec3 light_dir = light.position - inter.point;
         float distance_to_light = length(light_dir);
 
+        Ray light_ray = make_shadow_ray_for_point_light(
+            inter,
+            primary_ray,
+            light
+        );
         Intersection shadow_intersection = trace_first(
-            make_shadow_ray_for_point_light(
-                inter,
-                primary_ray,
-                light
-            )
+            light_ray
         );
         if (shadow_intersection.is_intersect == 1) {
             continue;
         }
-        color = color + compute_color_for_point_light(
+        color += model.diffuse * compute_color_for_point_light(
             normal,
             light_dir,
             light,
             model.albedo,
             distance_to_light
         );
+        color += model.specular * compute_specular_color(
+            primary_ray.direction.xyz,
+            light_ray.direction.xyz,
+            inter.normal,
+            light.color
+        );
     }
-
-    return color;
-}
-
-vec3 compute_color_for_reflect_ray(ModelInfo model, Ray reflect_ray) {
-    Intersection inter = trace(reflect_ray);
-    if (inter.is_intersect == 0.0) {
-        return vec3(0.0, 0.7, 0.4);
-    }
-    vec3 color = compute_color_diffuse_material(models[inter.model_id], inter, reflect_ray);
 
     return color;
 }
