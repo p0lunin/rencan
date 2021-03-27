@@ -216,6 +216,8 @@ pub struct Buffers {
 }
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::image::AttachmentImage;
+use vulkano::pipeline::ComputePipeline;
+use vulkano::descriptor::pipeline_layout::PipelineLayout;
 
 impl Buffers {
     pub fn new(
@@ -232,6 +234,8 @@ impl Buffers {
         >,
         models_buffers: SceneBuffers,
     ) -> Self {
+        use once_cell::sync::*;
+
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
@@ -239,17 +243,24 @@ impl Buffers {
             }
         }
 
-        let shader = cs::Shader::load(device.clone()).unwrap();
-        let pipeline = Arc::new(
-            vulkano::pipeline::ComputePipeline::new(device, &shader.main_entry_point(), &cs::SpecializationConstants {
-                constant_0: 1,
-            }, None)
+        const SHADER: OnceCell<cs::Shader> = OnceCell::new();
+
+        const pipeline: OnceCell<Arc<ComputePipeline<PipelineLayout<cs::Layout>>>> = OnceCell::new();
+
+        let pip = pipeline.get_or_init(move || Arc::new(
+            vulkano::pipeline::ComputePipeline::new(
+                device.clone(),
+                &SHADER.get_or_init(move || cs::Shader::load(device.clone()).unwrap()).main_entry_point(),
+                &cs::SpecializationConstants {
+                    constant_0: 1,
+                }, None
+            )
                 .unwrap(),
-        );
+        )).clone();
 
         let global_app_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(0).unwrap().clone(),
+                pip.layout().descriptor_set_layout(0).unwrap().clone(),
             )
             .add_buffer(screen.clone())
             .unwrap()
@@ -261,7 +272,7 @@ impl Buffers {
 
         let models_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(2).unwrap().clone(),
+                pip.layout().descriptor_set_layout(2).unwrap().clone(),
             )
             .add_buffer(models_buffers.count.clone())
             .unwrap()
@@ -279,7 +290,7 @@ impl Buffers {
 
         let lights_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(3).unwrap().clone(),
+                pip.layout().descriptor_set_layout(3).unwrap().clone(),
             )
             .add_buffer(direction_light)
             .unwrap()
@@ -293,7 +304,7 @@ impl Buffers {
 
         let rays_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(1).unwrap().clone(),
+                pip.layout().descriptor_set_layout(1).unwrap().clone(),
             )
             .add_buffer(rays.clone())
             .unwrap()
@@ -305,7 +316,7 @@ impl Buffers {
 
         let image_set = Arc::new(
             PersistentDescriptorSet::start(
-                pipeline.layout().descriptor_set_layout(4).unwrap().clone(),
+                pip.layout().descriptor_set_layout(4).unwrap().clone(),
             )
             .add_image(output_image.clone())
             .unwrap()
