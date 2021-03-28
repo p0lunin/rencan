@@ -60,7 +60,8 @@ vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
 }
 
 Intersection trace(
-    Ray origin_ray
+    Ray origin_ray,
+    uint pixel_id
 ) {
     Intersection inter = intersection_none();
     float distance = 1.0 / 0.0;
@@ -107,7 +108,9 @@ Intersection trace(
                     offset_indexes + i,
                     offset_vertices,
                     res.barycentric_coords,
-                    res.distance
+                    res.distance,
+                    origin_ray,
+                    pixel_id
                 );
                 break;
             }
@@ -120,7 +123,8 @@ Intersection trace(
 }
 
 Intersection trace_first(
-    Ray origin_ray
+    Ray origin_ray,
+    uint pixel_id
 ) {
     Intersection inter = intersection_none();
 
@@ -164,7 +168,9 @@ Intersection trace_first(
                     offset_indexes + i,
                     offset_vertices,
                     res.barycentric_coords,
-                    res.distance
+                    res.distance,
+                    origin_ray,
+                    pixel_id
                 );
                 break;
             }

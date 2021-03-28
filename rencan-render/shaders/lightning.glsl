@@ -19,10 +19,7 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(std140, set = 1, binding = 0) readonly buffer Rays {
-    Ray rays[];
-};
-layout(std140, set = 1, binding = 1) readonly buffer Intersections {
+layout(set = 1, binding = 0) readonly buffer Intersections {
     Intersection intersections[];
 };
 
@@ -115,7 +112,8 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
     vec3 normal = inter.normal;
     Ray global_light_ray = make_shadow_ray_for_direction_light(inter, primary_ray);
     Intersection global_light_inter = trace_first(
-        global_light_ray
+        global_light_ray,
+        0
     );
 
     vec3 color;
@@ -150,7 +148,8 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
             light
         );
         Intersection shadow_intersection = trace_first(
-            light_ray
+            light_ray,
+            0
         );
         if (shadow_intersection.is_intersect == 1) {
             continue;
@@ -187,7 +186,7 @@ vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
             case MATERIAL_MIRROR:
                 vec3 next_direction = reflect(primary_ray.direction.xyz, inter.normal);
                 Ray reflect_ray = Ray(inter.point, vec4(next_direction, 0.0), 1.0 / 0.0);
-                Intersection mirror_inter = trace(reflect_ray);
+                Intersection mirror_inter = trace(reflect_ray, 0);
                 if (mirror_inter.is_intersect == 0.0) {
                     color = vec3(0.0, 0.7, 0.4);
                     computed = true;
@@ -235,7 +234,7 @@ vec3 compute_color_for_pixel(uint idx, uvec2 screen, uvec2 pixel_pos) {
         pos,
         rotation
     );
-    Intersection inter = trace(primary_ray);
+    Intersection inter = trace(primary_ray, 0);
 
     vec3 color;
     if (inter.is_intersect == 1) {
@@ -276,8 +275,8 @@ void main() {
         color = tracing_with_sampling();
     }
     else {
-        Ray primary_ray = rays[idx];
         Intersection inter = intersections[idx];
+        Ray primary_ray = inter.ray;
 
         if (inter.is_intersect == 1) {
             color = lights(idx, inter, primary_ray);

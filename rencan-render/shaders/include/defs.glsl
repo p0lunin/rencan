@@ -13,6 +13,8 @@ struct Intersection {
     uint triangle_idx;
     uint vertices_offset;
     float distance;
+    Ray ray;
+    uint pixel_id;
 };
 
 Intersection intersection_succ(
@@ -22,13 +24,17 @@ Intersection intersection_succ(
     uint triangle_idx,
     uint vertices_offset,
     vec2 barycentric_coords,
-    float distance
+    float distance,
+    Ray ray,
+    uint pixel_id
 ) {
-    return Intersection(point, normal, barycentric_coords, 1, model_id, triangle_idx, vertices_offset, distance);
+    return Intersection(point, normal, barycentric_coords, 1, model_id, triangle_idx, vertices_offset, distance, ray, pixel_id);
 }
 
 Intersection intersection_none() {
-    return Intersection(vec3(0.0), vec3(0.0), vec2(0.0), 0, 0, 0, 0, 0.0);
+    Intersection intersect;
+    intersect.is_intersect = 0;
+    return intersect;
 }
 
 struct DirectLight {

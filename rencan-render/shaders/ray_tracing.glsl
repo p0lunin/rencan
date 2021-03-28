@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_GOOGLE_include_directive : require
+// #extension GL_EXT_shader_atomic_int64 : require
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
@@ -15,10 +16,7 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(std140, set = 1, binding = 0) writeonly buffer Rays {
-    Ray rays[];
-};
-layout(std140, set = 1, binding = 1) writeonly buffer Intersections {
+layout(set = 1, binding = 0) writeonly buffer Intersections {
     Intersection intersections[];
 };
 
@@ -70,8 +68,7 @@ void main() {
         pos,
         rotation
     );
-    Intersection inter = trace(ray);
+    Intersection inter = trace(ray, idx);
 
-    rays[idx] = ray;
     intersections[idx] = inter;
 }

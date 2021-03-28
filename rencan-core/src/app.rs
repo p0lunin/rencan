@@ -109,12 +109,10 @@ impl App {
 }
 
 pub struct GlobalAppBuffers {
-    pub rays: Arc<DeviceLocalBuffer<[Ray]>>,
     pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
 }
 
 pub struct GlobalBuffers {
-    rays: Arc<DeviceLocalBuffer<[Ray]>>,
     intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     camera: Arc<CpuBufferPool<<CameraUniform as AsStd140>::Std140Type>>,
     screen: Arc<CpuBufferPool<Screen>>,
@@ -124,16 +122,6 @@ pub struct GlobalBuffers {
 impl GlobalBuffers {
     pub fn new(device: &Arc<Device>, family: QueueFamily, size: usize) -> Self {
         GlobalBuffers {
-            rays: DeviceLocalBuffer::array(
-                device.clone(),
-                size,
-                BufferUsage {
-                    storage_buffer: true,
-                    ..BufferUsage::none()
-                },
-                std::iter::once(family.clone()),
-            )
-            .unwrap(),
             intersections: DeviceLocalBuffer::array(
                 device.clone(),
                 size,
@@ -154,7 +142,7 @@ impl GlobalBuffers {
     }
 
     pub fn global_app_buffers(&self) -> GlobalAppBuffers {
-        GlobalAppBuffers { rays: self.rays.clone(), intersections: self.intersections.clone() }
+        GlobalAppBuffers { intersections: self.intersections.clone() }
     }
 
     pub fn make_buffers(
@@ -168,7 +156,6 @@ impl GlobalBuffers {
     ) -> Buffers {
         Buffers::new(
             device,
-            self.rays.clone(),
             self.intersections.clone(),
             Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
@@ -179,16 +166,6 @@ impl GlobalBuffers {
     }
 
     pub fn resize_buffers(&mut self, device: &Arc<Device>, family: QueueFamily, new_size: usize) {
-        self.rays = DeviceLocalBuffer::array(
-            device.clone(),
-            new_size,
-            BufferUsage {
-                    storage_buffer: true,
-                    ..BufferUsage::none()
-                },
-            std::iter::once(family.clone()),
-        )
-        .unwrap();
         self.intersections = DeviceLocalBuffer::array(
             device.clone(),
             new_size,
@@ -204,7 +181,6 @@ impl GlobalBuffers {
 
 #[derive(Clone)]
 pub struct Buffers {
-    pub rays: Arc<dyn BufferAccessData<Data = [Ray]> + Send + Sync>,
     pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
     pub image: Arc<AttachmentImage>,
 
@@ -222,7 +198,6 @@ use vulkano::descriptor::pipeline_layout::PipelineLayout;
 impl Buffers {
     pub fn new(
         device: Arc<Device>,
-        rays: Arc<DeviceLocalBuffer<[Ray]>>,
         intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
         camera: Arc<
             dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
@@ -307,8 +282,6 @@ impl Buffers {
             PersistentDescriptorSet::start(
                 pip.layout().descriptor_set_layout(1).unwrap().clone(),
             )
-            .add_buffer(rays.clone())
-            .unwrap()
             .add_buffer(intersections.clone())
             .unwrap()
             .build()
@@ -325,7 +298,7 @@ impl Buffers {
             .unwrap(),
         );
 
-        Buffers { image: output_image, rays, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
+        Buffers { image: output_image, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
     }
 }
 
