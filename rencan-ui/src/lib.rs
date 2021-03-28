@@ -193,7 +193,7 @@ fn init_swapchain(
     Swapchain::new(
         device.clone(),
         surface.clone(),
-        caps.min_image_count,
+        caps.max_image_count.unwrap_or(caps.min_image_count + 2),
         format,
         dimensions,
         1,
@@ -222,9 +222,7 @@ fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Scree
         AppInfo::new(instance, graphics_queue, device.clone(), screen),
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
-    .then_ray_tracing_pipeline()
-    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone())))
-    //.then_command(Box::new(rencan_render::commands::SqueezeCommandFactory::new(device.clone())))
+    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone(), true)))
     .build();
 
     (app, present_queue)

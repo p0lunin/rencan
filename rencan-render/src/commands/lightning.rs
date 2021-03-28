@@ -22,11 +22,12 @@ pub struct LightningCommandFactory {
 }
 
 impl LightningCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(device: Arc<Device>, sampling: bool) -> Self {
         let local_size_x = device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
 
         let constants = lightning_cs::SpecializationConstants {
             constant_0: local_size_x,
+            SAMPLING: if sampling { 1 } else { 0 },
         };
 
         let lightning_pipeline = Arc::new(

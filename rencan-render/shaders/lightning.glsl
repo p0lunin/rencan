@@ -6,6 +6,8 @@
 
 const uint SPECULAR_EXPONENT = 200;
 
+layout(constant_id = 1) const uint SAMPLING = 0;
+
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) readonly uniform Info {
@@ -171,7 +173,7 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
     return color;
 }
 
-void lights(uint idx, Intersection inter, Ray primary_ray, ivec2 pos) {
+vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
     ModelInfo model = models[inter.model_id];
 
     bool computed = false;
@@ -202,24 +204,96 @@ void lights(uint idx, Intersection inter, Ray primary_ray, ivec2 pos) {
         }
     }
 
-    imageStore(resultImage, pos, vec4(color, 0.0));
+    return color;
 }
 
-void main() {
-    uint idx = gl_GlobalInvocationID.x;
+Ray compute_primary_ray(
+    uvec2 screen,
+    uvec2 this_point,
+    float fov,
+    vec3 camera_origin,
+    mat3 camera_rotation
+) {
+    float scale = tan(fov / 2);
+    float aspect_ratio = float(screen.x) / float(screen.y);
 
-    Intersection inter = primary_rays_intersections[idx];
-    Ray primary_ray = primary_rays[idx];
+    vec3 origin = camera_origin;
 
-    ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
+    float x = (2 * ((this_point.x + 0.5) / float(screen.x)) - 1) * aspect_ratio * scale;
+    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y))) * scale;
 
+    vec4 direction = vec4(normalize(camera_rotation * vec3(x, y, -1.0)), 0.0);
+
+    return Ray(origin, direction, 1.0 / 0.0);
+}
+
+vec3 compute_color_for_pixel(uint idx, uvec2 screen, uvec2 pixel_pos) {
+    Ray primary_ray = compute_primary_ray(
+        screen,
+        pixel_pos,
+        fov,
+        pos,
+        rotation
+    );
+    Intersection inter = trace(primary_ray);
+
+    vec3 color;
     if (inter.is_intersect == 1) {
-        lights(idx, inter, primary_ray, pos);
+        color = lights(idx, inter, primary_ray);
     }
     else if (inter.is_intersect == 0) {
-        imageStore(resultImage, pos, vec4(0.0, 0.7, 0.4, 0.0));
+        color = vec3(0.0, 0.7, 0.4);
     }
     else {
         // unreachable
     }
+    return color;
+}
+
+vec3 tracing_with_sampling() {
+    uint idx = gl_GlobalInvocationID.x * 2;
+
+    uvec2 local_screen = screen * 2;
+
+    vec3 color = vec3(0.0);
+
+    for (int i=0; i<4; i++) {
+        uvec2 local_pixel_pos = uvec2(idx % local_screen.x + i % 2, (idx * 2) / local_screen.x + i / 2);
+        color += compute_color_for_pixel(idx, local_screen, local_pixel_pos);
+    }
+    color /= 4;
+
+    return color;
+}
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    uvec2 pixel_pos = uvec2(idx % screen.x, idx / screen.x);
+
+    vec3 color;
+
+    if (SAMPLING == 1) {
+        color = tracing_with_sampling();
+    }
+    else {
+        Ray primary_ray = compute_primary_ray(
+            screen,
+            pixel_pos,
+            fov,
+            pos,
+            rotation
+        );
+        Intersection inter = trace(primary_ray);
+
+        if (inter.is_intersect == 1) {
+            color = lights(idx, inter, primary_ray);
+        }
+        else if (inter.is_intersect == 0) {
+            color = vec3(0.0, 0.7, 0.4);
+        }
+        else {
+            // unreachable
+        }
+    }
+    imageStore(resultImage, ivec2(pixel_pos.xy), vec4(color, 0.0));
 }

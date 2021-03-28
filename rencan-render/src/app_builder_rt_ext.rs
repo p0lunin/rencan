@@ -9,6 +9,6 @@ impl AppBuilderRtExt for AppBuilder {
     fn then_ray_tracing_pipeline(self) -> Self {
         let device = self.info().device.clone();
         self.then_command(Box::new(commands::ComputeRaysCommandFactory::new(device.clone())))
-            .then_command(Box::new(commands::RayTraceCommandFactory::new(device)))
+            //.then_command(Box::new(commands::RayTraceCommandFactory::new(device)))
     }
 }
