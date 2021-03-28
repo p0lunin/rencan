@@ -7,7 +7,7 @@ use vulkano::{
     pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext};
+use crate::core::{CommandFactory, CommandFactoryContext, AutoCommandBufferBuilderWrap};
 
 pub mod lightning_cs {
     vulkano_shaders::shader! {
@@ -45,15 +45,9 @@ impl LightningCommandFactory {
 
 impl CommandFactory for LightningCommandFactory {
     fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
-        let mut command = AutoCommandBufferBuilder::new(
-            ctx.app_info.device.clone(),
-            ctx.app_info.graphics_queue.family(),
-        )
-        .unwrap();
+        let command = add_lightning(self, &ctx);
 
-        add_lightning(self, &ctx, &mut command);
-
-        let command = command.build().unwrap();
+        let command = command.build();
 
         commands.push(command)
     }
@@ -62,8 +56,8 @@ impl CommandFactory for LightningCommandFactory {
 fn add_lightning(
     factory: &LightningCommandFactory,
     ctx: &CommandFactoryContext,
-    command: &mut AutoCommandBufferBuilder,
-) {
+) -> AutoCommandBufferBuilderWrap {
+    let command = ctx.create_command_buffer();
     let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
@@ -74,10 +68,9 @@ fn add_lightning(
 
     command
         .dispatch(
-            [ctx.app_info.size_of_image_array() as u32 / factory.local_size_x, 1, 1],
+            ctx.app_info.size_of_image_array() as u32 / factory.local_size_x,
             factory.lightning_pipeline.clone(),
             (set_0, set_1, set_2, set_3, set_4),
-            (),
         )
-        .unwrap();
+        .unwrap()
 }

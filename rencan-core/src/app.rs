@@ -253,6 +253,7 @@ impl Buffers {
                 &SHADER.get_or_init(move || cs::Shader::load(device.clone()).unwrap()).main_entry_point(),
                 &cs::SpecializationConstants {
                     constant_0: 1,
+                    SAMPLING: 0,
                 }, None
             )
                 .unwrap(),
