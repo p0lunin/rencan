@@ -15,7 +15,7 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(std140, set = 1, binding = 0) readonly buffer Rays {
+layout(std140, set = 1, binding = 0) writeonly buffer Rays {
     Ray rays[];
 };
 layout(std140, set = 1, binding = 1) writeonly buffer Intersections {
@@ -40,11 +40,38 @@ layout(std140, set = 2, binding = 4) readonly buffer HitBoxes {
 
 #include "include/ray_tracing.glsl"
 
+Ray compute_primary_ray(
+    uvec2 screen,
+    uvec2 this_point,
+    float fov,
+    vec3 camera_origin,
+    mat3 camera_rotation
+) {
+    float scale = tan(fov / 2);
+    float aspect_ratio = float(screen.x) / float(screen.y);
+
+    vec3 origin = camera_origin;
+
+    float x = (2 * ((this_point.x + 0.5) / float(screen.x)) - 1) * aspect_ratio * scale;
+    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y))) * scale;
+
+    vec4 direction = vec4(normalize(camera_rotation * vec3(x, y, -1.0)), 0.0);
+
+    return Ray(origin, direction, 1.0 / 0.0);
+}
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
-    Ray ray = rays[idx];
+    Ray ray = compute_primary_ray(
+        screen,
+        uvec2(idx % screen.x, idx / screen.x),
+        fov,
+        pos,
+        rotation
+    );
     Intersection inter = trace(ray);
 
+    rays[idx] = ray;
     intersections[idx] = inter;
 }

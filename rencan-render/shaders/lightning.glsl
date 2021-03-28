@@ -20,10 +20,10 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 };
 
 layout(std140, set = 1, binding = 0) readonly buffer Rays {
-    Ray primary_rays[];
+    Ray rays[];
 };
 layout(std140, set = 1, binding = 1) readonly buffer Intersections {
-    Intersection primary_rays_intersections[];
+    Intersection intersections[];
 };
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
@@ -276,14 +276,8 @@ void main() {
         color = tracing_with_sampling();
     }
     else {
-        Ray primary_ray = compute_primary_ray(
-            screen,
-            pixel_pos,
-            fov,
-            pos,
-            rotation
-        );
-        Intersection inter = trace(primary_ray);
+        Ray primary_ray = rays[idx];
+        Intersection inter = intersections[idx];
 
         if (inter.is_intersect == 1) {
             color = lights(idx, inter, primary_ray);

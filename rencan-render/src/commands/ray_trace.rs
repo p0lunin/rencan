@@ -25,8 +25,8 @@ pub mod ray_trace_shader {
 
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    prev_camera: RefCell<Camera>,
-    prev_screen: RefCell<Screen>,
+    prev_camera: Camera,
+    prev_screen: Screen,
     local_size_x: u32,
 }
 
@@ -44,12 +44,12 @@ impl RayTraceCommandFactory {
         );
         RayTraceCommandFactory {
             pipeline,
-            prev_camera: RefCell::new(Camera::new(
+            prev_camera: Camera::new(
                 Point3::new(f32::NAN, f32::NAN, f32::NAN),
                 (f32::NAN, f32::NAN, f32::NAN),
                 0.0,
-            )),
-            prev_screen: RefCell::new(Screen::new(0, 0)),
+            ),
+            prev_screen: Screen::new(0, 0),
             local_size_x,
         }
     }
@@ -58,14 +58,14 @@ impl RayTraceCommandFactory {
 impl CommandFactory for RayTraceCommandFactory {
     fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
     )  {
-        if *self.prev_screen.borrow() == ctx.app_info.screen
-            && *self.prev_camera.borrow() == *ctx.camera
+        if self.prev_screen == ctx.app_info.screen
+            && self.prev_camera == *ctx.camera
         {
             return;
         }
 
-        *self.prev_camera.borrow_mut() = ctx.camera.clone();
-        *self.prev_screen.borrow_mut() = ctx.app_info.screen.clone();
+        self.prev_camera = ctx.camera.clone();
+        self.prev_screen = ctx.app_info.screen.clone();
 
         let CommandFactoryContext { app_info, buffers, .. } = ctx;
         let device = app_info.device.clone();

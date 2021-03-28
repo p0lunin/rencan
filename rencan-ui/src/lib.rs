@@ -20,10 +20,11 @@ use winit::{
 };
 
 use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
-use rencan_render::{App, AppBuilder};
+use rencan_render::{App, AppBuilder, AppBuilderRtExt};
 use vulkano::image::AttachmentImage;
 use vulkano::swapchain::SupportedPresentModes;
 use std::collections::HashSet;
+use vulkano::instance::InstanceExtensions;
 
 pub struct GuiApp {
     app: App,
@@ -222,7 +223,8 @@ fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Scree
         AppInfo::new(instance, graphics_queue, device.clone(), screen),
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
-    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone(), true)))
+    .then_ray_tracing_pipeline()
+    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone(), false)))
     .build();
 
     (app, present_queue)
