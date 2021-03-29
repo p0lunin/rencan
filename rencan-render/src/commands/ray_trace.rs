@@ -13,7 +13,12 @@ use crate::core::camera::Camera;
 use nalgebra::Point3;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::descriptor::PipelineLayoutAbstract;
-use vulkano::command_buffer::CommandBuffer;
+use vulkano::command_buffer::{CommandBuffer, Kind};
+use vulkano::command_buffer::sys::{UnsafeCommandBuffer, UnsafeCommandBufferBuilder, Flags, UnsafeCommandBufferBuilderPipelineBarrier};
+use vulkano::command_buffer::pool::{UnsafeCommandPoolAlloc, CommandPool, CommandPoolBuilderAlloc};
+use vulkano::sync::{PipelineStages, AccessFlagBits};
+use vulkano::framebuffer::{RenderPass, EmptySinglePassRenderPassDesc, FramebufferAbstract};
+use vulkano::command_buffer::synced::{SyncCommandBufferBuilder, SyncCommandBuffer};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -118,4 +123,58 @@ impl CommandFactory for RayTraceCommandFactory {
 
         commands.push(command);
     }
+}
+
+unsafe fn make_barrier(ctx: &CommandFactoryContext) -> SyncCommandBuffer {
+    use vulkano::command_buffer::pool::CommandPoolAlloc;
+    let pool = Device::standard_command_pool(
+        &ctx.app_info.device.clone(),
+        ctx.app_info.graphics_queue.family(),
+    );
+    let pool_builder_alloc = pool
+        .alloc(false, 1).unwrap()
+        .next().unwrap();
+    let mut buffer = UnsafeCommandBufferBuilder::new::<
+        RenderPass<EmptySinglePassRenderPassDesc>,
+        Box<dyn FramebufferAbstract>
+    >(
+        pool_builder_alloc.inner(),
+        Kind::Primary,
+        Flags::None,
+    ).unwrap();
+
+    let mut builder = UnsafeCommandBufferBuilderPipelineBarrier::new();
+    builder.add_buffer_memory_barrier(
+        &ctx.buffers.workgroups.clone(),
+        PipelineStages {
+            compute_shader: true,
+            ..PipelineStages::none()
+        },
+        AccessFlagBits {
+            memory_write: true,
+            shader_write: true,
+            ..AccessFlagBits::none()
+        },
+        PipelineStages {
+            compute_shader: true,
+            ..PipelineStages::none()
+        },
+        AccessFlagBits {
+            indirect_command_read: true,
+            shader_write: true,
+            memory_write: true,
+            ..AccessFlagBits::none()
+        },
+        false,
+        None,
+        0,
+        0
+    );
+
+
+    buffer.pipeline_barrier(
+        &builder
+    );
+
+    SyncCommandBufferBuilder::from_unsafe_cmd(buffer, false, false).build().unwrap()
 }
