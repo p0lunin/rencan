@@ -8,6 +8,7 @@ use vulkano::{
 };
 
 use crate::core::{CommandFactory, CommandFactoryContext, AutoCommandBufferBuilderWrap};
+use vulkano::command_buffer::CommandBuffer;
 
 pub mod blue_sky_cs {
     vulkano_shaders::shader! {
@@ -44,7 +45,7 @@ impl SkyCommandFactory {
 }
 
 impl CommandFactory for SkyCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
         let set_0 = ctx.buffers.global_app_set.clone();
         let set_1 = ctx.buffers.image_set.clone();
 

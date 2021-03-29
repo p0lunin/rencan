@@ -13,6 +13,7 @@ use crate::core::camera::Camera;
 use nalgebra::Point3;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::descriptor::PipelineLayoutAbstract;
+use vulkano::command_buffer::CommandBuffer;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -74,7 +75,7 @@ impl RayTraceCommandFactory {
 }
 
 impl CommandFactory for RayTraceCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>,
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>,
     )  {
         /*if self.prev_screen == ctx.app_info.screen
             && self.prev_camera == *ctx.camera

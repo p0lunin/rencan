@@ -8,6 +8,7 @@ use vulkano::{
 };
 
 use crate::core::{CommandFactory, CommandFactoryContext, AutoCommandBufferBuilderWrap};
+use vulkano::command_buffer::CommandBuffer;
 
 pub mod lightning_cs {
     vulkano_shaders::shader! {
@@ -44,7 +45,7 @@ impl LightningCommandFactory {
 }
 
 impl CommandFactory for LightningCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
         let command = add_lightning(self, &ctx);
 
         let command = command.build();

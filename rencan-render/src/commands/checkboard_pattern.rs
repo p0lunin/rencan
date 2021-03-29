@@ -14,6 +14,7 @@ use crate::core::{
     app::GlobalAppBuffers, intersection::IntersectionUniform, BufferAccessData, CommandFactory,
     CommandFactoryContext,
 };
+use vulkano::command_buffer::CommandBuffer;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -39,7 +40,7 @@ impl CheckBoardCommandFactory {
 }
 
 impl CommandFactory for CheckBoardCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
         let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();

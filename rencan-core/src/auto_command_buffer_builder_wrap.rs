@@ -14,7 +14,7 @@ impl AutoCommandBufferBuilderWrap {
         Ok(self)
     }
 
-    pub fn build(self) -> AutoCommandBuffer {
-        self.0.build().unwrap()
+    pub fn build(self) -> Box<AutoCommandBuffer> {
+        Box::new(self.0.build().unwrap())
     }
 }
