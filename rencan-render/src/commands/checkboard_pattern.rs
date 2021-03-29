@@ -40,8 +40,7 @@ impl CheckBoardCommandFactory {
 
 impl CommandFactory for CheckBoardCommandFactory {
     fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<AutoCommandBuffer>) {
-        let CommandFactoryContext { app_info, buffers, .. } = ctx;
-        let device = app_info.device.clone();
+        let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();
         let set_1 = buffers.rays_set.clone();
@@ -49,14 +48,10 @@ impl CommandFactory for CheckBoardCommandFactory {
         let set_3 = buffers.image_set.clone();
 
         let mut command =
-            AutoCommandBufferBuilder::new(device.clone(), app_info.graphics_queue.family())
-                .unwrap();
-
-        command
-            .dispatch([ctx.app_info.size_of_image_array() as u32 / 64, 1, 1], self.pipeline.clone(), (set_0, set_1, set_2, set_3), ())
-            .unwrap();
-
-        let command = command.build().unwrap();
+        ctx.create_command_buffer()
+            .dispatch(ctx.app_info.size_of_image_array() as u32 / 64, self.pipeline.clone(), (set_0, set_1, set_2, set_3))
+            .unwrap()
+            .build();
 
         commands.push(command);
     }

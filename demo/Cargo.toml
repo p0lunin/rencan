@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 nalgebra = "0.24.1"
 winit = "0.24.0"
-vulkano = "0.20.0"
-vulkano-shaders = "0.20.0"
+vulkano = { git = "https://github.com/Rua/vulkano/", rev = "e81d9a02f7cd5ad563f4cfd20bb1e7675178d0ac"  }
 rencan-render = { path = "../rencan-render" }
 rencan-ui = { path = "../rencan-ui" }

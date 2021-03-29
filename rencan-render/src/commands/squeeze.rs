@@ -14,7 +14,7 @@ use rencan_core::CommandFactory;
 use crate::core::{camera::Camera, CommandFactoryContext, Screen};
 use nalgebra::Point3;
 use std::cell::RefCell;
-use vulkano::image::{AttachmentImage, ImageViewAccess, ImageUsage};
+use vulkano::image::{AttachmentImage, ImageUsage};
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::descriptor::PipelineLayoutAbstract;
 
@@ -27,7 +27,7 @@ mod cs {
 
 pub struct SqueezeCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    local_image: Option<Arc<AttachmentImage>>,
+    local_image: Option<Arc<ImageView<AttachmentImage>>>,
     prev_screen: Option<Screen>,
     local_size_x: u32,
 }

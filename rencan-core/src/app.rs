@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crevice::std140::AsStd140;
 use vulkano::{
     buffer::{BufferUsage, DeviceLocalBuffer},
-    image::ImageViewAccess,
     sync::GpuFuture,
 };
 
@@ -62,12 +61,12 @@ impl App {
         scene: &Scene,
         image_create: F,
     ) -> Result<
-        (impl GpuFuture + 'static, Arc<dyn ImageViewAccess + Send + Sync + 'static>),
+        (impl GpuFuture + 'static, Arc<ImageView<Arc<AttachmentImage>>>),
         CommandBufferExecError,
     >
     where
         Prev: GpuFuture + 'static,
-        F: FnOnce(&AppInfo) -> Arc<AttachmentImage>,
+        F: FnOnce(&AppInfo) -> Arc<ImageView<Arc<AttachmentImage>>>,
     {
         let image = image_create(&self.info);
         let buffers = self.create_buffers(image.clone(), scene);
@@ -87,14 +86,14 @@ impl App {
 
         for command in commands {
             let f = fut.then_execute(self.info.graphics_queue.clone(), command)?;
-            fut = Box::new(f);
+            fut = Box::new(f.then_signal_semaphore());
         }
 
         Ok((fut, image))
     }
     fn create_buffers(
         &self,
-        image: Arc<AttachmentImage>,
+        image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &Scene,
     ) -> Buffers {
         self.buffers.make_buffers(
@@ -114,6 +113,7 @@ pub struct GlobalAppBuffers {
 
 pub struct GlobalBuffers {
     intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+    intersections_count: Arc<CpuBufferPool<DispatchIndirectCommand>>,
     camera: Arc<CpuBufferPool<<CameraUniform as AsStd140>::Std140Type>>,
     screen: Arc<CpuBufferPool<Screen>>,
     direction_light: Arc<CpuBufferPool<DirectionLightUniform>>,
@@ -132,6 +132,15 @@ impl GlobalBuffers {
                 std::iter::once(family.clone()),
             )
             .unwrap(),
+            intersections_count: Arc::new(CpuBufferPool::new(
+                device.clone(),
+                BufferUsage {
+                    indirect_buffer: true,
+                    storage_buffer: true,
+                    transfer_destination: true,
+                    ..BufferUsage::none()
+                },
+            )),
             camera: Arc::new(CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer())),
             screen: Arc::new(CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer())),
             direction_light: Arc::new(CpuBufferPool::new(
@@ -150,13 +159,14 @@ impl GlobalBuffers {
         device: Arc<Device>,
         app: &AppInfo,
         camera: &Camera,
-        image: Arc<AttachmentImage>,
+        image: Arc<ImageView<Arc<AttachmentImage>>>,
         light: &DirectionLight,
         scene: &Scene,
     ) -> Buffers {
         Buffers::new(
             device,
             self.intersections.clone(),
+            Arc::new(self.intersections_count.chunk(std::iter::once(DispatchIndirectCommand { x: 0, y: 0, z: 0 })).unwrap()),
             Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
@@ -182,7 +192,8 @@ impl GlobalBuffers {
 #[derive(Clone)]
 pub struct Buffers {
     pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
-    pub image: Arc<AttachmentImage>,
+    pub workgroups: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
+    pub image: Arc<ImageView<Arc<AttachmentImage>>>,
 
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
@@ -191,19 +202,24 @@ pub struct Buffers {
     pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-use vulkano::image::AttachmentImage;
+use vulkano::image::{AttachmentImage, ImageViewAbstract};
 use vulkano::pipeline::ComputePipeline;
 use vulkano::descriptor::pipeline_layout::PipelineLayout;
+use vulkano::image::view::ImageView;
+use vulkano::command_buffer::DispatchIndirectCommand;
+use vulkano::buffer::cpu_pool::CpuBufferPoolChunk;
+use vulkano::memory::pool::StdMemoryPool;
 
 impl Buffers {
     pub fn new(
         device: Arc<Device>,
         intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+        intersections_count: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
         camera: Arc<
             dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
         >,
         screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
-        output_image: Arc<AttachmentImage>,
+        output_image: Arc<ImageView<Arc<AttachmentImage>>>,
         direction_light: Arc<
             dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
         >,
@@ -284,6 +300,8 @@ impl Buffers {
             )
             .add_buffer(intersections.clone())
             .unwrap()
+            .add_buffer(intersections_count.clone())
+            .unwrap()
             .build()
             .unwrap(),
         );
@@ -298,7 +316,7 @@ impl Buffers {
             .unwrap(),
         );
 
-        Buffers { image: output_image, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
+        Buffers { image: output_image, workgroups: intersections_count, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
     }
 }
 

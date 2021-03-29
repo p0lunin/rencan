@@ -21,10 +21,11 @@ use winit::{
 
 use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder, AppBuilderRtExt};
-use vulkano::image::AttachmentImage;
+use vulkano::image::{AttachmentImage, ImageAccess};
 use vulkano::swapchain::SupportedPresentModes;
 use std::collections::HashSet;
 use vulkano::instance::InstanceExtensions;
+use vulkano::image::view::ImageView;
 
 pub struct GuiApp {
     app: App,
@@ -35,7 +36,7 @@ pub struct GuiApp {
     must_recreate_swapchain: bool,
     prev: Option<Box<dyn GpuFuture>>,
 
-    buffer_image: Arc<AttachmentImage>,
+    buffer_image: Arc<ImageView<Arc<AttachmentImage>>>,
 }
 
 impl GuiApp {
@@ -50,7 +51,7 @@ impl GuiApp {
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());
         let prev =
             Some(Box::new(vulkano::sync::now(app.info().device.clone())) as Box<dyn GpuFuture>);
-        let buffer_image = AttachmentImage::with_usage(
+        let buffer_image = ImageView::new(AttachmentImage::with_usage(
             app.info().device.clone(),
             swap_chain.dimensions(),
             swap_chain.format(),
@@ -60,7 +61,7 @@ impl GuiApp {
                 transfer_destination: true,
                 ..ImageUsage::none()
             }
-        ).unwrap();
+        ).unwrap()).unwrap();
 
         GuiApp {
             app,
@@ -97,7 +98,7 @@ impl GuiApp {
             self.swap_chain_images = new_images;
             self.must_recreate_swapchain = false;
             self.app.update_screen(Screen(dimensions));
-            self.buffer_image = AttachmentImage::with_usage(
+            self.buffer_image = ImageView::new(AttachmentImage::with_usage(
                 self.device(),
                 self.swap_chain.dimensions(),
                 self.swap_chain.format(),
@@ -107,7 +108,7 @@ impl GuiApp {
                     transfer_destination: true,
                     ..ImageUsage::none()
                 }
-            ).unwrap();
+            ).unwrap()).unwrap();
         }
 
         let (image_num, suboptimal, acquire_future) =
@@ -128,7 +129,7 @@ impl GuiApp {
             .prev
             .take()
             .unwrap()
-            .join(acquire_future);;
+            .join(acquire_future);
 
         let swapchain_image = self.swap_chain_images[image_num].clone();
         let (fut, _) = self.app.render(fut, &scene, {
@@ -140,9 +141,9 @@ impl GuiApp {
             self.device(),
             self.graphics_queue().family()
         ).unwrap();
-        let extent = [self.buffer_image.dimensions()[0], self.buffer_image.dimensions()[1], 1];
+        let extent = self.buffer_image.image().dimensions().width_height_depth();
         copy_command.copy_image(
-            self.buffer_image.clone(),
+            self.buffer_image.image().clone(),
             [0, 0, 0],
             0,
             0,
@@ -224,6 +225,7 @@ fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Scree
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
+        .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
     .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone(), false)))
     .build();
 

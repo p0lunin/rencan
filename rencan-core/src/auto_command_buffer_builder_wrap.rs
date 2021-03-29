@@ -10,7 +10,7 @@ impl AutoCommandBufferBuilderWrap {
         Cp: ComputePipelineAbstract + Send + Sync + 'static + Clone,
         S: DescriptorSetsCollection,
     {
-        self.0.dispatch([workgroups, 1, 1], pipeline, sets, ())?;
+        self.0.dispatch([workgroups, 1, 1], pipeline, sets, (), std::iter::empty())?;
         Ok(self)
     }
 

@@ -1,7 +1,7 @@
 #version 450
 
 #extension GL_GOOGLE_include_directive : require
-// #extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_shader_atomic_int64 : require
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
@@ -18,6 +18,11 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 
 layout(set = 1, binding = 0) writeonly buffer Intersections {
     Intersection intersections[];
+};
+layout(set = 1, binding = 1) buffer IntersectionsCount {
+    uint count_intersections;
+    uint __DO_NOT_TOUCH;
+    uint __DO_NOT_TOUCH2;
 };
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
@@ -70,5 +75,8 @@ void main() {
     );
     Intersection inter = trace(ray, idx);
 
-    intersections[idx] = inter;
+    if (inter.is_intersect == 1) {
+        uint intersection_idx = atomicAdd(count_intersections, 1);
+        intersections[intersection_idx] = inter;
+    }
 }

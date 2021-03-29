@@ -57,7 +57,7 @@ fn add_lightning(
     factory: &LightningCommandFactory,
     ctx: &CommandFactoryContext,
 ) -> AutoCommandBufferBuilderWrap {
-    let command = ctx.create_command_buffer();
+    let mut command = ctx.create_command_buffer();
     let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
@@ -67,10 +67,15 @@ fn add_lightning(
     let set_4 = buffers.image_set.clone();
 
     command
-        .dispatch(
-            ctx.app_info.size_of_image_array() as u32 / factory.local_size_x,
+        .0
+        .dispatch_indirect(
+            buffers.workgroups.clone(),
             factory.lightning_pipeline.clone(),
             (set_0, set_1, set_2, set_3, set_4),
+            (),
+            std::iter::empty()
         )
-        .unwrap()
+        .unwrap();
+
+    command
 }

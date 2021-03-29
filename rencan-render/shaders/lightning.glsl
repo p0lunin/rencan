@@ -22,6 +22,11 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 layout(set = 1, binding = 0) readonly buffer Intersections {
     Intersection intersections[];
 };
+layout(set = 1, binding = 1) buffer _N {
+    uint _NN;
+    uint _NNN;
+    uint _NNNN;
+};
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
@@ -188,7 +193,7 @@ vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
                 Ray reflect_ray = Ray(inter.point, vec4(next_direction, 0.0), 1.0 / 0.0);
                 Intersection mirror_inter = trace(reflect_ray, 0);
                 if (mirror_inter.is_intersect == 0.0) {
-                    color = vec3(0.0, 0.7, 0.4);
+                    color = vec3(0.0, 0.3, 0.8);;
                     computed = true;
                 }
                 else {
@@ -241,7 +246,7 @@ vec3 compute_color_for_pixel(uint idx, uvec2 screen, uvec2 pixel_pos) {
         color = lights(idx, inter, primary_ray);
     }
     else if (inter.is_intersect == 0) {
-        color = vec3(0.0, 0.7, 0.4);
+        color = vec3(0.0, 0.3, 0.8);
     }
     else {
         // unreachable
@@ -267,26 +272,17 @@ vec3 tracing_with_sampling() {
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    uvec2 pixel_pos = uvec2(idx % screen.x, idx / screen.x);
-
     vec3 color;
+
+    Intersection inter = intersections[idx];
+    ivec2 pixel_pos = ivec2(inter.pixel_id % screen.x, inter.pixel_id / screen.x);
 
     if (SAMPLING == 1) {
         color = tracing_with_sampling();
     }
     else {
-        Intersection inter = intersections[idx];
         Ray primary_ray = inter.ray;
-
-        if (inter.is_intersect == 1) {
-            color = lights(idx, inter, primary_ray);
-        }
-        else if (inter.is_intersect == 0) {
-            color = vec3(0.0, 0.7, 0.4);
-        }
-        else {
-            // unreachable
-        }
+        color = lights(idx, inter, primary_ray);
     }
-    imageStore(resultImage, ivec2(pixel_pos.xy), vec4(color, 0.0));
+    imageStore(resultImage, pixel_pos, vec4(color, 0.0));
 }
