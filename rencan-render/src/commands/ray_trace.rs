@@ -96,8 +96,9 @@ impl CommandFactory for RayTraceCommandFactory {
         let set_0 = buffers.global_app_set.clone();
         let set_1 = buffers.rays_set.clone();
         let set_2 = buffers.models_set.clone();
+        let set_3 = buffers.sphere_models_set.clone();
 
-        let sets = (set_0, set_1, set_2);
+        let sets = (set_0, set_1, set_2, set_3);
 
         let command = ctx
             .create_command_buffer()

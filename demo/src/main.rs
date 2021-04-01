@@ -13,6 +13,7 @@ use winit::{
     window::WindowBuilder,
 };
 use winit::dpi::{Size, PhysicalSize};
+use rencan_render::core::model::SphereModel;
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -90,6 +91,9 @@ fn main() {
     let mut scene = Scene::new(
         app.device(),
         models,
+        vec![
+            SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.2), // TODO: vulkano bug
+        ],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 7.0),
             Vector3::new(0.2, -0.4, 0.3),

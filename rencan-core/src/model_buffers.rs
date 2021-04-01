@@ -21,6 +21,10 @@ pub struct SceneBuffersStorage {
     pub hit_boxes: CpuBufferPool<HitBoxRectangleUniformStd140>,
     pub point_lights: CpuBufferPool<PointLightUniform>,
     pub point_lights_count: CpuBufferPool<u32>,
+
+    pub sphere_count: CpuBufferPool<u32, Arc<StdMemoryPool>>,
+    pub sphere_infos: CpuBufferPool<ModelUniformInfo, Arc<StdMemoryPool>>,
+    pub spheres: CpuBufferPool<Point4<f32>, Arc<StdMemoryPool>>,
 }
 
 impl SceneBuffersStorage {
@@ -50,6 +54,18 @@ impl SceneBuffersStorage {
             point_lights_count: CpuBufferPool::new(
                 device.clone(),
                 BufferUsage { uniform_buffer: true, ..BufferUsage::none() },
+            ),
+            sphere_count: CpuBufferPool::new(
+                device.clone(),
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+            ),
+            sphere_infos: CpuBufferPool::new(
+                device.clone(),
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+            ),
+            spheres: CpuBufferPool::new(
+                device.clone(),
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             ),
         }
     }
@@ -97,6 +113,30 @@ impl SceneBuffersStorage {
         let point_lights =
             self.point_lights.chunk(point_lights.iter().map(|l| l.clone().into_uniform())).unwrap();
         let point_lights_count = self.point_lights_count.next(point_lights.len() as u32).unwrap();
+
+        let sphere_count = self.sphere_count.next(scene.sphere_models.len() as u32).unwrap();
+        let sphere_infos = self
+            .sphere_infos
+            .chunk(
+                scene
+                    .sphere_models
+                    .iter()
+                    .enumerate()
+                    .map(|(i, m)| m.get_uniform_info(i as u32)),
+            )
+            .unwrap();
+        let spheres = self
+            .spheres
+            .chunk(
+                scene
+                    .sphere_models
+                    .iter()
+                    .map(|m| Point4::new(m.center.x, m.center.y, m.center.z, m.radius))
+                    .collect::<Vec<_>>()
+                    .into_iter(),
+            )
+            .unwrap();
+
         SceneBuffers {
             count,
             infos,
@@ -105,6 +145,9 @@ impl SceneBuffersStorage {
             hit_boxes,
             point_lights_count,
             point_lights,
+            sphere_count,
+            sphere_infos,
+            spheres
         }
     }
 }
@@ -118,4 +161,8 @@ pub struct SceneBuffers {
     pub hit_boxes: CpuBufferPoolChunk<HitBoxRectangleUniformStd140, Arc<StdMemoryPool>>,
     pub point_lights_count: CpuBufferPoolSubbuffer<u32, Arc<StdMemoryPool>>,
     pub point_lights: CpuBufferPoolChunk<PointLightUniform, Arc<StdMemoryPool>>,
+
+    pub sphere_count: CpuBufferPoolSubbuffer<u32, Arc<StdMemoryPool>>,
+    pub sphere_infos: CpuBufferPoolChunk<ModelUniformInfo, Arc<StdMemoryPool>>,
+    pub spheres: CpuBufferPoolChunk<Point4<f32>, Arc<StdMemoryPool>>,
 }

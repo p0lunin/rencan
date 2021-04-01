@@ -19,11 +19,11 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(set = 1, binding = 0) readonly buffer Intersections {
+layout(std140, set = 1, binding = 0) readonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 1, binding = 1) buffer _N {
-    uint _NN;
+layout(set = 1, binding = 1) readonly buffer _N {
+    uint NN;
     uint _NNN;
     uint _NNNN;
 };
@@ -44,17 +44,27 @@ layout(std140, set = 2, binding = 4) readonly buffer HitBoxes {
     HitBoxRectangle[] hit_boxes;
 };
 
-layout(std140, set = 3, binding = 0) readonly uniform DirectLightInfo {
+layout(std140, set = 3, binding = 0) readonly buffer SphereModelsInfo {
+    uint sphere_models_count;
+};
+layout(std140, set = 3, binding = 1) readonly buffer SphereModels {
+    ModelInfo sphere_models[];
+};
+layout(std140, set = 3, binding = 2) readonly buffer Spheres {
+    Sphere[] spheres;
+};
+
+layout(std140, set = 4, binding = 0) readonly uniform DirectLightInfo {
     DirectLight global_light;
 };
-layout(std140, set = 3, binding = 1) readonly uniform PointLightsInfo {
+layout(std140, set = 4, binding = 1) readonly uniform PointLightsInfo {
     uint point_lights_count;
 };
-layout(std140, set = 3, binding = 2) readonly buffer PointLights {
+layout(std140, set = 4, binding = 2) readonly buffer PointLights {
     PointLight[] point_lights;
 };
 
-layout(set = 4, binding = 0, rgba8) writeonly uniform image2D resultImage;
+layout(set = 5, binding = 0, rgba8) writeonly uniform image2D resultImage;
 
 #include "include/ray_tracing.glsl"
 
@@ -178,7 +188,7 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
 }
 
 vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
-    ModelInfo model = models[inter.model_id];
+    ModelInfo model = inter.model;
 
     bool computed = false;
     vec3 color = vec3(0.0);
@@ -199,7 +209,7 @@ vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
                 else {
                     inter = mirror_inter;
                     primary_ray = reflect_ray;
-                    model = models[mirror_inter.model_id];
+                    model = mirror_inter.model;
                 }
                 break;
             default:
@@ -271,6 +281,8 @@ vec3 tracing_with_sampling() {
 }
 
 void main() {
+    uint _ = NN;
+
     uint idx = gl_GlobalInvocationID.x;
     vec3 color;
 

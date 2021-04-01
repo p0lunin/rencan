@@ -64,15 +64,16 @@ fn add_lightning(
     let set_0 = buffers.global_app_set.clone();
     let set_1 = buffers.rays_set.clone();
     let set_2 = buffers.models_set.clone();
-    let set_3 = buffers.lights_set.clone();
-    let set_4 = buffers.image_set.clone();
+    let set_3 = buffers.sphere_models_set.clone();
+    let set_4 = buffers.lights_set.clone();
+    let set_5 = buffers.image_set.clone();
 
     command
         .0
         .dispatch_indirect(
             buffers.workgroups.clone(),
             factory.lightning_pipeline.clone(),
-            (set_0, set_1, set_2, set_3, set_4),
+            (set_0, set_1, set_2, set_3, set_4, set_5),
             (),
             std::iter::empty()
         )

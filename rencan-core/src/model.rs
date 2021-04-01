@@ -118,3 +118,46 @@ impl AppModel {
         self.need_update_info = true;
     }
 }
+
+pub struct SphereModel {
+    pub center: Point3<f32>,
+    pub radius: f32,
+    pub rotation: UnitQuaternion<f32>,
+    pub position: Point3<f32>,
+    pub scaling: f32,
+    pub material: Material,
+}
+
+impl SphereModel {
+    pub fn new(center: Point3<f32>, radius: f32) -> Self {
+        SphereModel {
+            center,
+            radius,
+            rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
+            position: Point3::new(0.0, 0.0, 0.0),
+            scaling: 1.0,
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 }
+        }
+    }
+
+    pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
+        let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
+        ModelUniformInfo {
+            isometry: (Isometry3::from_parts(
+                Translation3::new(self.position.x, self.position.y, self.position.z),
+                self.rotation,
+            )
+            .to_matrix()
+                * self.scaling)
+                .into(),
+            model_id,
+            vertices_length: 0,
+            indexes_length: 0,
+            albedo,
+            diffuse,
+            specular,
+            material,
+            offset: 0.0,
+        }
+    }
+}

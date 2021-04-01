@@ -53,5 +53,5 @@ pub struct IntersectionUniform {
     triangle_idx: u32,
     vertices_offset: u32,
     distance: f32,
-    paddings: [f32; 18],
+    paddings: [f32; 50],
 }

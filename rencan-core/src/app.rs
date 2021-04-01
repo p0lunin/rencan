@@ -198,6 +198,7 @@ pub struct Buffers {
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub sphere_models_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
@@ -236,7 +237,7 @@ impl Buffers {
 
         const SHADER: OnceCell<cs::Shader> = OnceCell::new();
 
-        const pipeline: OnceCell<Arc<ComputePipeline<PipelineLayout<cs::Layout>>>> = OnceCell::new();
+        const pipeline: OnceCell<Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>> = OnceCell::new();
 
         let pip = pipeline.get_or_init(move || Arc::new(
             vulkano::pipeline::ComputePipeline::new(
@@ -280,9 +281,23 @@ impl Buffers {
             .unwrap(),
         );
 
-        let lights_set = Arc::new(
+        let sphere_models_set = Arc::new(
             PersistentDescriptorSet::start(
                 pip.layout().descriptor_set_layout(3).unwrap().clone(),
+            )
+            .add_buffer(models_buffers.sphere_count.clone())
+            .unwrap()
+            .add_buffer(models_buffers.sphere_infos.clone())
+            .unwrap()
+            .add_buffer(models_buffers.spheres.clone())
+            .unwrap()
+            .build()
+            .unwrap(),
+        );
+
+        let lights_set = Arc::new(
+            PersistentDescriptorSet::start(
+                pip.layout().descriptor_set_layout(4).unwrap().clone(),
             )
             .add_buffer(direction_light)
             .unwrap()
@@ -308,7 +323,7 @@ impl Buffers {
 
         let image_set = Arc::new(
             PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(4).unwrap().clone(),
+                pip.layout().descriptor_set_layout(5).unwrap().clone(),
             )
             .add_image(output_image.clone())
             .unwrap()
@@ -316,7 +331,7 @@ impl Buffers {
             .unwrap(),
         );
 
-        Buffers { image: output_image, workgroups: intersections_count, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
+        Buffers { sphere_models_set, image: output_image, workgroups: intersections_count, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
     }
 }
 

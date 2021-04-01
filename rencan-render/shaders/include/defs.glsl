@@ -4,12 +4,23 @@ struct Ray {
     float max_distance;
 };
 
+struct ModelInfo {
+    mat4 isometry;
+    uint model_id;
+    uint vertices_length;
+    uint indexes_length;
+    uint material;
+    float albedo;
+    float diffuse;
+    float specular;
+};
+
 struct Intersection {
     vec3 point;
     vec3 normal;
     vec2 barycentric_coords;
     uint is_intersect;
-    uint model_id;
+    ModelInfo model;
     uint triangle_idx;
     uint vertices_offset;
     float distance;
@@ -20,7 +31,7 @@ struct Intersection {
 Intersection intersection_succ(
     vec3 point,
     vec3 normal,
-    uint model_id,
+    ModelInfo model,
     uint triangle_idx,
     uint vertices_offset,
     vec2 barycentric_coords,
@@ -28,7 +39,7 @@ Intersection intersection_succ(
     Ray ray,
     uint pixel_id
 ) {
-    return Intersection(point, normal, barycentric_coords, 1, model_id, triangle_idx, vertices_offset, distance, ray, pixel_id);
+    return Intersection(point, normal, barycentric_coords, 1, model, triangle_idx, vertices_offset, distance, ray, pixel_id);
 }
 
 Intersection intersection_none() {
@@ -43,15 +54,9 @@ struct DirectLight {
     float intensity;
 };
 
-struct ModelInfo {
-    mat4 isometry;
-    uint model_id;
-    uint vertices_length;
-    uint indexes_length;
-    uint material;
-    float albedo;
-    float diffuse;
-    float specular;
+struct Sphere {
+    vec3 center;
+    float radius;
 };
 
 struct HitBoxRectangle {

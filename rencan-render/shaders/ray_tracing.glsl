@@ -16,10 +16,10 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(set = 1, binding = 0) writeonly buffer Intersections {
+layout(std140, set = 1, binding = 0) writeonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 1, binding = 1) buffer IntersectionsCount {
+layout(set = 1, binding = 1) writeonly buffer IntersectionsCount {
     uint count_intersections;
     uint __DO_NOT_TOUCH;
     uint __DO_NOT_TOUCH2;
@@ -39,6 +39,16 @@ layout(std140, set = 2, binding = 3) readonly buffer Indexes {
 };
 layout(std140, set = 2, binding = 4) readonly buffer HitBoxes {
     HitBoxRectangle[] hit_boxes;
+};
+
+layout(std140, set = 3, binding = 0) readonly buffer SphereModelsInfo {
+    uint sphere_models_count;
+};
+layout(std140, set = 3, binding = 1) readonly buffer SphereModels {
+    ModelInfo sphere_models[];
+};
+layout(std140, set = 3, binding = 2) readonly buffer Spheres {
+    Sphere[] spheres;
 };
 
 #include "include/ray_tracing.glsl"
