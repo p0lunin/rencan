@@ -18,8 +18,8 @@ IntersectResult ret_intersect(vec3 normal, vec2 coords, float t) {
 IntersectResult _intersect(Ray ray, vec3[3] triangle) {
     vec3 v0v1 = triangle[1] - triangle[0];
     vec3 v0v2 = triangle[2] - triangle[0];
-    vec3 pvec = cross(ray.direction.xyz, v0v2);
-    float det = dot(v0v1, cross(ray.direction.xyz, v0v2));
+    vec3 pvec = cross(ray.direction, v0v2);
+    float det = dot(v0v1, cross(ray.direction, v0v2));
 
     if (det < eps) return not_intersect();
 
@@ -30,7 +30,7 @@ IntersectResult _intersect(Ray ray, vec3[3] triangle) {
     if (u < 0 || u > 1) return not_intersect();
 
     vec3 vvec = cross(tvec, v0v1);
-    float v = dot(ray.direction.xyz, vvec) * inv_det;
+    float v = dot(ray.direction, vvec) * inv_det;
     if (v < 0 || u + v > 1) return not_intersect();
 
     float t = dot(v0v2, vvec) * inv_det;
@@ -66,7 +66,7 @@ IntersectResult _intersect_sphere(Sphere sphere, Ray ray) {
 
     float distance = t0;
 
-    vec3 hit_point = (ray.origin + ray.direction.xyz * distance);
+    vec3 hit_point = (ray.origin + ray.direction * distance);
     vec3 normal = normalize(hit_point - sphere.center);
     // TODO: barycentric coordinates
     return ret_intersect(normal, vec2(0.0), distance);
@@ -76,7 +76,7 @@ vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
     vec3 rad = hit_box.max - hit_box.min;
     ray.origin = ray.origin - hit_box.min;
 
-    vec3 m = 1.0/ray.direction.xyz;
+    vec3 m = 1.0/ray.direction;
     vec3 n = m*ray.origin;
     vec3 k = abs(m)*rad;
     vec3 t1 = -n - k;
@@ -109,7 +109,7 @@ Intersection trace_triangles(
 
         mat4 global_to_model = inverse(model.isometry);
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
-        ray.direction = global_to_model * origin_ray.direction;
+        ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
         vec3 is_inter_hitbox = _intersect_box(hit_box, ray);
 
@@ -130,7 +130,7 @@ Intersection trace_triangles(
                 vec3 normal = normalize((model.isometry * vec4(res.normal, 0.0)).xyz);
                 vec3 inter_point =
                     origin_ray.origin +
-                    origin_ray.direction.xyz * res.distance +
+                    origin_ray.direction * res.distance +
                     normal * 0.001;
                 distance = res.distance;
                 inter = intersection_succ(
@@ -169,7 +169,7 @@ Intersection trace_spheres(
 
         mat4 global_to_model = inverse(model.isometry);
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
-        ray.direction = global_to_model * origin_ray.direction;
+        ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
         Sphere sphere = spheres[model_idx];
 
@@ -178,7 +178,7 @@ Intersection trace_spheres(
             vec3 normal = normalize((model.isometry * vec4(res.normal, 0.0)).xyz);
             vec3 inter_point =
                 origin_ray.origin +
-                origin_ray.direction.xyz * res.distance +
+                origin_ray.direction * res.distance +
                 normal * 0.001;
             distance = res.distance;
             inter = intersection_succ(
@@ -230,7 +230,7 @@ Intersection trace_first(
 
         mat4 global_to_model = inverse(model.isometry);
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
-        ray.direction = global_to_model * origin_ray.direction;
+        ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
         vec3 is_inter_hitbox = _intersect_box(hit_box, ray);
 
@@ -250,7 +250,7 @@ Intersection trace_first(
             if (res.intersect && res.distance < ray.max_distance) {
                 vec3 inter_point =
                     origin_ray.origin +
-                    origin_ray.direction.xyz * res.distance +
+                    origin_ray.direction * res.distance +
                     res.normal * 0.001;
                 inter = intersection_succ(
                     inter_point,

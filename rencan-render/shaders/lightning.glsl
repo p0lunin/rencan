@@ -82,9 +82,9 @@ vec3 compute_color_for_global_lights(
 
     vec3 light_dir = -global_light.direction;
 
-    vec3 ray_direction = (inverse(isometry) * primary_ray.direction).xyz;
+    vec3 ray_direction = (inverse(isometry) * vec4(primary_ray.direction, 0.0)).xyz;
 
-    vec3 color = albedo / PI * global_light.intensity * global_light.color * max(dot(normal, -global_light.direction.xyz), 0.0);
+    vec3 color = albedo / PI * global_light.intensity * global_light.color * max(dot(normal, -global_light.direction), 0.0);
 
     return color;
 }
@@ -103,13 +103,13 @@ vec3 compute_color_for_point_light(
 }
 
 Ray make_shadow_ray_for_direction_light(Intersection inter, Ray previous) {
-    return Ray(inter.point, vec4(-global_light.direction.xyz, 0.0), 1.0 / 0.0);
+    return Ray(inter.point, -global_light.direction, 1.0 / 0.0);
 }
 
 Ray make_shadow_ray_for_point_light(Intersection inter, Ray previous, PointLight light) {
     vec3 direction_ray = light.position - inter.point;
 
-    return Ray(inter.point, vec4(normalize(direction_ray), 0.0), length(direction_ray));
+    return Ray(inter.point, normalize(direction_ray), length(direction_ray));
 }
 
 float compute_specular_component(vec3 primary_ray, vec3 light_ray, vec3 surface_normal) {
@@ -142,8 +142,8 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
             primary_ray
         );
         color += model.specular * compute_specular_color(
-            primary_ray.direction.xyz,
-            global_light_ray.direction.xyz,
+            primary_ray.direction,
+            global_light_ray.direction,
             inter.normal,
             global_light.color * global_light.intensity
         );
@@ -177,10 +177,10 @@ vec3 compute_color_diffuse_material(ModelInfo model, Intersection inter, Ray pri
             distance_to_light
         );
         color += model.specular * compute_specular_color(
-            primary_ray.direction.xyz,
-            light_ray.direction.xyz,
+            primary_ray.direction,
+            light_ray.direction,
             inter.normal,
-            light.color
+            light.color * light.intensity
         );
     }
 
@@ -199,11 +199,11 @@ vec3 lights(uint idx, Intersection inter, Ray primary_ray) {
                 computed = true;
                 break;
             case MATERIAL_MIRROR:
-                vec3 next_direction = reflect(primary_ray.direction.xyz, inter.normal);
-                Ray reflect_ray = Ray(inter.point, vec4(next_direction, 0.0), 1.0 / 0.0);
+                vec3 next_direction = reflect(primary_ray.direction, inter.normal);
+                Ray reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
                 Intersection mirror_inter = trace(reflect_ray, 0);
                 if (mirror_inter.is_intersect == 0.0) {
-                    color = vec3(0.0, 0.3, 0.8);;
+                    color = vec3(0.0, 0.3, 0.8);
                     computed = true;
                 }
                 else {
@@ -236,7 +236,7 @@ Ray compute_primary_ray(
     float x = (2 * ((this_point.x + 0.5) / float(screen.x)) - 1) * aspect_ratio * scale;
     float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y))) * scale;
 
-    vec4 direction = vec4(normalize(camera_rotation * vec3(x, y, -1.0)), 0.0);
+    vec3 direction = normalize(camera_rotation * vec3(x, y, -1.0));
 
     return Ray(origin, direction, 1.0 / 0.0);
 }

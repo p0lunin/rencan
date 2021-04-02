@@ -68,7 +68,7 @@ Ray compute_primary_ray(
     float x = (2 * ((this_point.x + 0.5) / float(screen.x)) - 1) * aspect_ratio * scale;
     float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y))) * scale;
 
-    vec4 direction = vec4(normalize(camera_rotation * vec3(x, y, -1.0)), 0.0);
+    vec3 direction = normalize(camera_rotation * vec3(x, y, -1.0));
 
     return Ray(origin, direction, 1.0 / 0.0);
 }

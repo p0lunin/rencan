@@ -1,6 +1,6 @@
 struct Ray {
     vec3 origin;
-    vec4 direction;
+    vec3 direction;
     float max_distance;
 };
 
