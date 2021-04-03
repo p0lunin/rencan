@@ -14,12 +14,13 @@ use crate::{
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
+use once_cell::sync::OnceCell;
 use vulkano::{
     buffer::{cpu_pool::CpuBufferPoolChunk, CpuBufferPool},
     command_buffer::{CommandBufferExecError, DispatchIndirectCommand},
     descriptor::{
-        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout, DescriptorSet,
-        PipelineLayoutAbstract,
+        descriptor_set::FixedSizeDescriptorSetsPool, pipeline_layout::PipelineLayout,
+        DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
     image::{view::ImageView, AttachmentImage},
@@ -91,18 +92,11 @@ impl App {
         Ok((fut, image))
     }
     fn create_buffers(
-        &self,
+        &mut self,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &Scene,
     ) -> Buffers {
-        self.buffers.make_buffers(
-            self.info.device.clone(),
-            &self.info,
-            &self.camera,
-            image,
-            &scene.global_light,
-            &scene,
-        )
+        self.buffers.make_buffers(&self.info, &self.camera, image, &scene.global_light, &scene)
     }
 }
 
@@ -116,6 +110,8 @@ pub struct GlobalBuffers {
     camera: Arc<CpuBufferPool<<CameraUniform as AsStd140>::Std140Type>>,
     screen: Arc<CpuBufferPool<Screen>>,
     direction_light: Arc<CpuBufferPool<DirectionLightUniform>>,
+
+    sets: SetsStorage,
 }
 
 impl GlobalBuffers {
@@ -143,6 +139,7 @@ impl GlobalBuffers {
                 device.clone(),
                 BufferUsage::uniform_buffer(),
             )),
+            sets: SetsStorage::new(device),
         }
     }
 
@@ -151,16 +148,14 @@ impl GlobalBuffers {
     }
 
     pub fn make_buffers(
-        &self,
-        device: Arc<Device>,
+        &mut self,
         app: &AppInfo,
         camera: &Camera,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         light: &DirectionLight,
         scene: &Scene,
     ) -> Buffers {
-        Buffers::new(
-            device,
+        self.sets.buffers(
             self.intersections.clone(),
             Arc::new(
                 self.intersections_count
@@ -186,37 +181,17 @@ impl GlobalBuffers {
     }
 }
 
-#[derive(Clone)]
-pub struct Buffers {
-    pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
-    pub workgroups: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
-    pub image: Arc<ImageView<Arc<AttachmentImage>>>,
-
-    pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub sphere_models_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
+pub struct SetsStorage {
+    pub global_app_set: FixedSizeDescriptorSetsPool,
+    pub rays_set: FixedSizeDescriptorSetsPool,
+    pub models_set: FixedSizeDescriptorSetsPool,
+    pub sphere_models_set: FixedSizeDescriptorSetsPool,
+    pub lights_set: FixedSizeDescriptorSetsPool,
+    pub image_set: FixedSizeDescriptorSetsPool,
 }
 
-impl Buffers {
-    pub fn new(
-        device: Arc<Device>,
-        intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
-        intersections_count: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
-        camera: Arc<
-            dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
-        >,
-        screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
-        output_image: Arc<ImageView<Arc<AttachmentImage>>>,
-        direction_light: Arc<
-            dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
-        >,
-        models_buffers: SceneBuffers,
-    ) -> Self {
-        use once_cell::sync::*;
-
+impl SetsStorage {
+    pub fn new(device: &Arc<Device>) -> Self {
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
@@ -245,8 +220,52 @@ impl Buffers {
             })
             .clone();
 
+        let global_app_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(0).unwrap().clone(),
+        );
+        let rays_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(1).unwrap().clone(),
+        );
+        let models_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(2).unwrap().clone(),
+        );
+        let sphere_models_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(3).unwrap().clone(),
+        );
+        let lights_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(4).unwrap().clone(),
+        );
+        let image_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(5).unwrap().clone(),
+        );
+
+        SetsStorage {
+            global_app_set,
+            rays_set,
+            models_set,
+            sphere_models_set,
+            lights_set,
+            image_set,
+        }
+    }
+
+    pub fn buffers(
+        &mut self,
+        intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+        intersections_count: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
+        camera: Arc<
+            dyn BufferAccessData<Data = <CameraUniform as AsStd140>::Std140Type> + Send + Sync,
+        >,
+        screen: Arc<dyn BufferAccessData<Data = Screen> + Send + Sync>,
+        output_image: Arc<ImageView<Arc<AttachmentImage>>>,
+        direction_light: Arc<
+            dyn BufferAccessData<Data = DirectionLightUniform> + Send + Sync + 'static,
+        >,
+        models_buffers: SceneBuffers,
+    ) -> Buffers {
         let global_app_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(0).unwrap().clone())
+            self.global_app_set
+                .next()
                 .add_buffer(screen.clone())
                 .unwrap()
                 .add_buffer(camera.clone())
@@ -256,7 +275,8 @@ impl Buffers {
         );
 
         let models_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(2).unwrap().clone())
+            self.models_set
+                .next()
                 .add_buffer(models_buffers.count.clone())
                 .unwrap()
                 .add_buffer(models_buffers.infos.clone())
@@ -272,7 +292,8 @@ impl Buffers {
         );
 
         let sphere_models_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(3).unwrap().clone())
+            self.sphere_models_set
+                .next()
                 .add_buffer(models_buffers.sphere_count.clone())
                 .unwrap()
                 .add_buffer(models_buffers.sphere_infos.clone())
@@ -284,7 +305,8 @@ impl Buffers {
         );
 
         let lights_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(4).unwrap().clone())
+            self.lights_set
+                .next()
                 .add_buffer(direction_light)
                 .unwrap()
                 .add_buffer(models_buffers.point_lights_count.clone())
@@ -296,7 +318,8 @@ impl Buffers {
         );
 
         let rays_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(1).unwrap().clone())
+            self.rays_set
+                .next()
                 .add_buffer(intersections.clone())
                 .unwrap()
                 .add_buffer(intersections_count.clone())
@@ -306,11 +329,7 @@ impl Buffers {
         );
 
         let image_set = Arc::new(
-            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(5).unwrap().clone())
-                .add_image(output_image.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
+            self.image_set.next().add_image(output_image.clone()).unwrap().build().unwrap(),
         );
 
         Buffers {
@@ -325,6 +344,20 @@ impl Buffers {
             image_set,
         }
     }
+}
+
+#[derive(Clone)]
+pub struct Buffers {
+    pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
+    pub workgroups: Arc<CpuBufferPoolChunk<DispatchIndirectCommand, Arc<StdMemoryPool>>>,
+    pub image: Arc<ImageView<Arc<AttachmentImage>>>,
+
+    pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub sphere_models_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 
 pub type Rays = [Ray];
