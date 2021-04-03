@@ -9,6 +9,7 @@ use vulkano::{
 
 use crate::core::{CommandFactory, CommandFactoryContext, AutoCommandBufferBuilderWrap};
 use vulkano::command_buffer::CommandBuffer;
+use vulkano::sync::GpuFuture;
 
 pub mod lightning_cs {
     vulkano_shaders::shader! {
@@ -45,12 +46,10 @@ impl LightningCommandFactory {
 }
 
 impl CommandFactory for LightningCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
-        let command = add_lightning(self, &ctx);
+    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
+        let command = add_lightning(self, &ctx).build();
 
-        let command = command.build();
-
-        commands.push(command)
+        Box::new(fut.then_execute(ctx.graphics_queue(), command).unwrap())
     }
 }
 
@@ -58,7 +57,6 @@ fn add_lightning(
     factory: &LightningCommandFactory,
     ctx: &CommandFactoryContext,
 ) -> AutoCommandBufferBuilderWrap {
-    let mut command = ctx.create_command_buffer();
     let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
@@ -68,16 +66,11 @@ fn add_lightning(
     let set_4 = buffers.lights_set.clone();
     let set_5 = buffers.image_set.clone();
 
-    command
-        .0
+    ctx
+        .create_command_buffer()
         .dispatch_indirect(
             buffers.workgroups.clone(),
             factory.lightning_pipeline.clone(),
             (set_0, set_1, set_2, set_3, set_4, set_5),
-            (),
-            std::iter::empty()
         )
-        .unwrap();
-
-    command
 }

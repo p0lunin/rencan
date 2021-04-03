@@ -77,16 +77,9 @@ impl App {
             camera: &self.camera,
         };
 
-        let mut commands = vec![];
-        for factory in self.commands.iter_mut() {
-            factory.make_command(ctx.clone(), &mut commands);
-        }
-
         let mut fut: Box<dyn GpuFuture> = Box::new(previous);
-
-        for command in commands {
-            let f = fut.then_execute(self.info.graphics_queue.clone(), command)?;
-            fut = Box::new(f.then_signal_semaphore());
+        for factory in self.commands.iter_mut() {
+            fut = factory.make_command(ctx.clone(), fut);
         }
 
         Ok((fut, image))

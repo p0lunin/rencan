@@ -15,6 +15,7 @@ use crate::core::{
     CommandFactoryContext,
 };
 use vulkano::command_buffer::CommandBuffer;
+use vulkano::sync::GpuFuture;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -40,7 +41,7 @@ impl CheckBoardCommandFactory {
 }
 
 impl CommandFactory for CheckBoardCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
         let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();
@@ -48,12 +49,12 @@ impl CommandFactory for CheckBoardCommandFactory {
         let set_2 = buffers.models_set.clone();
         let set_3 = buffers.image_set.clone();
 
-        let mut command =
+        let command =
         ctx.create_command_buffer()
             .dispatch(ctx.app_info.size_of_image_array() as u32 / 64, self.pipeline.clone(), (set_0, set_1, set_2, set_3))
             .unwrap()
             .build();
 
-        commands.push(command);
+        Box::new(fut.then_execute(ctx.graphics_queue(), command).unwrap())
     }
 }

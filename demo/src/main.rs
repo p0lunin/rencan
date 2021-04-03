@@ -13,7 +13,7 @@ use winit::{
     window::WindowBuilder,
 };
 use winit::dpi::{Size, PhysicalSize};
-use rencan_render::core::model::SphereModel;
+use rencan_render::core::model::{SphereModel, Material};
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {

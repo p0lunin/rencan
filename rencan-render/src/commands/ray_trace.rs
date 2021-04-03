@@ -16,7 +16,7 @@ use vulkano::descriptor::PipelineLayoutAbstract;
 use vulkano::command_buffer::{CommandBuffer, Kind};
 use vulkano::command_buffer::sys::{UnsafeCommandBuffer, UnsafeCommandBufferBuilder, Flags, UnsafeCommandBufferBuilderPipelineBarrier};
 use vulkano::command_buffer::pool::{UnsafeCommandPoolAlloc, CommandPool, CommandPoolBuilderAlloc};
-use vulkano::sync::{PipelineStages, AccessFlagBits};
+use vulkano::sync::{PipelineStages, AccessFlagBits, GpuFuture};
 use vulkano::framebuffer::{RenderPass, EmptySinglePassRenderPassDesc, FramebufferAbstract};
 use vulkano::command_buffer::synced::{SyncCommandBufferBuilder, SyncCommandBuffer};
 
@@ -80,14 +80,7 @@ impl RayTraceCommandFactory {
 }
 
 impl CommandFactory for RayTraceCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>,
-    )  {
-        /*if self.prev_screen == ctx.app_info.screen
-            && self.prev_camera == *ctx.camera
-        {
-            return;
-        }*/
-
+    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
         self.prev_camera = ctx.camera.clone();
         self.prev_screen = ctx.app_info.screen.clone();
 
@@ -100,13 +93,11 @@ impl CommandFactory for RayTraceCommandFactory {
 
         let sets = (set_0, set_1, set_2, set_3);
 
-        let command = ctx
+        let ray_trace_command = ctx
             .create_command_buffer()
             .dispatch(ctx.app_info.size_of_image_array() as u32 / self.local_size_x, self.pipeline.clone(), sets)
             .unwrap()
             .build();
-
-        commands.push(command);
 
         let set = Arc::new(
             PersistentDescriptorSet::start(self.divide_pipeline.layout().descriptor_set_layout(0).unwrap().clone())
@@ -116,13 +107,17 @@ impl CommandFactory for RayTraceCommandFactory {
                 .unwrap()
         );
 
-        let mut command = ctx
+        let divide_command = ctx
             .create_command_buffer()
             .dispatch(1, self.divide_pipeline.clone(), set)
             .unwrap()
             .build();
 
-        commands.push(command);
+        fut.then_execute(ctx.graphics_queue(), ray_trace_command)
+            .unwrap()
+            .then_execute(ctx.graphics_queue(), divide_command)
+            .unwrap()
+            .boxed()
     }
 }
 

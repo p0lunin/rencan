@@ -12,7 +12,7 @@ use vulkano::command_buffer::{CommandBuffer, Kind};
 use vulkano::command_buffer::sys::{UnsafeCommandBuffer, UnsafeCommandBufferBuilder, UnsafeCommandBufferBuilderPipelineBarrier, Flags};
 use vulkano::framebuffer::{FramebufferAbstract, EmptySinglePassRenderPassDesc, RenderPass};
 use vulkano::command_buffer::pool::CommandPool;
-use vulkano::sync::{PipelineStages, AccessFlagBits};
+use vulkano::sync::{PipelineStages, AccessFlagBits, GpuFuture};
 use vulkano::image::{ImageLayout, ImageAccess};
 
 pub mod blue_sky_cs {
@@ -50,7 +50,7 @@ impl SkyCommandFactory {
 }
 
 impl CommandFactory for SkyCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, commands: &mut Vec<Box<dyn CommandBuffer>>) {
+    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
         let set_0 = ctx.buffers.global_app_set.clone();
         let set_1 = ctx.buffers.image_set.clone();
 
@@ -60,7 +60,7 @@ impl CommandFactory for SkyCommandFactory {
             .unwrap()
             .build();
 
-        commands.push(command);
+        Box::new(fut.then_execute(ctx.graphics_queue(), command).unwrap())
     }
 }
 
