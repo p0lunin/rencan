@@ -1,20 +1,10 @@
 use std::sync::Arc;
 
 use vulkano::{
-    command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-    descriptor::{
-        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout,
-        PipelineLayoutAbstract,
-    },
-    device::Device,
-    pipeline::ComputePipeline,
+    descriptor::pipeline_layout::PipelineLayout, device::Device, pipeline::ComputePipeline,
 };
 
-use crate::core::{
-    app::GlobalAppBuffers, intersection::IntersectionUniform, BufferAccessData, CommandFactory,
-    CommandFactoryContext,
-};
-use vulkano::command_buffer::CommandBuffer;
+use crate::core::{CommandFactory, CommandFactoryContext};
 use vulkano::sync::GpuFuture;
 
 mod cs {
@@ -41,7 +31,11 @@ impl CheckBoardCommandFactory {
 }
 
 impl CommandFactory for CheckBoardCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
+    fn make_command(
+        &mut self,
+        ctx: CommandFactoryContext,
+        fut: Box<dyn GpuFuture>,
+    ) -> Box<dyn GpuFuture> {
         let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();
@@ -49,9 +43,13 @@ impl CommandFactory for CheckBoardCommandFactory {
         let set_2 = buffers.models_set.clone();
         let set_3 = buffers.image_set.clone();
 
-        let command =
-        ctx.create_command_buffer()
-            .dispatch(ctx.app_info.size_of_image_array() as u32 / 64, self.pipeline.clone(), (set_0, set_1, set_2, set_3))
+        let command = ctx
+            .create_command_buffer()
+            .dispatch(
+                ctx.app_info.size_of_image_array() as u32 / 64,
+                self.pipeline.clone(),
+                (set_0, set_1, set_2, set_3),
+            )
             .unwrap()
             .build();
 

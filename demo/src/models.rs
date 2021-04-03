@@ -1,6 +1,8 @@
-use nalgebra::{Point3, Vector3, UnitQuaternion};
-use rencan_render::core::{model::AppModel, Model};
-use rencan_render::core::model::Material;
+use nalgebra::{Point3, UnitQuaternion, Vector3};
+use rencan_render::core::{
+    model::{AppModel, Material},
+    Model,
+};
 
 macro_rules! indices {
     ($($x:ident, $y:ident, $z:ident,)*) => {
@@ -128,10 +130,11 @@ pub fn make_room(position: Point3<f32>, scale: f32) -> AppModel {
             [-1.0, -1.0, 1.0, 0.0].into(),  // D2 - 7
         ],
         indices![
-            A2, C2, B2, A2, D2, C2, /*
-                        D1, B1, C1,
-                        D1, A1, B1,
-            */
+            A2, C2, B2, A2, D2,
+            C2, /*
+                            D1, B1, C1,
+                            D1, A1, B1,
+                */
             B1, A2, B2, B1, A1, A2, A1, D2, A2, A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2, C1,
             B1, B2,
         ],

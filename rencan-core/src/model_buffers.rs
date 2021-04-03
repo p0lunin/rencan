@@ -77,12 +77,7 @@ impl SceneBuffersStorage {
         let count = self.counts_u32.next(models.len() as u32).unwrap();
         let infos = self
             .model_infos
-            .chunk(
-                models
-                    .iter()
-                    .enumerate()
-                    .map(|(i, m)| m.model().get_uniform_info(i as u32)),
-            )
+            .chunk(models.iter().enumerate().map(|(i, m)| m.model().get_uniform_info(i as u32)))
             .unwrap();
         let vertices = self
             .vertices
@@ -118,11 +113,7 @@ impl SceneBuffersStorage {
         let sphere_infos = self
             .sphere_infos
             .chunk(
-                scene
-                    .sphere_models
-                    .iter()
-                    .enumerate()
-                    .map(|(i, m)| m.get_uniform_info(i as u32)),
+                scene.sphere_models.iter().enumerate().map(|(i, m)| m.get_uniform_info(i as u32)),
             )
             .unwrap();
         let spheres = self
@@ -147,7 +138,7 @@ impl SceneBuffersStorage {
             point_lights,
             sphere_count,
             sphere_infos,
-            spheres
+            spheres,
         }
     }
 }

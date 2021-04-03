@@ -1,5 +1,4 @@
 use crate::hitbox::HitBoxRectangle;
-use crevice::std140::AsStd140;
 use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
@@ -35,7 +34,7 @@ impl Model {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 }
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 },
         }
     }
     pub fn with_isometry(
@@ -44,7 +43,7 @@ impl Model {
         rotation: UnitQuaternion<f32>,
         position: Point3<f32>,
         scaling: f32,
-        material: Material
+        material: Material,
     ) -> Self {
         Model { vertices, indexes, rotation, position, scaling, material }
     }
@@ -136,7 +135,7 @@ impl SphereModel {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 }
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 },
         }
     }
 

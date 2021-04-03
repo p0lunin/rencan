@@ -3,17 +3,16 @@ mod models;
 use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
 use rencan_render::core::{
     light::{DirectionLight, LightInfo, PointLight},
-    model::AppModel,
+    model::{AppModel, SphereModel},
     Model, Scene,
 };
 use std::time::{Duration, Instant};
 use winit::{
+    dpi::{PhysicalSize, Size},
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use winit::dpi::{Size, PhysicalSize};
-use rencan_render::core::model::{SphereModel, Material};
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -59,7 +58,9 @@ fn make_plane(position: Point3<f32>, scale: f32) -> AppModel {
 
 fn main() {
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().with_resizable(true).with_inner_size(Size::Physical(PhysicalSize::new(512, 512)));
+    let window = WindowBuilder::new()
+        .with_resizable(true)
+        .with_inner_size(Size::Physical(PhysicalSize::new(512, 512)));
 
     let mut app = rencan_ui::GuiApp::new(window, &event_loop);
 
@@ -71,13 +72,13 @@ fn main() {
     models.push(models::make_mirror(
         Point3::new(-4.99, 0.0, 0.0),
         UnitQuaternion::from_euler_angles(0.0, std::f32::consts::FRAC_PI_2, 0.0),
-        2.0)
-    );
+        2.0,
+    ));
     models.push(models::make_mirror(
         Point3::new(4.99, 0.0, 0.0),
         UnitQuaternion::from_euler_angles(0.0, -std::f32::consts::FRAC_PI_2, 0.0),
-        2.0)
-    );
+        2.0,
+    ));
     /*
         for i in 0..20 {
             let model = make_pyramid(Point3::new((i * 5) as f32, 0.0, 0.0), 3.0);

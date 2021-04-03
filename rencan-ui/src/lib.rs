@@ -3,7 +3,6 @@ use std::sync::Arc;
 use vulkano::{
     command_buffer::AutoCommandBufferBuilder,
     device::{Device, DeviceExtensions, Features, Queue},
-    format::ClearValue,
     image::{ImageUsage, SwapchainImage},
     instance::{Instance, PhysicalDevice},
     swapchain::{
@@ -14,18 +13,17 @@ use vulkano::{
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
-    dpi::{PhysicalSize, Size},
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
 
 use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder, AppBuilderRtExt};
-use vulkano::image::{AttachmentImage, ImageAccess};
-use vulkano::swapchain::SupportedPresentModes;
 use std::collections::HashSet;
-use vulkano::instance::InstanceExtensions;
-use vulkano::image::view::ImageView;
+use vulkano::{
+    image::{view::ImageView, AttachmentImage, ImageAccess},
+    swapchain::SupportedPresentModes,
+};
 
 pub struct GuiApp {
     app: App,
@@ -42,26 +40,28 @@ pub struct GuiApp {
 impl GuiApp {
     pub fn new(window: WindowBuilder, event_loop: &EventLoop<()>) -> Self {
         let instance = init_vulkan();
-        let surface = window
-            .build_vk_surface(event_loop, instance.clone())
-            .unwrap();
+        let surface = window.build_vk_surface(event_loop, instance.clone()).unwrap();
         let screen = Screen(surface.window().inner_size().into());
         let (app, present_queue) = init_app(&surface, instance, screen);
         let (swap_chain, images) =
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());
         let prev =
             Some(Box::new(vulkano::sync::now(app.info().device.clone())) as Box<dyn GpuFuture>);
-        let buffer_image = ImageView::new(AttachmentImage::with_usage(
-            app.info().device.clone(),
-            swap_chain.dimensions(),
-            swap_chain.format(),
-            ImageUsage {
-                storage: true,
-                transfer_source: true,
-                transfer_destination: true,
-                ..ImageUsage::none()
-            }
-        ).unwrap()).unwrap();
+        let buffer_image = ImageView::new(
+            AttachmentImage::with_usage(
+                app.info().device.clone(),
+                swap_chain.dimensions(),
+                swap_chain.format(),
+                ImageUsage {
+                    storage: true,
+                    transfer_source: true,
+                    transfer_destination: true,
+                    ..ImageUsage::none()
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap();
 
         GuiApp {
             app,
@@ -71,7 +71,7 @@ impl GuiApp {
             swap_chain_images: images,
             must_recreate_swapchain: false,
             prev,
-            buffer_image
+            buffer_image,
         }
     }
 
@@ -98,17 +98,21 @@ impl GuiApp {
             self.swap_chain_images = new_images;
             self.must_recreate_swapchain = false;
             self.app.update_screen(Screen(dimensions));
-            self.buffer_image = ImageView::new(AttachmentImage::with_usage(
-                self.device(),
-                self.swap_chain.dimensions(),
-                self.swap_chain.format(),
-                ImageUsage {
-                    storage: true,
-                    transfer_source: true,
-                    transfer_destination: true,
-                    ..ImageUsage::none()
-                }
-            ).unwrap()).unwrap();
+            self.buffer_image = ImageView::new(
+                AttachmentImage::with_usage(
+                    self.device(),
+                    self.swap_chain.dimensions(),
+                    self.swap_chain.format(),
+                    ImageUsage {
+                        storage: true,
+                        transfer_source: true,
+                        transfer_destination: true,
+                        ..ImageUsage::none()
+                    },
+                )
+                .unwrap(),
+            )
+            .unwrap();
         }
 
         let (image_num, suboptimal, acquire_future) =
@@ -125,35 +129,34 @@ impl GuiApp {
             self.must_recreate_swapchain = true;
         }
 
-        let fut = self
-            .prev
-            .take()
-            .unwrap()
-            .join(acquire_future);
+        let fut = self.prev.take().unwrap().join(acquire_future);
 
         let swapchain_image = self.swap_chain_images[image_num].clone();
-        let (fut, _) = self.app.render(fut, &scene, {
-            let image = self.buffer_image.clone();
-            move |_| image
-        }).unwrap();
+        let (fut, _) = self
+            .app
+            .render(fut, &scene, {
+                let image = self.buffer_image.clone();
+                move |_| image
+            })
+            .unwrap();
 
-        let mut copy_command = AutoCommandBufferBuilder::new(
-            self.device(),
-            self.graphics_queue().family()
-        ).unwrap();
+        let mut copy_command =
+            AutoCommandBufferBuilder::new(self.device(), self.graphics_queue().family()).unwrap();
         let extent = self.buffer_image.image().dimensions().width_height_depth();
-        copy_command.copy_image(
-            self.buffer_image.image().clone(),
-            [0, 0, 0],
-            0,
-            0,
-            swapchain_image,
-            [0,0,0],
-            0,
-            0,
-            extent,
-            1
-        ).unwrap();
+        copy_command
+            .copy_image(
+                self.buffer_image.image().clone(),
+                [0, 0, 0],
+                0,
+                0,
+                swapchain_image,
+                [0, 0, 0],
+                0,
+                0,
+                extent,
+                1,
+            )
+            .unwrap();
         let copy_command = copy_command.build().unwrap();
 
         let fut = fut
@@ -216,8 +219,11 @@ fn init_swapchain(
     .unwrap()
 }
 
-fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Screen) -> (App, Arc<Queue>) {
-    use rencan_render::AppBuilderRtExt;
+fn init_app(
+    window: &Arc<Surface<Window>>,
+    instance: Arc<Instance>,
+    screen: Screen,
+) -> (App, Arc<Queue>) {
     let (device, graphics_queue, present_queue) = init_device_and_queues(window, &instance);
 
     let app = AppBuilder::new(
@@ -225,8 +231,11 @@ fn init_app(window: &Arc<Surface<Window>>,instance: Arc<Instance>, screen: Scree
         Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
-        .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
-    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(device.clone(), false)))
+    .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
+    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(
+        device.clone(),
+        false,
+    )))
     .build();
 
     (app, present_queue)
@@ -237,7 +246,10 @@ fn init_vulkan() -> Arc<Instance> {
     Instance::new(None, &extensions, None).unwrap()
 }
 
-fn init_device_and_queues(window: &Arc<Surface<Window>>,instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>, Arc<Queue>) {
+fn init_device_and_queues(
+    window: &Arc<Surface<Window>>,
+    instance: &Arc<Instance>,
+) -> (Arc<Device>, Arc<Queue>, Arc<Queue>) {
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
 
     let indices = find_queue_families(window, &physical);
@@ -246,9 +258,9 @@ fn init_device_and_queues(window: &Arc<Surface<Window>>,instance: &Arc<Instance>
     let unique_queue_families: HashSet<&i32> = HashSet::from_iter(families.iter());
 
     let queue_priority = 1.0;
-    let queue_families = unique_queue_families.iter().map(|i| {
-        (physical.queue_families().nth(**i as usize).unwrap(), queue_priority)
-    });
+    let queue_families = unique_queue_families
+        .iter()
+        .map(|i| (physical.queue_families().nth(**i as usize).unwrap(), queue_priority));
     let (device, mut queues) = Device::new(
         physical,
         &Features::none(),
@@ -277,7 +289,10 @@ fn choose_swap_present_mode(available_present_modes: SupportedPresentModes) -> P
     }
 }
 
-fn find_queue_families(surface: &Arc<Surface<Window>>, device: &PhysicalDevice) -> QueueFamilyIndices {
+fn find_queue_families(
+    surface: &Arc<Surface<Window>>,
+    device: &PhysicalDevice,
+) -> QueueFamilyIndices {
     let mut indices = QueueFamilyIndices::new();
 
     for (i, queue_family) in device.queue_families().enumerate() {

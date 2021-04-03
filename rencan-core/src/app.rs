@@ -15,11 +15,17 @@ use crate::{
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
 };
 use vulkano::{
-    buffer::CpuBufferPool,
-    command_buffer::CommandBufferExecError,
-    descriptor::{DescriptorSet, PipelineLayoutAbstract},
+    buffer::{cpu_pool::CpuBufferPoolChunk, CpuBufferPool},
+    command_buffer::{CommandBufferExecError, DispatchIndirectCommand},
+    descriptor::{
+        descriptor_set::PersistentDescriptorSet, pipeline_layout::PipelineLayout, DescriptorSet,
+        PipelineLayoutAbstract,
+    },
     device::Device,
+    image::{view::ImageView, AttachmentImage},
     instance::QueueFamily,
+    memory::pool::StdMemoryPool,
+    pipeline::ComputePipeline,
 };
 
 pub struct App {
@@ -118,10 +124,7 @@ impl GlobalBuffers {
             intersections: DeviceLocalBuffer::array(
                 device.clone(),
                 size,
-                BufferUsage {
-                    storage_buffer: true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
                 std::iter::once(family.clone()),
             )
             .unwrap(),
@@ -159,7 +162,11 @@ impl GlobalBuffers {
         Buffers::new(
             device,
             self.intersections.clone(),
-            Arc::new(self.intersections_count.chunk(std::iter::once(DispatchIndirectCommand { x: 0, y: 0, z: 0 })).unwrap()),
+            Arc::new(
+                self.intersections_count
+                    .chunk(std::iter::once(DispatchIndirectCommand { x: 0, y: 0, z: 0 }))
+                    .unwrap(),
+            ),
             Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
@@ -172,10 +179,7 @@ impl GlobalBuffers {
         self.intersections = DeviceLocalBuffer::array(
             device.clone(),
             new_size,
-            BufferUsage {
-                    storage_buffer: true,
-                    ..BufferUsage::none()
-                },
+            BufferUsage { storage_buffer: true, ..BufferUsage::none() },
             std::iter::once(family.clone()),
         )
         .unwrap();
@@ -195,14 +199,6 @@ pub struct Buffers {
     pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-use vulkano::image::{AttachmentImage, ImageViewAbstract};
-use vulkano::pipeline::ComputePipeline;
-use vulkano::descriptor::pipeline_layout::PipelineLayout;
-use vulkano::image::view::ImageView;
-use vulkano::command_buffer::DispatchIndirectCommand;
-use vulkano::buffer::cpu_pool::CpuBufferPoolChunk;
-use vulkano::memory::pool::StdMemoryPool;
 
 impl Buffers {
     pub fn new(
@@ -230,101 +226,104 @@ impl Buffers {
 
         const SHADER: OnceCell<cs::Shader> = OnceCell::new();
 
-        const pipeline: OnceCell<Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>> = OnceCell::new();
+        const PIPELINE: OnceCell<Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>> =
+            OnceCell::new();
 
-        let pip = pipeline.get_or_init(move || Arc::new(
-            vulkano::pipeline::ComputePipeline::new(
-                device.clone(),
-                &SHADER.get_or_init(move || cs::Shader::load(device.clone()).unwrap()).main_entry_point(),
-                &cs::SpecializationConstants {
-                    constant_0: 1,
-                    SAMPLING: 0,
-                }, None
-            )
-                .unwrap(),
-        )).clone();
+        let pip = PIPELINE
+            .get_or_init(move || {
+                Arc::new(
+                    vulkano::pipeline::ComputePipeline::new(
+                        device.clone(),
+                        &SHADER
+                            .get_or_init(move || cs::Shader::load(device.clone()).unwrap())
+                            .main_entry_point(),
+                        &cs::SpecializationConstants { constant_0: 1, SAMPLING: 0 },
+                        None,
+                    )
+                    .unwrap(),
+                )
+            })
+            .clone();
 
         let global_app_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(0).unwrap().clone(),
-            )
-            .add_buffer(screen.clone())
-            .unwrap()
-            .add_buffer(camera.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(0).unwrap().clone())
+                .add_buffer(screen.clone())
+                .unwrap()
+                .add_buffer(camera.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         let models_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(2).unwrap().clone(),
-            )
-            .add_buffer(models_buffers.count.clone())
-            .unwrap()
-            .add_buffer(models_buffers.infos.clone())
-            .unwrap()
-            .add_buffer(models_buffers.vertices.clone())
-            .unwrap()
-            .add_buffer(models_buffers.indices.clone())
-            .unwrap()
-            .add_buffer(models_buffers.hit_boxes.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(2).unwrap().clone())
+                .add_buffer(models_buffers.count.clone())
+                .unwrap()
+                .add_buffer(models_buffers.infos.clone())
+                .unwrap()
+                .add_buffer(models_buffers.vertices.clone())
+                .unwrap()
+                .add_buffer(models_buffers.indices.clone())
+                .unwrap()
+                .add_buffer(models_buffers.hit_boxes.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         let sphere_models_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(3).unwrap().clone(),
-            )
-            .add_buffer(models_buffers.sphere_count.clone())
-            .unwrap()
-            .add_buffer(models_buffers.sphere_infos.clone())
-            .unwrap()
-            .add_buffer(models_buffers.spheres.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(3).unwrap().clone())
+                .add_buffer(models_buffers.sphere_count.clone())
+                .unwrap()
+                .add_buffer(models_buffers.sphere_infos.clone())
+                .unwrap()
+                .add_buffer(models_buffers.spheres.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         let lights_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(4).unwrap().clone(),
-            )
-            .add_buffer(direction_light)
-            .unwrap()
-            .add_buffer(models_buffers.point_lights_count.clone())
-            .unwrap()
-            .add_buffer(models_buffers.point_lights.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(4).unwrap().clone())
+                .add_buffer(direction_light)
+                .unwrap()
+                .add_buffer(models_buffers.point_lights_count.clone())
+                .unwrap()
+                .add_buffer(models_buffers.point_lights.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         let rays_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(1).unwrap().clone(),
-            )
-            .add_buffer(intersections.clone())
-            .unwrap()
-            .add_buffer(intersections_count.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(1).unwrap().clone())
+                .add_buffer(intersections.clone())
+                .unwrap()
+                .add_buffer(intersections_count.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         let image_set = Arc::new(
-            PersistentDescriptorSet::start(
-                pip.layout().descriptor_set_layout(5).unwrap().clone(),
-            )
-            .add_image(output_image.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
+            PersistentDescriptorSet::start(pip.layout().descriptor_set_layout(5).unwrap().clone())
+                .add_image(output_image.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
-        Buffers { sphere_models_set, image: output_image, workgroups: intersections_count, intersections, global_app_set, models_set, lights_set, rays_set, image_set }
+        Buffers {
+            sphere_models_set,
+            image: output_image,
+            workgroups: intersections_count,
+            intersections,
+            global_app_set,
+            models_set,
+            lights_set,
+            rays_set,
+            image_set,
+        }
     }
 }
 

@@ -1,11 +1,10 @@
 use crate::{
     light::{DirectionLight, PointLight},
-    model::AppModel,
+    model::{AppModel, SphereModel},
     model_buffers::{SceneBuffers, SceneBuffersStorage},
 };
 use std::sync::Arc;
 use vulkano::device::Device;
-use crate::model::SphereModel;
 
 pub struct Scene {
     pub models: Vec<AppModel>,
@@ -23,7 +22,13 @@ impl Scene {
         global_light: DirectionLight,
         point_lights: Vec<PointLight>,
     ) -> Self {
-        Scene { models, sphere_models, global_light, buffers: SceneBuffersStorage::init(device), point_lights }
+        Scene {
+            models,
+            sphere_models,
+            global_light,
+            buffers: SceneBuffersStorage::init(device),
+            point_lights,
+        }
     }
 
     pub fn frame_buffers(&self) -> SceneBuffers {

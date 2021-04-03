@@ -1,14 +1,10 @@
 use std::sync::Arc;
 
 use vulkano::{
-    command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-    descriptor::pipeline_layout::PipelineLayout,
-    device::Device,
-    pipeline::ComputePipeline,
+    descriptor::pipeline_layout::PipelineLayout, device::Device, pipeline::ComputePipeline,
 };
 
-use crate::core::{CommandFactory, CommandFactoryContext, AutoCommandBufferBuilderWrap};
-use vulkano::command_buffer::CommandBuffer;
+use crate::core::{AutoCommandBufferBuilderWrap, CommandFactory, CommandFactoryContext};
 use vulkano::sync::GpuFuture;
 
 pub mod lightning_cs {
@@ -20,12 +16,12 @@ pub mod lightning_cs {
 
 pub struct LightningCommandFactory {
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
-    local_size_x: u32,
 }
 
 impl LightningCommandFactory {
     pub fn new(device: Arc<Device>, sampling: bool) -> Self {
-        let local_size_x = device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+        let local_size_x =
+            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
 
         let constants = lightning_cs::SpecializationConstants {
             constant_0: local_size_x,
@@ -41,12 +37,16 @@ impl LightningCommandFactory {
             )
             .unwrap(),
         );
-        LightningCommandFactory { lightning_pipeline, local_size_x }
+        LightningCommandFactory { lightning_pipeline }
     }
 }
 
 impl CommandFactory for LightningCommandFactory {
-    fn make_command(&mut self, ctx: CommandFactoryContext, fut: Box<dyn GpuFuture>) -> Box<dyn GpuFuture> {
+    fn make_command(
+        &mut self,
+        ctx: CommandFactoryContext,
+        fut: Box<dyn GpuFuture>,
+    ) -> Box<dyn GpuFuture> {
         let command = add_lightning(self, &ctx).build();
 
         Box::new(fut.then_execute(ctx.graphics_queue(), command).unwrap())
@@ -66,11 +66,9 @@ fn add_lightning(
     let set_4 = buffers.lights_set.clone();
     let set_5 = buffers.image_set.clone();
 
-    ctx
-        .create_command_buffer()
-        .dispatch_indirect(
-            buffers.workgroups.clone(),
-            factory.lightning_pipeline.clone(),
-            (set_0, set_1, set_2, set_3, set_4, set_5),
-        )
+    ctx.create_command_buffer().dispatch_indirect(
+        buffers.workgroups.clone(),
+        factory.lightning_pipeline.clone(),
+        (set_0, set_1, set_2, set_3, set_4, set_5),
+    )
 }

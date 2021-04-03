@@ -1,12 +1,21 @@
-use vulkano::command_buffer::{AutoCommandBufferBuilder, DispatchError, AutoCommandBuffer, DispatchIndirectCommand};
-use vulkano::pipeline::ComputePipelineAbstract;
-use vulkano::descriptor::descriptor_set::DescriptorSetsCollection;
-use vulkano::buffer::{BufferAccess, TypedBufferAccess};
+use vulkano::{
+    buffer::{BufferAccess, TypedBufferAccess},
+    command_buffer::{
+        AutoCommandBuffer, AutoCommandBufferBuilder, DispatchError, DispatchIndirectCommand,
+    },
+    descriptor::descriptor_set::DescriptorSetsCollection,
+    pipeline::ComputePipelineAbstract,
+};
 
 pub struct AutoCommandBufferBuilderWrap(pub AutoCommandBufferBuilder);
 
 impl AutoCommandBufferBuilderWrap {
-    pub fn dispatch<Cp, S>(mut self, workgroups: u32, pipeline: Cp, sets: S) -> Result<Self, DispatchError>
+    pub fn dispatch<Cp, S>(
+        mut self,
+        workgroups: u32,
+        pipeline: Cp,
+        sets: S,
+    ) -> Result<Self, DispatchError>
     where
         Cp: ComputePipelineAbstract + Send + Sync + 'static + Clone,
         S: DescriptorSetsCollection,
@@ -16,7 +25,11 @@ impl AutoCommandBufferBuilderWrap {
     }
     pub fn dispatch_indirect<Buff, Cp, S>(mut self, workgroups: Buff, pipeline: Cp, sets: S) -> Self
     where
-        Buff: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
+        Buff: BufferAccess
+            + TypedBufferAccess<Content = [DispatchIndirectCommand]>
+            + Send
+            + Sync
+            + 'static,
         Cp: ComputePipelineAbstract + Send + Sync + 'static + Clone,
         S: DescriptorSetsCollection,
     {
