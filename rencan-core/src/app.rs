@@ -76,7 +76,7 @@ impl App {
         F: FnOnce(&AppInfo) -> Arc<ImageView<Arc<AttachmentImage>>>,
     {
         let image = image_create(&self.info);
-        let buffers = self.create_buffers(image.clone(), scene);
+        let (buffers, fut) = self.create_buffers(image.clone(), scene);
         let ctx = CommandFactoryContext {
             app_info: &self.info,
             buffers: buffers.clone(),
@@ -84,7 +84,7 @@ impl App {
             camera: &self.camera,
         };
 
-        let mut fut: Box<dyn GpuFuture> = Box::new(previous);
+        let mut fut: Box<dyn GpuFuture> = Box::new(previous.join(fut));
         for factory in self.commands.iter_mut() {
             fut = factory.make_command(ctx.clone(), fut);
         }
@@ -95,7 +95,7 @@ impl App {
         &mut self,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &mut Scene,
-    ) -> Buffers {
+    ) -> (Buffers, Box<dyn GpuFuture>) {
         self.buffers.make_buffers(&self.info, &self.camera, image, scene)
     }
 }
@@ -145,8 +145,9 @@ impl GlobalBuffers {
         camera: &Camera,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &mut Scene,
-    ) -> Buffers {
-        self.sets.buffers(
+    ) -> (Buffers, Box<dyn GpuFuture>) {
+        let (model_bufs, fut) = scene.frame_buffers(app);
+        let bufs = self.sets.buffers(
             self.intersections.clone(),
             Arc::new(
                 self.intersections_count
@@ -157,8 +158,9 @@ impl GlobalBuffers {
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
             Arc::new(self.direction_light.next(scene.data.global_light.clone().into_uniform()).unwrap()),
-            scene.frame_buffers(),
-        )
+            model_bufs
+        );
+        (bufs, fut)
     }
 
     pub fn resize_buffers(&mut self, device: &Arc<Device>, family: QueueFamily, new_size: usize) {

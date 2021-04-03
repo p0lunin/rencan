@@ -1,6 +1,4 @@
-use crate::{
-    hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo, Scene,
-};
+use crate::{hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo, Scene, AppInfo};
 use crevice::std140::AsStd140;
 use nalgebra::Point4;
 use std::sync::Arc;
@@ -18,6 +16,9 @@ use vulkano::descriptor::pipeline_layout::PipelineLayout;
 use vulkano::pipeline::ComputePipeline;
 use vulkano::descriptor::{PipelineLayoutAbstract, DescriptorSet};
 use crate::scene::SceneData;
+use vulkano::buffer::ImmutableBuffer;
+use vulkano::device::Queue;
+use vulkano::sync::GpuFuture;
 
 pub struct SceneBuffersStorage {
     pub counts_u32: CpuBufferPool<u32>,
@@ -80,19 +81,19 @@ impl SceneBuffersStorage {
             counts_u32: CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer()),
             model_infos: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage::transfer_source(),
             ),
             vertices: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage::transfer_source(),
             ),
             indices: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage::transfer_source(),
             ),
             hit_boxes: CpuBufferPool::new(
                 device.clone(),
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage::transfer_source(),
             ),
             point_lights: CpuBufferPool::new(
                 device.clone(),
@@ -119,7 +120,8 @@ impl SceneBuffersStorage {
         }
     }
 
-    pub fn get_buffers(&mut self, scene: &mut SceneData) -> SceneBuffers {
+    pub fn get_buffers(&mut self, app: &AppInfo, scene: &mut SceneData) -> (SceneBuffers, Box<dyn GpuFuture>) {
+        let mut fut: Box<dyn GpuFuture> = Box::new(vulkano::sync::now(app.device.clone()));
         let point_lights = &scene.point_lights;
 
         let models_set = scene.models.get_depends_or_init(|models| {
@@ -154,6 +156,29 @@ impl SceneBuffersStorage {
                 .hit_boxes
                 .chunk(models.iter().map(|m| m.hit_box().clone().into_uniform().as_std140()))
                 .unwrap();
+
+            let (infos, fu2) = ImmutableBuffer::from_buffer(
+                infos,
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                app.graphics_queue.clone()
+            ).unwrap();
+            let (vertices, fu3) = ImmutableBuffer::from_buffer(
+                vertices,
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                app.graphics_queue.clone()
+            ).unwrap();
+            let (indices, fu4) = ImmutableBuffer::from_buffer(
+                indices,
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                app.graphics_queue.clone()
+            ).unwrap();
+            let (hit_boxes, fu5) = ImmutableBuffer::from_buffer(
+                hit_boxes,
+                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                app.graphics_queue.clone()
+            ).unwrap();
+
+            fut = Box::new(fu2.join(fu3).join(fu4).join(fu5));
 
             let models_set = Arc::new(
                 self.models_set
@@ -213,12 +238,14 @@ impl SceneBuffersStorage {
             sphere_models_set
         }).clone();
 
-        SceneBuffers {
+        let bufs = SceneBuffers {
             point_lights_count,
             point_lights,
             models_set,
             sphere_models_set,
-        }
+        };
+
+        (bufs, fut)
     }
 }
 

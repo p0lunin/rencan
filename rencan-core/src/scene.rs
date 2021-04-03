@@ -1,13 +1,10 @@
-use crate::{
-    light::{DirectionLight, PointLight},
-    model::{AppModel, SphereModel},
-    model_buffers::{SceneBuffers, SceneBuffersStorage},
-};
+use crate::{light::{DirectionLight, PointLight}, model::{AppModel, SphereModel}, model_buffers::{SceneBuffers, SceneBuffersStorage}, AppInfo};
 use std::sync::Arc;
 use vulkano::device::Device;
 use crate::setable::Mutable;
 use vulkano::buffer::TypedBufferAccess;
 use vulkano::descriptor::DescriptorSet;
+use vulkano::sync::GpuFuture;
 
 pub struct Scene {
     pub data: SceneData,
@@ -33,8 +30,8 @@ impl Scene {
         }
     }
 
-    pub fn frame_buffers(&mut self) -> SceneBuffers {
-        self.buffers.get_buffers(&mut self.data)
+    pub fn frame_buffers(&mut self, app: &AppInfo) -> (SceneBuffers, Box<dyn GpuFuture>) {
+        self.buffers.get_buffers(app, &mut self.data)
     }
 }
 
