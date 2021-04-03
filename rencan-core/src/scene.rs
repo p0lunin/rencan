@@ -5,13 +5,13 @@ use crate::{
 };
 use std::sync::Arc;
 use vulkano::device::Device;
+use crate::setable::Mutable;
+use vulkano::buffer::TypedBufferAccess;
+use vulkano::descriptor::DescriptorSet;
 
 pub struct Scene {
-    pub models: Vec<AppModel>,
-    pub sphere_models: Vec<SphereModel>,
-    pub global_light: DirectionLight,
+    pub data: SceneData,
     pub buffers: SceneBuffersStorage,
-    pub point_lights: Vec<PointLight>,
 }
 
 impl Scene {
@@ -23,15 +23,24 @@ impl Scene {
         point_lights: Vec<PointLight>,
     ) -> Self {
         Scene {
-            models,
-            sphere_models,
-            global_light,
+            data: SceneData {
+                models: Mutable::new(models),
+                sphere_models: Mutable::new(sphere_models),
+                global_light,
+                point_lights,
+            },
             buffers: SceneBuffersStorage::init(device),
-            point_lights,
         }
     }
 
-    pub fn frame_buffers(&self) -> SceneBuffers {
-        self.buffers.get_buffers(self)
+    pub fn frame_buffers(&mut self) -> SceneBuffers {
+        self.buffers.get_buffers(&mut self.data)
     }
+}
+
+pub struct SceneData {
+    pub models: Mutable<Vec<AppModel>, Arc<dyn DescriptorSet + Send + Sync>>,
+    pub sphere_models: Mutable<Vec<SphereModel>, Arc<dyn DescriptorSet + Send + Sync>>,
+    pub global_light: DirectionLight,
+    pub point_lights: Vec<PointLight>,
 }

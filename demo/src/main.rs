@@ -134,7 +134,7 @@ fn main() {
             Event::RedrawEventsCleared => {
                 //rx.recv().unwrap();
                 while let Ok(rot) = rot_rx.try_recv() {
-                    scene.global_light.direction = rot * &scene.global_light.direction;
+                    scene.data.global_light.direction = rot * &scene.data.global_light.direction;
                 }
                 frames += 1;
                 if Instant::now() >= next {
@@ -142,7 +142,7 @@ fn main() {
                     next = Instant::now() + Duration::from_secs(1);
                     frames = 0;
                 }
-                app.render_frame(&scene);
+                app.render_frame(&mut scene);
             }
             Event::WindowEvent {
                 event:

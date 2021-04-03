@@ -21,5 +21,6 @@ pub mod queue_famile_ext;
 mod ray;
 mod scene;
 mod screen;
+mod setable;
 
 pub use scene::Scene;

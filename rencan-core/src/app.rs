@@ -65,7 +65,7 @@ impl App {
     pub fn render<Prev, F>(
         &mut self,
         previous: Prev,
-        scene: &Scene,
+        scene: &mut Scene,
         image_create: F,
     ) -> Result<
         (impl GpuFuture + 'static, Arc<ImageView<Arc<AttachmentImage>>>),
@@ -94,14 +94,10 @@ impl App {
     fn create_buffers(
         &mut self,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
-        scene: &Scene,
+        scene: &mut Scene,
     ) -> Buffers {
-        self.buffers.make_buffers(&self.info, &self.camera, image, &scene.global_light, &scene)
+        self.buffers.make_buffers(&self.info, &self.camera, image, scene)
     }
-}
-
-pub struct GlobalAppBuffers {
-    pub intersections: Arc<DeviceLocalBuffer<[IntersectionUniform]>>,
 }
 
 pub struct GlobalBuffers {
@@ -143,17 +139,12 @@ impl GlobalBuffers {
         }
     }
 
-    pub fn global_app_buffers(&self) -> GlobalAppBuffers {
-        GlobalAppBuffers { intersections: self.intersections.clone() }
-    }
-
     pub fn make_buffers(
         &mut self,
         app: &AppInfo,
         camera: &Camera,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
-        light: &DirectionLight,
-        scene: &Scene,
+        scene: &mut Scene,
     ) -> Buffers {
         self.sets.buffers(
             self.intersections.clone(),
@@ -165,7 +156,7 @@ impl GlobalBuffers {
             Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
-            Arc::new(self.direction_light.next(light.clone().into_uniform()).unwrap()),
+            Arc::new(self.direction_light.next(scene.data.global_light.clone().into_uniform()).unwrap()),
             scene.frame_buffers(),
         )
     }
@@ -274,35 +265,9 @@ impl SetsStorage {
                 .unwrap(),
         );
 
-        let models_set = Arc::new(
-            self.models_set
-                .next()
-                .add_buffer(models_buffers.count.clone())
-                .unwrap()
-                .add_buffer(models_buffers.infos.clone())
-                .unwrap()
-                .add_buffer(models_buffers.vertices.clone())
-                .unwrap()
-                .add_buffer(models_buffers.indices.clone())
-                .unwrap()
-                .add_buffer(models_buffers.hit_boxes.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
+        let models_set = models_buffers.models_set.clone();
 
-        let sphere_models_set = Arc::new(
-            self.sphere_models_set
-                .next()
-                .add_buffer(models_buffers.sphere_count.clone())
-                .unwrap()
-                .add_buffer(models_buffers.sphere_infos.clone())
-                .unwrap()
-                .add_buffer(models_buffers.spheres.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
-        );
+        let sphere_models_set = models_buffers.sphere_models_set.clone();
 
         let lights_set = Arc::new(
             self.lights_set

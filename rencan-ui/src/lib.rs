@@ -79,7 +79,7 @@ impl GuiApp {
         self.must_recreate_swapchain = true;
     }
 
-    pub fn render_frame(&mut self, scene: &Scene) {
+    pub fn render_frame(&mut self, scene: &mut Scene) {
         match self.prev.as_mut() {
             Some(fut) => fut.cleanup_finished(),
             None => {}
@@ -134,7 +134,7 @@ impl GuiApp {
         let swapchain_image = self.swap_chain_images[image_num].clone();
         let (fut, _) = self
             .app
-            .render(fut, &scene, {
+            .render(fut, scene, {
                 let image = self.buffer_image.clone();
                 move |_| image
             })
