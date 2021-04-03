@@ -86,11 +86,12 @@ impl CommandFactory for RayTraceCommandFactory {
         let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();
-        let set_1 = buffers.rays_set.clone();
+        let set_1 = buffers.intersections_set.clone();
         let set_2 = buffers.models_set.clone();
         let set_3 = buffers.sphere_models_set.clone();
+        let set_4 = buffers.workgroups_set.clone();
 
-        let sets = (set_0, set_1, set_2, set_3);
+        let sets = (set_0, set_1, set_2, set_3, set_4);
 
         let ray_trace_command = ctx
             .create_command_buffer()
@@ -102,19 +103,9 @@ impl CommandFactory for RayTraceCommandFactory {
             .unwrap()
             .build();
 
-        let set = Arc::new(
-            PersistentDescriptorSet::start(
-                self.divide_pipeline.layout().descriptor_set_layout(0).unwrap().clone(),
-            )
-            .add_buffer(ctx.buffers.workgroups.clone())
-            .unwrap()
-            .build()
-            .unwrap(),
-        );
-
         let divide_command = ctx
             .create_command_buffer()
-            .dispatch(1, self.divide_pipeline.clone(), set)
+            .dispatch(1, self.divide_pipeline.clone(), buffers.workgroups_set.clone())
             .unwrap()
             .build();
 

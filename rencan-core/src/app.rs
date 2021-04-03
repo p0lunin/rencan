@@ -176,11 +176,12 @@ impl GlobalBuffers {
 
 pub struct SetsStorage {
     pub global_app_set: FixedSizeDescriptorSetsPool,
-    pub rays_set: FixedSizeDescriptorSetsPool,
+    pub intersections_set: FixedSizeDescriptorSetsPool,
     pub models_set: FixedSizeDescriptorSetsPool,
     pub sphere_models_set: FixedSizeDescriptorSetsPool,
     pub lights_set: FixedSizeDescriptorSetsPool,
     pub image_set: FixedSizeDescriptorSetsPool,
+    pub workgroups_set: FixedSizeDescriptorSetsPool,
 }
 
 impl SetsStorage {
@@ -188,7 +189,7 @@ impl SetsStorage {
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
-                path: "../rencan-render/shaders/lightning.glsl"
+                path: "shaders/sets.glsl"
             }
         }
 
@@ -205,7 +206,7 @@ impl SetsStorage {
                         &SHADER
                             .get_or_init(move || cs::Shader::load(device.clone()).unwrap())
                             .main_entry_point(),
-                        &cs::SpecializationConstants { constant_0: 1, SAMPLING: 0 },
+                        &(),
                         None,
                     )
                     .unwrap(),
@@ -216,7 +217,7 @@ impl SetsStorage {
         let global_app_set = FixedSizeDescriptorSetsPool::new(
             pip.layout().descriptor_set_layout(0).unwrap().clone(),
         );
-        let rays_set = FixedSizeDescriptorSetsPool::new(
+        let intersections_set = FixedSizeDescriptorSetsPool::new(
             pip.layout().descriptor_set_layout(1).unwrap().clone(),
         );
         let models_set = FixedSizeDescriptorSetsPool::new(
@@ -231,14 +232,18 @@ impl SetsStorage {
         let image_set = FixedSizeDescriptorSetsPool::new(
             pip.layout().descriptor_set_layout(5).unwrap().clone(),
         );
+        let workgroups_set = FixedSizeDescriptorSetsPool::new(
+            pip.layout().descriptor_set_layout(6).unwrap().clone(),
+        );
 
         SetsStorage {
             global_app_set,
-            rays_set,
+            intersections_set,
             models_set,
             sphere_models_set,
             lights_set,
             image_set,
+            workgroups_set,
         }
     }
 
@@ -284,12 +289,10 @@ impl SetsStorage {
                 .unwrap(),
         );
 
-        let rays_set = Arc::new(
-            self.rays_set
+        let intersections_set = Arc::new(
+            self.intersections_set
                 .next()
                 .add_buffer(intersections.clone())
-                .unwrap()
-                .add_buffer(intersections_count.clone())
                 .unwrap()
                 .build()
                 .unwrap(),
@@ -297,6 +300,9 @@ impl SetsStorage {
 
         let image_set = Arc::new(
             self.image_set.next().add_image(output_image.clone()).unwrap().build().unwrap(),
+        );
+        let workgroups_set = Arc::new(
+            self.workgroups_set.next().add_buffer(intersections_count.clone()).unwrap().build().unwrap()
         );
 
         Buffers {
@@ -307,8 +313,9 @@ impl SetsStorage {
             global_app_set,
             models_set,
             lights_set,
-            rays_set,
+            intersections_set,
             image_set,
+            workgroups_set,
         }
     }
 }
@@ -320,11 +327,12 @@ pub struct Buffers {
     pub image: Arc<ImageView<Arc<AttachmentImage>>>,
 
     pub global_app_set: Arc<dyn DescriptorSet + Send + Sync>,
-    pub rays_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub intersections_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub models_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub sphere_models_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub lights_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub image_set: Arc<dyn DescriptorSet + Send + Sync>,
+    pub workgroups_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 
 pub type Rays = [Ray];

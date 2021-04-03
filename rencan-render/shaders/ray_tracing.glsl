@@ -19,11 +19,6 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 layout(std140, set = 1, binding = 0) writeonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 1, binding = 1) writeonly buffer IntersectionsCount {
-    uint count_intersections;
-    uint __DO_NOT_TOUCH;
-    uint __DO_NOT_TOUCH2;
-};
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
@@ -49,6 +44,12 @@ layout(std140, set = 3, binding = 1) readonly buffer SphereModels {
 };
 layout(std140, set = 3, binding = 2) readonly buffer Spheres {
     Sphere[] spheres;
+};
+
+layout(set = 4, binding = 0) writeonly buffer IntersectionsCount {
+    uint count_intersections;
+    uint _y_dimension;
+    uint _z_dimension;
 };
 
 #include "include/ray_tracing.glsl"

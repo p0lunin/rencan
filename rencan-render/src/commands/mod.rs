@@ -1,12 +1,10 @@
 mod checkboard_pattern;
-//mod facing_ratio;
 mod lightning;
 mod ray_trace;
 mod sky;
 //mod squeeze;
 
 pub use checkboard_pattern::CheckBoardCommandFactory;
-//pub use facing_ratio::FacingRatioCommandFactory;
 pub use lightning::LightningCommandFactory;
 pub use ray_trace::RayTraceCommandFactory;
 //pub use squeeze::SqueezeCommandFactory;

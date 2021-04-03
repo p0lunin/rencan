@@ -60,7 +60,7 @@ fn add_lightning(
     let CommandFactoryContext { buffers, .. } = ctx;
 
     let set_0 = buffers.global_app_set.clone();
-    let set_1 = buffers.rays_set.clone();
+    let set_1 = buffers.intersections_set.clone();
     let set_2 = buffers.models_set.clone();
     let set_3 = buffers.sphere_models_set.clone();
     let set_4 = buffers.lights_set.clone();

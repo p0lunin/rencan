@@ -22,11 +22,6 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 layout(std140, set = 1, binding = 0) readonly buffer Intersections {
     Intersection intersections[];
 };
-layout(set = 1, binding = 1) readonly buffer _N {
-    uint NN;
-    uint _NNN;
-    uint _NNNN;
-};
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
     uint model_counts;
@@ -281,8 +276,6 @@ vec3 tracing_with_sampling() {
 }
 
 void main() {
-    uint _ = NN;
-
     uint idx = gl_GlobalInvocationID.x;
     vec3 color;
 
