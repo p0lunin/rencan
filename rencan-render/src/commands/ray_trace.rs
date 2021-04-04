@@ -10,18 +10,12 @@ use vulkano::{
     descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
     sync::GpuFuture,
 };
+use crate::commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory;
 
 mod cs {
     vulkano_shaders::shader! {
         ty: "compute",
         path: "shaders/ray_tracing.glsl"
-    }
-}
-
-mod divide_cs {
-    vulkano_shaders::shader! {
-        ty: "compute",
-        path: "shaders/divide_workgroup_size.glsl"
     }
 }
 
@@ -31,7 +25,7 @@ pub mod ray_trace_shader {
 
 pub struct RayTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    divide_pipeline: Arc<ComputePipeline<PipelineLayout<divide_cs::Layout>>>,
+    divide_factory: DivideWorkgroupsCommandFactory,
     prev_camera: Camera,
     prev_screen: Screen,
     local_size_x: u32,
@@ -40,29 +34,22 @@ pub struct RayTraceCommandFactory {
 impl RayTraceCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let divide_shader = divide_cs::Shader::load(device.clone()).unwrap();
         let local_size_x =
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
 
         let constants = cs::SpecializationConstants { constant_0: local_size_x };
-        let divide_constants = divide_cs::SpecializationConstants { DIVIDER: local_size_x };
 
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        let divide_pipeline = Arc::new(
-            ComputePipeline::new(
-                device.clone(),
-                &divide_shader.main_entry_point(),
-                &divide_constants,
-                None,
-            )
-            .unwrap(),
+        let divide_factory = DivideWorkgroupsCommandFactory::new(
+            device.clone(),
+            local_size_x,
         );
         RayTraceCommandFactory {
             pipeline,
-            divide_pipeline,
+            divide_factory,
             prev_camera: Camera::new(
                 Point3::new(f32::NAN, f32::NAN, f32::NAN),
                 (f32::NAN, f32::NAN, f32::NAN),
@@ -103,11 +90,10 @@ impl CommandFactory for RayTraceCommandFactory {
             .unwrap()
             .build();
 
-        let divide_command = ctx
-            .create_command_buffer()
-            .dispatch(1, self.divide_pipeline.clone(), buffers.workgroups_set.clone())
-            .unwrap()
-            .build();
+        let mut divide_command = ctx
+            .create_command_buffer();
+        self.divide_factory.add_divider_to_buffer(buffers.workgroups_set.clone(), &mut divide_command.0);
+        let divide_command = divide_command.build();
 
         fut.then_execute(ctx.graphics_queue(), ray_trace_command)
             .unwrap()

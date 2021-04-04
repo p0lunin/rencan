@@ -1,3 +1,4 @@
+pub mod raw;
 mod checkboard_pattern;
 mod lightning;
 mod ray_trace;
