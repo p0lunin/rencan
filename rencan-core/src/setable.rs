@@ -27,6 +27,15 @@ impl<State, Depends> Mutable<State, Depends> {
             Self::new(new_state)
         }
     }
+    pub fn change_with_check_in_place(&mut self, new_state: State)
+    where
+        State: PartialEq<State>
+    {
+        if self.state != new_state {
+            let mut new_val = Self::new(new_state);
+            *self = new_val;
+        }
+    }
     pub fn get_depends_or_init(&mut self, f: impl FnOnce(&State) -> Depends) -> &Depends {
         match &self.depends {
             Some(_) => {},

@@ -13,6 +13,7 @@ mint = "0.5.6"
 crevice = "0.5.0"
 vulkano-shaders = "0.21.0"
 nalgebra = { version = "0.24.1", features = ["mint"] }
+once_cell = "1.7.2"
 
 [dev-dependencies]
 approx = "0.4.0"

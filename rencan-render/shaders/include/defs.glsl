@@ -28,6 +28,18 @@ struct Intersection {
     uint pixel_id;
 };
 
+struct LightIntersection {
+    Intersection inter;
+    Ray light_ray;
+    vec3 light_intensity;
+};
+
+struct LightRay {
+    Intersection previous_intersection;
+    Ray ray;
+    vec3 light_intensity;
+};
+
 Intersection intersection_succ(
     vec3 point,
     vec3 normal,
@@ -72,3 +84,9 @@ struct PointLight {
 
 const uint MATERIAL_DIFFUSE = 1;
 const uint MATERIAL_MIRROR = 2;
+
+uint vec4_color_to_uint(vec4 color) {
+    ivec4 bytes = ivec4(color * 255);
+    uint integer_value = (bytes.r << 24) | (bytes.g << 16) | (bytes.b << 8) | (bytes.a);
+    return integer_value;
+}

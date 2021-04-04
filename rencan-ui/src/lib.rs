@@ -232,9 +232,8 @@ fn init_app(
     )
     .then_ray_tracing_pipeline()
     .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
-    .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(
+    .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
         device.clone(),
-        false,
     )))
     .build();
 

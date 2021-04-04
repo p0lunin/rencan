@@ -6,12 +6,12 @@ layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 #include "../include/defs.glsl"
 
-layout(set = 0, binding = 0) readonly buffer Intersections {
+layout(std140, set = 0, binding = 0) readonly buffer Intersections {
     Intersection previous_intersections[];
 };
 
-layout(set = 1, binding = 0) writeonly buffer IndirectRays {
-    Ray next_rays[];
+layout(std140, set = 1, binding = 0) writeonly buffer IndirectRays {
+    LightRay next_rays[];
 };
 
 layout(std140, set = 2, binding = 0) readonly uniform DirectLightInfo {
@@ -30,22 +30,29 @@ layout(set = 3, binding = 0) writeonly buffer RaysCount {
     uint _z_dimension;
 };
 
-Ray make_shadow_ray_for_direction_light(Intersection inter) {
+#define PI radians(180)
+
+LightRay make_shadow_ray_for_direction_light(Intersection inter) {
     vec3 point = inter.point + inter.normal * 0.001;
 
     Ray ray = Ray(point,-global_light.direction, 1.0 / 0.0);
 
-    return ray;
+    vec3 intensity = global_light.intensity * global_light.color;
+
+    return LightRay(inter, ray, intensity);
 }
 
-Ray make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
+LightRay make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
     vec3 direction_ray = light.position - inter.point;
 
     vec3 point = inter.point + inter.normal * 0.001;
+    float distance = length(direction_ray);
 
-    Ray ray = Ray(point, normalize(direction_ray), length(direction_ray));
+    Ray ray = Ray(point, normalize(direction_ray), distance);
 
-    return ray;
+    vec3 intensity = light.intensity * light.color / (4 * PI * distance * distance);
+
+    return LightRay(inter, ray, intensity);
 }
 
 uint next_idx() {

@@ -55,3 +55,6 @@ pub struct IntersectionUniform {
     distance: f32,
     paddings: [f32; 50],
 }
+
+#[repr(C)]
+pub struct LightIntersection([f32; 100]);
