@@ -41,20 +41,8 @@ impl Intersection {
     }
 }*/
 
-#[repr(C)]
-pub struct IntersectionUniform {
-    point: mint::Vector3<f32>,
-    padding1: f32,
-    normal: mint::Vector3<f32>,
-    padding2: f32,
-    barycentric_coords: mint::Vector2<f32>,
-    intersect: u32,
-    model_id: u32,
-    triangle_idx: u32,
-    vertices_offset: u32,
-    distance: f32,
-    paddings: [f32; 50],
-}
+#[repr(C, packed)]
+pub struct IntersectionUniform([f32; 38]);
 
 #[repr(C)]
 pub struct LightIntersection([f32; 100]);

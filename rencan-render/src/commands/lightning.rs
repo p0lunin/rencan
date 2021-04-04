@@ -185,6 +185,9 @@ impl CommandFactory for LightningV2CommandFactory {
         let intersections_set = self.init_intersections_set(&ctx);
         let [workgroups_set1, workgroups_set2] = self.init_workgroups_set(&ctx);
 
+        debug_assert_eq!(workgroups_set1.0.len(), 1);
+        debug_assert_eq!(workgroups_set2.0.len(), 1);
+
         self.make_rays_factory.add_making_rays_to_buffer(
             &ctx,
             ctx.buffers.workgroups.clone(),
@@ -206,13 +209,13 @@ impl CommandFactory for LightningV2CommandFactory {
             rays_set.clone(),
             intersections_set.clone(),
             workgroups_set2.1.clone(),
-            &mut cmd2.0
+            &mut cmd3.0
         );
 
         let mut cmd4 = ctx.create_command_buffer();
         self.divide_factory.add_divider_to_buffer(
             workgroups_set2.1.clone(),
-            &mut cmd2.0
+            &mut cmd4.0
         );
 
         self.lights_factory.add_lights_diffuse_to_buffer(
@@ -220,7 +223,7 @@ impl CommandFactory for LightningV2CommandFactory {
             workgroups_set2.0.clone(),
             intersections_set.clone(),
             ctx.buffers.image_set.clone(),
-            &mut cmd2.0
+            &mut cmd5.0
         );
 
         let cmd1 = cmd1.build();

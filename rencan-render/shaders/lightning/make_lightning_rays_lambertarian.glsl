@@ -55,22 +55,19 @@ LightRay make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
     return LightRay(inter, ray, intensity);
 }
 
-uint next_idx() {
-    return atomicAdd(count_rays, 1);
-}
-
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     Intersection inter = previous_intersections[idx];
-    ModelInfo model = inter.model;
 
-    if (model.material == MATERIAL_DIFFUSE) {
-        next_rays[next_idx()] = make_shadow_ray_for_direction_light(inter);
+    if (inter.model.material == MATERIAL_DIFFUSE) {
+        uint current_id = atomicAdd(count_rays, 1 + point_lights_count);
+
+        next_rays[current_id] = make_shadow_ray_for_direction_light(inter);
 
         for (int i = 0; i < point_lights_count; i++) {
             PointLight light = point_lights[i];
-            next_rays[next_idx()] = make_shadow_ray_for_point_light(inter, light);
+            next_rays[current_id + i + 1] = make_shadow_ray_for_point_light(inter, light);
         }
     }
 }
