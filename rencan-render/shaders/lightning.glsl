@@ -7,6 +7,7 @@
 const uint SPECULAR_EXPONENT = 200;
 
 layout(constant_id = 1) const uint SAMPLING = 0;
+const uint SAMPLING_MULT = 4;
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
@@ -260,17 +261,20 @@ vec3 compute_color_for_pixel(uint idx, uvec2 screen, uvec2 pixel_pos) {
 }
 
 vec3 tracing_with_sampling() {
-    uint idx = gl_GlobalInvocationID.x * 2;
+    uint idx = gl_GlobalInvocationID.x * SAMPLING_MULT;
 
-    uvec2 local_screen = screen * 2;
+    uvec2 local_screen = screen * SAMPLING_MULT;
 
     vec3 color = vec3(0.0);
 
-    for (int i=0; i<4; i++) {
-        uvec2 local_pixel_pos = uvec2(idx % local_screen.x + i % 2, (idx * 2) / local_screen.x + i / 2);
+    for (int i=0; i<SAMPLING_MULT * SAMPLING_MULT; i++) {
+        uvec2 local_pixel_pos = uvec2(
+            idx % local_screen.x + i % SAMPLING_MULT,
+            (idx * SAMPLING_MULT) / local_screen.x + i / SAMPLING_MULT
+        );
         color += compute_color_for_pixel(idx, local_screen, local_pixel_pos);
     }
-    color /= 4;
+    color /= SAMPLING_MULT * SAMPLING_MULT;
 
     return color;
 }
@@ -280,14 +284,16 @@ void main() {
     vec3 color;
 
     Intersection inter = intersections[idx];
-    ivec2 pixel_pos = ivec2(inter.pixel_id % screen.x, inter.pixel_id / screen.x);
 
     if (SAMPLING == 1) {
+        ivec2 pixel_pos = ivec2(idx % screen.x, idx / screen.x);
         color = tracing_with_sampling();
+        imageStore(resultImage, pixel_pos, vec4(color, 1.0));
     }
     else {
+        ivec2 pixel_pos = ivec2(inter.pixel_id % screen.x, inter.pixel_id / screen.x);
         Ray primary_ray = inter.ray;
         color = lights(idx, inter, primary_ray);
+        imageStore(resultImage, pixel_pos, vec4(color, 1.0));
     }
-    imageStore(resultImage, pixel_pos, vec4(color, 0.0));
 }

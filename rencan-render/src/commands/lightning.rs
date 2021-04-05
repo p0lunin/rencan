@@ -28,6 +28,8 @@ pub mod lightning_cs {
 
 pub struct LightningCommandFactory {
     lightning_pipeline: Arc<ComputePipeline<PipelineLayout<lightning_cs::Layout>>>,
+    local_size_x: u32,
+    sampling: bool
 }
 
 impl LightningCommandFactory {
@@ -49,7 +51,7 @@ impl LightningCommandFactory {
             )
             .unwrap(),
         );
-        LightningCommandFactory { lightning_pipeline }
+        LightningCommandFactory { lightning_pipeline, local_size_x, sampling }
     }
 }
 
@@ -78,11 +80,22 @@ fn add_lightning(
     let set_4 = buffers.lights_set.clone();
     let set_5 = buffers.image_set.clone();
 
-    ctx.create_command_buffer().dispatch_indirect(
-        buffers.workgroups.clone(),
-        factory.lightning_pipeline.clone(),
-        (set_0, set_1, set_2, set_3, set_4, set_5),
-    )
+    match factory.sampling {
+        true => {
+            ctx.create_command_buffer().dispatch(
+                ctx.app_info.size_of_image_array() as u32 / factory.local_size_x,
+                factory.lightning_pipeline.clone(),
+                (set_0, set_1, set_2, set_3, set_4, set_5),
+            ).unwrap()
+        }
+        false => {
+            ctx.create_command_buffer().dispatch_indirect(
+                buffers.workgroups.clone(),
+                factory.lightning_pipeline.clone(),
+                (set_0, set_1, set_2, set_3, set_4, set_5),
+            )
+        }
+    }
 }
 
 pub struct LightningV2CommandFactory {

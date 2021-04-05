@@ -3,5 +3,6 @@ members = [
     "rencan-core",
     "rencan-render",
     "rencan-ui",
+    "rencan-animation",
     "demo",
 ]

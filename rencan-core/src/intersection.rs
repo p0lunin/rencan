@@ -42,7 +42,7 @@ impl Intersection {
 }*/
 
 #[repr(C, packed)]
-pub struct IntersectionUniform([f32; 38]);
+pub struct IntersectionUniform([f32; 58]);
 
 #[repr(C)]
 pub struct LightIntersection([f32; 100]);

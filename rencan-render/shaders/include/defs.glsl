@@ -84,6 +84,7 @@ struct PointLight {
 
 const uint MATERIAL_DIFFUSE = 1;
 const uint MATERIAL_MIRROR = 2;
+const uint MATERIAL_REFRACT = 3;
 
 uint vec4_color_to_uint(vec4 color) {
     ivec4 bytes = ivec4(color * 255);
