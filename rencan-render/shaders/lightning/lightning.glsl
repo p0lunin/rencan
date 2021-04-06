@@ -21,7 +21,7 @@ layout(std140, set = 1, binding = 0) readonly buffer Intersections {
     LightIntersection intersections[];
 };
 
-layout(set = 2, binding = 0, r32ui) writeonly uniform uimage2D resultImage;
+layout(set = 2, binding = 0, r32ui) uniform uimage2D resultImage;
 
 #define PI radians(180)
 
@@ -73,8 +73,20 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     LightIntersection inter = intersections[idx];
+    if (inter.inter.is_intersect != 1) {
+        return;
+    }
     ivec2 pixel_pos = ivec2(inter.inter.pixel_id % screen.x, inter.inter.pixel_id / screen.x);
 
-    vec3 color = lights(inter);
-    imageStore(resultImage, pixel_pos, uvec4(0, 255, 0, 0));
+    vec3 normal = inter.inter.normal;
+    mat4 isometry = inter.inter.model.isometry;
+    float albedo = inter.inter.model.albedo;
+
+    vec3 light_dir = inter.light_ray.direction;
+
+    vec3 color = albedo / PI * inter.light_intensity * max(dot(normal, light_dir), 0.0);
+    //color = albedo / PI * inter.light_intensity;
+
+    // argb
+    imageAtomicAdd(resultImage, pixel_pos, vec4_color_to_uint(vec4(0.0, color)));
 }

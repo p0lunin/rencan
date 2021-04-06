@@ -97,7 +97,7 @@ fn main() {
             SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.2), // TODO: vulkano bug
         ],
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 5.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 10.0),
             Vector3::new(0.2, -0.4, 0.3),
         ),
         vec![
@@ -135,9 +135,9 @@ fn main() {
             }
             Event::RedrawEventsCleared => {
                 //rx.recv().unwrap();
-                while let Ok(rot) = rot_rx.try_recv() {
-                    scene.data.global_light.direction = rot * &scene.data.global_light.direction;
-                }
+                //while let Ok(rot) = rot_rx.try_recv() {
+                //    scene.data.global_light.direction = rot * &scene.data.global_light.direction;
+                //}
                 frames += 1;
                 if Instant::now() >= next {
                     println!("fps: {}", frames);

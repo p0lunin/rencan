@@ -45,4 +45,4 @@ impl Intersection {
 pub struct IntersectionUniform([f32; 58]);
 
 #[repr(C)]
-pub struct LightIntersection([f32; 100]);
+pub struct LightIntersection([f32; 180]);

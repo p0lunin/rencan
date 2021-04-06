@@ -54,7 +54,7 @@ impl MakeLightningRaysDiffuseCommandFactory {
             intersections_set,
             rays_set,
             ctx.buffers.lights_set.clone(),
-            workgroups_output_set
+            workgroups_output_set,
         );
 
         buffer

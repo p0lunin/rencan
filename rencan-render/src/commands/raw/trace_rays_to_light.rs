@@ -41,12 +41,13 @@ impl TraceRaysToLightCommandFactory {
         TraceRaysToLightCommandFactory { pipeline, local_size_x }
     }
 
-    pub fn add_trace_rays_to_buffer<RS, WI, WOS, IntersSer>(
+    pub fn add_trace_rays_to_buffer<RS, WI, WOS, PIS, IntersSer>(
         &self,
         ctx: &CommandFactoryContext,
         workgroups_input: WI,
         rays_set: RS,
         intersections_set: IntersSer,
+        previous_intersections_set: PIS,
         workgroups_out_set: WOS,
         buffer: &mut AutoCommandBufferBuilder,
     )
@@ -55,13 +56,15 @@ impl TraceRaysToLightCommandFactory {
         WI: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
         WOS: DescriptorSet + Send + Sync + 'static,
         IntersSer: DescriptorSet + Send + Sync + 'static,
+        PIS: DescriptorSet + Send + Sync + 'static,
     {
         let sets = (
             rays_set,
             intersections_set,
             ctx.buffers.models_set.clone(),
             ctx.buffers.sphere_models_set.clone(),
-            workgroups_out_set
+            workgroups_out_set,
+            previous_intersections_set,
         );
 
         buffer

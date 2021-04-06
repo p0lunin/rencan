@@ -35,9 +35,9 @@ struct LightIntersection {
 };
 
 struct LightRay {
-    Intersection previous_intersection;
     Ray ray;
     vec3 light_intensity;
+    uint inter_id;
 };
 
 Intersection intersection_succ(
@@ -87,7 +87,7 @@ const uint MATERIAL_MIRROR = 2;
 const uint MATERIAL_REFRACT = 3;
 
 uint vec4_color_to_uint(vec4 color) {
-    ivec4 bytes = ivec4(color * 255);
+    ivec4 bytes = ivec4(clamp(color, 0, 1) * 255);
     uint integer_value = (bytes.r << 24) | (bytes.g << 16) | (bytes.b << 8) | (bytes.a);
     return integer_value;
 }

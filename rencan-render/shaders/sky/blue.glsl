@@ -22,4 +22,5 @@ void main() {
 
     ivec2 pixel_pos = ivec2(idx % screen.x, idx / screen.x);
     imageStore(resultImage, pixel_pos, vec4(0.0, 0.3, 0.8, 1.0));
+    imageStore(resultImage, pixel_pos, vec4(0.0));
 }

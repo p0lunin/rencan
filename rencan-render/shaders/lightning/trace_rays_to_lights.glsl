@@ -47,16 +47,20 @@ layout(set = 4, binding = 0) writeonly buffer IntersectionsCount {
     uint _z_dimension;
 };
 
+layout(std140, set = 5, binding = 0) readonly buffer PreviousIntersections {
+    Intersection previous_intersections[];
+};
+
 #include "../include/ray_tracing.glsl"
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     LightRay ray = rays[idx];
-    Intersection inter = trace_first(ray.ray, idx);
+    Intersection inter = trace_first(ray.ray, 0);
 
     if (inter.is_intersect == 0) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
-        intersections[intersection_idx] = LightIntersection(ray.previous_intersection, ray.ray, ray.light_intensity);
+        intersections[intersection_idx] = LightIntersection(previous_intersections[ray.inter_id], ray.ray, ray.light_intensity);
     }
 }

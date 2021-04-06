@@ -39,7 +39,7 @@ LightRay make_shadow_ray_for_direction_light(Intersection inter) {
 
     vec3 intensity = global_light.intensity * global_light.color;
 
-    return LightRay(inter, ray, intensity);
+    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
 }
 
 LightRay make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
@@ -52,7 +52,7 @@ LightRay make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
 
     vec3 intensity = light.intensity * light.color / (4 * PI * distance * distance);
 
-    return LightRay(inter, ray, intensity);
+    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
 }
 
 void main() {

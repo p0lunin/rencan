@@ -160,7 +160,7 @@ impl LightningV2CommandFactory {
             None => {
                 let buf = ctx.create_device_local_buffer_array(
                     1,
-                    BufferUsage { storage_buffer: true, indirect_buffer: true, ..BufferUsage::none() },
+                    BufferUsage { storage_buffer: true, indirect_buffer: true, transfer_destination: true, ..BufferUsage::none() },
                 );
                 let set = OneBufferSet::new(
                     buf,
@@ -169,7 +169,7 @@ impl LightningV2CommandFactory {
 
                 let buf2 = ctx.create_device_local_buffer_array(
                     1,
-                    BufferUsage { storage_buffer: true, indirect_buffer: true, ..BufferUsage::none() },
+                    BufferUsage { storage_buffer: true, indirect_buffer: true, transfer_destination: true, ..BufferUsage::none() },
                 );
                 let set2 = OneBufferSet::new(
                     buf2,
@@ -191,6 +191,7 @@ impl CommandFactory for LightningV2CommandFactory {
         ctx: CommandFactoryContext,
         fut: Box<dyn GpuFuture>,
     ) -> Box<dyn GpuFuture> {
+        let mut cmd_zeroes = ctx.create_command_buffer();
         let mut cmd1 = ctx.create_command_buffer();
         let mut cmd3 = ctx.create_command_buffer();
         let mut cmd5 = ctx.create_command_buffer();
@@ -201,6 +202,11 @@ impl CommandFactory for LightningV2CommandFactory {
 
         debug_assert_eq!(workgroups_set1.0.len(), 1);
         debug_assert_eq!(workgroups_set2.0.len(), 1);
+
+        cmd_zeroes.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
+        cmd_zeroes.0.fill_buffer(workgroups_set2.0.clone(), 0).unwrap();
+
+        let cmd_zeroes = cmd_zeroes.build();
 
         self.make_rays_factory.add_making_rays_to_buffer(
             &ctx,
@@ -222,6 +228,7 @@ impl CommandFactory for LightningV2CommandFactory {
             workgroups_set1.0.clone(),
             rays_set.clone(),
             intersections_set.clone(),
+            ctx.buffers.intersections_set.clone(),
             workgroups_set2.1.clone(),
             &mut cmd3.0
         );
@@ -246,7 +253,10 @@ impl CommandFactory for LightningV2CommandFactory {
         let cmd4 = cmd4.build();
         let cmd5 = cmd5.build();
 
-        fut.then_execute(ctx.graphics_queue(), cmd1)
+        fut
+            .then_execute(ctx.graphics_queue(), cmd_zeroes)
+            .unwrap()
+            .then_execute(ctx.graphics_queue(), cmd1)
             .unwrap()
         .then_execute(ctx.graphics_queue(), cmd2)
             .unwrap()
