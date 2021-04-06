@@ -5,6 +5,7 @@ use std::sync::Arc;
 use rencan_render::core::model::SphereModel;
 use rencan_render::core::light::{DirectionLight, LightInfo, PointLight};
 use nalgebra::{Point3, Point4, Vector3};
+use rencan_render::core::camera::Camera;
 
 fn init_scene(device: Arc<Device>) -> Scene {
     Scene::new(
@@ -27,6 +28,7 @@ fn init_scene(device: Arc<Device>) -> Scene {
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],
+        Camera::from_origin().move_at(0.0, 0.0, 3.0)
     )
 }
 

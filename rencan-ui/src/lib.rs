@@ -228,13 +228,13 @@ fn init_app(
 
     let app = AppBuilder::new(
         AppInfo::new(instance, graphics_queue, device.clone(), screen),
-        Camera::from_origin().move_at(0.0, 0.0, 5.0),
     )
     .then_ray_tracing_pipeline()
     .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
     .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(
         device.clone(),
         true,
+        32,
     )))
     .build();
 

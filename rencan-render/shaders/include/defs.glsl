@@ -91,3 +91,7 @@ uint vec4_color_to_uint(vec4 color) {
     uint integer_value = (bytes.r << 24) | (bytes.g << 16) | (bytes.b << 8) | (bytes.a);
     return integer_value;
 }
+
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}

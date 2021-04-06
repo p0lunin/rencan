@@ -31,7 +31,6 @@ use vulkano::{
 
 pub struct App {
     info: AppInfo,
-    camera: Camera,
     commands: Vec<Box<dyn CommandFactory>>,
     buffers: GlobalBuffers,
 }
@@ -39,17 +38,13 @@ pub struct App {
 impl App {
     pub fn new(
         info: AppInfo,
-        camera: Camera,
         commands: Vec<Box<dyn CommandFactory>>,
         buffers: GlobalBuffers,
     ) -> Self {
-        Self { info, camera, commands, buffers }
+        Self { info, commands, buffers }
     }
     pub fn info(&self) -> &AppInfo {
         &self.info
-    }
-    pub fn camera(&self) -> &Camera {
-        &self.camera
     }
     pub fn update_screen(&mut self, screen: Screen) {
         self.info.screen = screen;
@@ -58,9 +53,6 @@ impl App {
             self.info.graphics_queue.family(),
             self.info.size_of_image_array(),
         );
-    }
-    pub fn update_camera(&mut self, update_cam: impl FnOnce(Camera) -> Camera) {
-        self.camera = update_cam(self.camera.clone());
     }
     pub fn render<Prev, F>(
         &mut self,
@@ -81,7 +73,7 @@ impl App {
             app_info: &self.info,
             buffers: buffers.clone(),
             scene,
-            camera: &self.camera,
+            camera: &scene.data.camera,
         };
 
         let mut fut: Box<dyn GpuFuture> = Box::new(previous.join(fut));
@@ -96,7 +88,7 @@ impl App {
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &mut Scene,
     ) -> (Buffers, Box<dyn GpuFuture>) {
-        self.buffers.make_buffers(&self.info, &self.camera, image, scene)
+        self.buffers.make_buffers(&self.info, image, scene)
     }
 }
 
@@ -142,7 +134,6 @@ impl GlobalBuffers {
     pub fn make_buffers(
         &mut self,
         app: &AppInfo,
-        camera: &Camera,
         image: Arc<ImageView<Arc<AttachmentImage>>>,
         scene: &mut Scene,
     ) -> (Buffers, Box<dyn GpuFuture>) {
@@ -154,7 +145,7 @@ impl GlobalBuffers {
                     .chunk(std::iter::once(DispatchIndirectCommand { x: 0, y: 0, z: 0 }))
                     .unwrap(),
             ),
-            Arc::new(self.camera.next(camera.clone().into_uniform().as_std140()).unwrap()),
+            Arc::new(self.camera.next(scene.data.camera.clone().into_uniform().as_std140()).unwrap()),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
             Arc::new(self.direction_light.next(scene.data.global_light.clone().into_uniform()).unwrap()),
@@ -339,7 +330,6 @@ pub type Rays = [Ray];
 
 pub struct AppBuilder {
     info: AppInfo,
-    camera: Camera,
     commands: Vec<Box<dyn CommandFactory>>,
     global_buffers: GlobalBuffers,
 }
@@ -348,28 +338,25 @@ impl AppBuilder {
     pub fn info(&self) -> &AppInfo {
         &self.info
     }
-    pub fn camera(&self) -> &Camera {
-        &self.camera
-    }
     pub fn commands(&self) -> &Vec<Box<dyn CommandFactory>> {
         &self.commands
     }
 }
 
 impl AppBuilder {
-    pub fn new(info: AppInfo, camera: Camera) -> Self {
+    pub fn new(info: AppInfo) -> Self {
         let buffers = GlobalBuffers::new(
             &info.device,
             info.graphics_queue.family(),
             info.size_of_image_array(),
         );
-        Self { info, camera, commands: vec![], global_buffers: buffers }
+        Self { info, commands: vec![], global_buffers: buffers }
     }
     pub fn then_command(mut self, f: Box<dyn CommandFactory>) -> Self {
         self.commands.push(f);
         self
     }
     pub fn build(self) -> App {
-        App::new(self.info, self.camera, self.commands, self.global_buffers)
+        App::new(self.info, self.commands, self.global_buffers)
     }
 }

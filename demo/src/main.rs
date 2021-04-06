@@ -13,6 +13,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+use rencan_render::core::camera::Camera;
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -96,19 +97,20 @@ fn main() {
             SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.2), // TODO: vulkano bug
         ],
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 7.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 5.0),
             Vector3::new(0.2, -0.4, 0.3),
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 100.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 0.0),
                 Point3::new(0.0, 2.49, 0.0),
             ),
             PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 10.0),
+                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 0.0),
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],
+        Camera::from_origin().move_at(0.0, 0.0, 5.0)
     );
 
     std::thread::spawn(move || loop {
@@ -156,28 +158,28 @@ fn main() {
                 let app = app.app_mut();
                 match input.virtual_keycode.unwrap() {
                     VirtualKeyCode::Left => {
-                        app.update_camera(|cam| cam.rotate(0.0, 0.05, 0.0));
+                        scene.update_camera(|cam| cam.rotate(0.0, 0.05, 0.0));
                     }
                     VirtualKeyCode::Right => {
-                        app.update_camera(|cam| cam.rotate(0.0, -0.05, 0.0));
+                        scene.update_camera(|cam| cam.rotate(0.0, -0.05, 0.0));
                     }
                     VirtualKeyCode::Up => {
-                        app.update_camera(|cam| cam.rotate(0.05, 0.0, 0.0));
+                        scene.update_camera(|cam| cam.rotate(0.05, 0.0, 0.0));
                     }
                     VirtualKeyCode::Down => {
-                        app.update_camera(|cam| cam.rotate(-0.05, 0.0, 0.0));
+                        scene.update_camera(|cam| cam.rotate(-0.05, 0.0, 0.0));
                     }
                     VirtualKeyCode::A => {
-                        app.update_camera(|cam| cam.move_at(-0.05, 0.0, 0.0));
+                        scene.update_camera(|cam| cam.move_at(-0.05, 0.0, 0.0));
                     }
                     VirtualKeyCode::D => {
-                        app.update_camera(|cam| cam.move_at(0.05, 0.0, 0.0));
+                        scene.update_camera(|cam| cam.move_at(0.05, 0.0, 0.0));
                     }
                     VirtualKeyCode::W => {
-                        app.update_camera(|cam| cam.move_at(0.0, 0.0, -0.05));
+                        scene.update_camera(|cam| cam.move_at(0.0, 0.0, -0.05));
                     }
                     VirtualKeyCode::S => {
-                        app.update_camera(|cam| cam.move_at(0.0, 0.0, 0.05));
+                        scene.update_camera(|cam| cam.move_at(0.0, 0.0, 0.05));
                     }
                     _ => {}
                 }

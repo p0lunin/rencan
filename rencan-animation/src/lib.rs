@@ -84,9 +84,11 @@ impl Renderer {
         cmd.copy_image_to_buffer(self.buffer_image.image().clone(), image_buf.clone()).unwrap();
         let cmd = cmd.build().unwrap();
 
-        fut
+        let copy_fut = fut
             .then_execute(self.app.app.info().graphics_queue.clone(), cmd)
-            .unwrap()
+            .unwrap();
+
+        copy_fut
             .then_signal_fence_and_flush()
             .unwrap()
             .wait(None)
@@ -172,13 +174,12 @@ fn init_app(
 
     let app = AppBuilder::new(
         AppInfo::new(instance, graphics_queue, device.clone(), screen),
-        Camera::from_origin().move_at(0.0, 0.0, 3.0),
     )
-    .then_ray_tracing_pipeline()
     .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
     .then_command(Box::new(rencan_render::commands::LightningCommandFactory::new(
         device.clone(),
         true,
+        16,
     )))
     .build();
 

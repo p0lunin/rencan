@@ -5,6 +5,7 @@ use crate::setable::Mutable;
 use vulkano::buffer::TypedBufferAccess;
 use vulkano::descriptor::DescriptorSet;
 use vulkano::sync::GpuFuture;
+use crate::camera::Camera;
 
 pub struct Scene {
     pub data: SceneData,
@@ -18,6 +19,7 @@ impl Scene {
         sphere_models: Vec<SphereModel>,
         global_light: DirectionLight,
         point_lights: Vec<PointLight>,
+        camera: Camera,
     ) -> Self {
         Scene {
             data: SceneData {
@@ -25,6 +27,7 @@ impl Scene {
                 sphere_models: Mutable::new(sphere_models),
                 global_light,
                 point_lights,
+                camera,
             },
             buffers: SceneBuffersStorage::init(device),
         }
@@ -33,6 +36,10 @@ impl Scene {
     pub fn frame_buffers(&mut self, app: &AppInfo) -> (SceneBuffers, Box<dyn GpuFuture>) {
         self.buffers.get_buffers(app, &mut self.data)
     }
+
+    pub fn update_camera(&mut self, f: impl FnOnce(Camera) -> Camera) {
+        self.data.camera = f(self.data.camera.clone());
+    }
 }
 
 pub struct SceneData {
@@ -40,4 +47,5 @@ pub struct SceneData {
     pub sphere_models: Mutable<Vec<SphereModel>, Arc<dyn DescriptorSet + Send + Sync>>,
     pub global_light: DirectionLight,
     pub point_lights: Vec<PointLight>,
+    pub camera: Camera,
 }
