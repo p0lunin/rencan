@@ -9,4 +9,4 @@ pub struct Ray {
 }
 
 #[repr(C)]
-pub struct LightRay([u32; 40]);
+pub struct LightRay([u32; 24]);

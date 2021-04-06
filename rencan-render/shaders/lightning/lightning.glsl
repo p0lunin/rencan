@@ -18,34 +18,17 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
 };
 
 layout(std140, set = 1, binding = 0) readonly buffer Intersections {
-    LightIntersection intersections[];
+    LightRay intersections[];
 };
 
 layout(set = 2, binding = 0, r32ui) uniform uimage2D resultImage;
 
+layout(std140, set = 3, binding = 0) readonly buffer PreviousIntersections {
+    Intersection previous_intersections[];
+};
+
 #define PI radians(180)
 
-vec3 compute_diffuse_component(
-    LightIntersection inter
-) {
-    vec3 normal = inter.inter.normal;
-    mat4 isometry = inter.inter.model.isometry;
-    float albedo = inter.inter.model.albedo;
-
-    vec3 light_dir = inter.inter.ray.direction;
-
-    vec3 color = albedo / PI * inter.light_intensity * max(dot(normal, light_dir), 0.0);
-
-    return color;
-}
-
-vec3 compute_diffuse_color(
-    LightIntersection inter
-) {
-    float diffuse_coef = inter.inter.model.diffuse;
-
-    return diffuse_coef * compute_diffuse_component(inter);
-}
 /* TODO: specular component
 requires primary ray direction
 float compute_specular_component(vec3 primary_ray, vec3 light_ray, vec3 surface_normal) {
@@ -59,32 +42,24 @@ vec3 compute_specular_color(vec3 primary_ray, vec3 light_ray, vec3 surface_norma
     return light_color * component;
 }
 */
-vec3 compute_color_diffuse_material(LightIntersection inter) {
-    return compute_diffuse_color(inter);
-}
-
-vec3 lights(LightIntersection inter) {
-    vec3 color = compute_color_diffuse_material(inter);
-
-    return color;
-}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
-    LightIntersection inter = intersections[idx];
-    if (inter.inter.is_intersect != 1) {
+    LightRay light_int = intersections[idx];
+    Intersection inter = previous_intersections[light_int.inter_id];
+    if (inter.is_intersect != 1) {
         return;
     }
-    ivec2 pixel_pos = ivec2(inter.inter.pixel_id % screen.x, inter.inter.pixel_id / screen.x);
+    ivec2 pixel_pos = ivec2(inter.pixel_id % screen.x, inter.pixel_id / screen.x);
 
-    vec3 normal = inter.inter.normal;
-    mat4 isometry = inter.inter.model.isometry;
-    float albedo = inter.inter.model.albedo;
+    vec3 normal = inter.normal;
+    mat4 isometry = inter.model.isometry;
+    float albedo = inter.model.albedo;
 
-    vec3 light_dir = inter.light_ray.direction;
+    vec3 light_dir = light_int.ray.direction;
 
-    vec3 color = albedo / PI * inter.light_intensity * max(dot(normal, light_dir), 0.0);
+    vec3 color = albedo / PI * light_int.light_intensity * max(dot(normal, light_dir), 0.0);
     //color = albedo / PI * inter.light_intensity;
 
     // argb

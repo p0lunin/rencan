@@ -12,7 +12,7 @@ layout(std140, set = 0, binding = 0) readonly buffer Rays {
 };
 
 layout(std140, set = 1, binding = 0) writeonly buffer Intersections {
-    LightIntersection intersections[];
+    LightRay not_intersected_rays[];
 };
 
 layout(std140, set = 2, binding = 0) readonly uniform SceneInfo {
@@ -47,10 +47,6 @@ layout(set = 4, binding = 0) writeonly buffer IntersectionsCount {
     uint _z_dimension;
 };
 
-layout(std140, set = 5, binding = 0) readonly buffer PreviousIntersections {
-    Intersection previous_intersections[];
-};
-
 #include "../include/ray_tracing.glsl"
 
 void main() {
@@ -61,6 +57,6 @@ void main() {
 
     if (inter.is_intersect == 0) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
-        intersections[intersection_idx] = LightIntersection(previous_intersections[ray.inter_id], ray.ray, ray.light_intensity);
+        not_intersected_rays[intersection_idx] = ray;
     }
 }

@@ -28,12 +28,6 @@ struct Intersection {
     uint pixel_id;
 };
 
-struct LightIntersection {
-    Intersection inter;
-    Ray light_ray;
-    vec3 light_intensity;
-};
-
 struct LightRay {
     Ray ray;
     vec3 light_intensity;

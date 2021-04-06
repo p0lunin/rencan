@@ -35,11 +35,12 @@ impl LightsDiffuseCommandFactory {
         LightsDiffuseCommandFactory { pipeline }
     }
 
-    pub fn add_lights_diffuse_to_buffer<WI, IMS, IS>(
+    pub fn add_lights_diffuse_to_buffer<WI, IMS, IS, PIS>(
         &self,
         ctx: &CommandFactoryContext,
         workgroups_input: WI,
         intersections_set: IS,
+        previous_intersections_set: PIS,
         image_set: IMS,
         buffer: &mut AutoCommandBufferBuilder,
     )
@@ -47,11 +48,13 @@ impl LightsDiffuseCommandFactory {
         WI: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
         IMS: DescriptorSet + Send + Sync + 'static,
         IS: DescriptorSet + Send + Sync + 'static,
+        PIS: DescriptorSet + Send + Sync + 'static,
     {
         let sets = (
             ctx.buffers.global_app_set.clone(),
             intersections_set,
             image_set,
+            previous_intersections_set,
         );
 
         buffer

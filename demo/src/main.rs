@@ -102,11 +102,11 @@ fn main() {
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 0.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1500.0),
                 Point3::new(0.0, 2.49, 0.0),
             ),
             PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 0.0),
+                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 300.0),
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],

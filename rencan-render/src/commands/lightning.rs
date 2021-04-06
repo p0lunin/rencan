@@ -16,7 +16,6 @@ use vulkano::command_buffer::DispatchIndirectCommand;
 use vulkano::device::Queue;
 use once_cell::sync::OnceCell;
 use vulkano::memory::pool::{PotentialDedicatedAllocation, StdMemoryPoolAlloc};
-use crate::core::intersection::LightIntersection;
 use crate::commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory;
 
 pub mod lightning_cs {
@@ -105,7 +104,7 @@ pub struct LightningV2CommandFactory {
     trace_rays_factory: TraceRaysToLightCommandFactory,
     lights_factory: LightsDiffuseCommandFactory,
     light_rays: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightRay]>>>>,
-    intersections_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightIntersection]>>>>,
+    intersections_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightRay]>>>>,
     workgroups: OnceCell<[OneBufferSet<Arc<DeviceLocalBuffer<[DispatchIndirectCommand]>>>; 2]>
 }
 
@@ -124,7 +123,7 @@ impl LightningV2CommandFactory {
         }
     }
     fn init_rays_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.light_rays.change_with_check_in_place(ctx.buffers.intersections.len());
+        self.light_rays.change_with_check_in_place(ctx.buffers.intersections.len() * (ctx.scene.data.point_lights.len() + 1));
         let layout = self.trace_rays_factory.rays_layout();
         let one_set = self.light_rays.get_depends_or_init(|&len| {
             let buf = ctx.create_device_local_buffer_array(
@@ -140,7 +139,7 @@ impl LightningV2CommandFactory {
         one_set.1.clone()
     }
     fn init_intersections_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.intersections_set.change_with_check_in_place(ctx.buffers.intersections.len());
+        self.intersections_set.change_with_check_in_place(ctx.buffers.intersections.len() * (ctx.scene.data.point_lights.len() + 1));
         let layout = self.trace_rays_factory.intersections_layout();
         let one_set = self.intersections_set.get_depends_or_init(|&len| {
             let buf = ctx.create_device_local_buffer_array(
@@ -228,7 +227,6 @@ impl CommandFactory for LightningV2CommandFactory {
             workgroups_set1.0.clone(),
             rays_set.clone(),
             intersections_set.clone(),
-            ctx.buffers.intersections_set.clone(),
             workgroups_set2.1.clone(),
             &mut cmd3.0
         );
@@ -243,6 +241,7 @@ impl CommandFactory for LightningV2CommandFactory {
             &ctx,
             workgroups_set2.0.clone(),
             intersections_set.clone(),
+            ctx.buffers.intersections_set.clone(),
             ctx.buffers.image_set.clone(),
             &mut cmd5.0
         );

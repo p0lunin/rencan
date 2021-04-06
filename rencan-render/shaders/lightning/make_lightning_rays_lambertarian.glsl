@@ -32,20 +32,27 @@ layout(set = 3, binding = 0) writeonly buffer RaysCount {
 
 #define PI radians(180)
 
-LightRay make_shadow_ray_for_direction_light(Intersection inter) {
-    vec3 point = inter.point + inter.normal * 0.001;
+LightRay make_shadow_ray_for_direction_light(
+    vec3 inter_point,
+    vec3 inter_normal
+) {
+    vec3 point = inter_point + inter_normal * 0.001;
 
-    Ray ray = Ray(point,-global_light.direction, 1.0 / 0.0);
+    Ray ray = Ray(point, -global_light.direction, 1.0 / 0.0);
 
     vec3 intensity = global_light.intensity * global_light.color;
 
     return LightRay(ray, intensity, gl_GlobalInvocationID.x);
 }
 
-LightRay make_shadow_ray_for_point_light(Intersection inter, PointLight light) {
-    vec3 direction_ray = light.position - inter.point;
+LightRay make_shadow_ray_for_point_light(
+    vec3 inter_point,
+    vec3 inter_normal,
+    PointLight light
+) {
+    vec3 direction_ray = light.position - inter_point;
 
-    vec3 point = inter.point + inter.normal * 0.001;
+    vec3 point = inter_point + inter_normal * 0.001;
     float distance = length(direction_ray);
 
     Ray ray = Ray(point, normalize(direction_ray), distance);
@@ -63,11 +70,11 @@ void main() {
     if (inter.model.material == MATERIAL_DIFFUSE) {
         uint current_id = atomicAdd(count_rays, 1 + point_lights_count);
 
-        next_rays[current_id] = make_shadow_ray_for_direction_light(inter);
+        next_rays[current_id] = make_shadow_ray_for_direction_light(inter.point, inter.normal);
 
         for (int i = 0; i < point_lights_count; i++) {
             PointLight light = point_lights[i];
-            next_rays[current_id + i + 1] = make_shadow_ray_for_point_light(inter, light);
+            next_rays[current_id + i + 1] = make_shadow_ray_for_point_light(inter.point, inter.normal, light);
         }
     }
 }
