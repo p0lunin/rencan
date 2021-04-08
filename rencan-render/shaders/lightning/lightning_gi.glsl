@@ -4,29 +4,24 @@
 
 #include "../include/defs.glsl"
 
-const uint SPECULAR_EXPONENT = 200;
-
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) readonly uniform Info {
-    uvec2 screen;
-};
-layout(std140, set = 0, binding = 1) readonly uniform Camera {
-    vec3 pos;
-    mat3 rotation;
-    float fov;
-};
+layout(constant_id = 1) const uint SAMPLES_PER_BOUNCE = 64;
 
-layout(std140, set = 1, binding = 0) readonly buffer Intersections {
+layout(std140, set = 0, binding = 0) readonly buffer Intersections {
     LightRay intersections[];
 };
 
-layout(set = 2, binding = 0) writeonly buffer ResultImage {
+layout(set = 1, binding = 0) writeonly buffer ResultImage {
     uvec4 colors[];
 };
 
-layout(std140, set = 3, binding = 0) readonly buffer PreviousIntersections {
+layout(std140, set = 2, binding = 0) readonly buffer PreviousIntersections {
     Intersection previous_intersections[];
+};
+
+layout(std140, set = 3, binding = 0) readonly buffer GiThethas {
+    float gi_thethas[];
 };
 
 void main() {
@@ -38,13 +33,13 @@ void main() {
         return;
     }
 
-    vec3 color = compute_light_color(
+    vec3 color = gi_thethas[idx] * compute_light_color(
         inter.model,
         light_int.light_intensity,
         inter.normal,
         light_int.ray.direction,
         inter.ray.direction
-    );
+    ) / (1 / (2 * PI)) / SAMPLES_PER_BOUNCE;
 
     uvec4 add_color = uvec4(clamp(color, 0, 1) * (255 * 255 * 255), (255 * 255 * 255));
     atomicAdd(colors[inter.pixel_id].x, add_color.x);

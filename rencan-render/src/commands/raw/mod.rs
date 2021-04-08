@@ -4,3 +4,5 @@ pub mod lights_diffuse;
 pub mod reflect_from_mirror;
 pub mod trace_rays;
 pub mod trace_rays_to_light;
+pub mod make_gi_rays;
+pub mod lights_gi;
