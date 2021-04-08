@@ -1,24 +1,25 @@
-use crate::{hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo, Scene, AppInfo};
+use crate::{
+    hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo,
+    scene::SceneData, AppInfo, Scene,
+};
 use crevice::std140::AsStd140;
 use nalgebra::Point4;
+use once_cell::sync::OnceCell;
 use std::sync::Arc;
 use vulkano::{
     buffer::{
         cpu_pool::{CpuBufferPoolChunk, CpuBufferPoolSubbuffer},
-        BufferUsage, CpuBufferPool, TypedBufferAccess,
+        BufferUsage, CpuBufferPool, ImmutableBuffer, TypedBufferAccess,
     },
-    device::Device,
+    descriptor::{
+        descriptor_set::FixedSizeDescriptorSetsPool, pipeline_layout::PipelineLayout,
+        DescriptorSet, PipelineLayoutAbstract,
+    },
+    device::{Device, Queue},
     memory::pool::StdMemoryPool,
+    pipeline::ComputePipeline,
+    sync::GpuFuture,
 };
-use vulkano::descriptor::descriptor_set::FixedSizeDescriptorSetsPool;
-use once_cell::sync::OnceCell;
-use vulkano::descriptor::pipeline_layout::PipelineLayout;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::descriptor::{PipelineLayoutAbstract, DescriptorSet};
-use crate::scene::SceneData;
-use vulkano::buffer::ImmutableBuffer;
-use vulkano::device::Queue;
-use vulkano::sync::GpuFuture;
 
 pub struct SceneBuffersStorage {
     pub counts_u32: CpuBufferPool<u32>,
@@ -68,7 +69,7 @@ impl SceneBuffersStorage {
                             },
                             None,
                         )
-                            .unwrap(),
+                        .unwrap(),
                     )
                 }
             })
@@ -83,22 +84,10 @@ impl SceneBuffersStorage {
 
         Self {
             counts_u32: CpuBufferPool::new(device.clone(), BufferUsage::uniform_buffer()),
-            model_infos: CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::transfer_source(),
-            ),
-            vertices: CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::transfer_source(),
-            ),
-            indices: CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::transfer_source(),
-            ),
-            hit_boxes: CpuBufferPool::new(
-                device.clone(),
-                BufferUsage::transfer_source(),
-            ),
+            model_infos: CpuBufferPool::new(device.clone(), BufferUsage::transfer_source()),
+            vertices: CpuBufferPool::new(device.clone(), BufferUsage::transfer_source()),
+            indices: CpuBufferPool::new(device.clone(), BufferUsage::transfer_source()),
+            hit_boxes: CpuBufferPool::new(device.clone(), BufferUsage::transfer_source()),
             point_lights: CpuBufferPool::new(
                 device.clone(),
                 BufferUsage { storage_buffer: true, ..BufferUsage::none() },
@@ -124,130 +113,144 @@ impl SceneBuffersStorage {
         }
     }
 
-    pub fn get_buffers(&mut self, app: &AppInfo, scene: &mut SceneData) -> (SceneBuffers, Box<dyn GpuFuture>) {
+    pub fn get_buffers(
+        &mut self,
+        app: &AppInfo,
+        scene: &mut SceneData,
+    ) -> (SceneBuffers, Box<dyn GpuFuture>) {
         let mut fut: Box<dyn GpuFuture> = Box::new(vulkano::sync::now(app.device.clone()));
         let point_lights = &scene.point_lights;
 
-        let models_set = scene.models.get_depends_or_init(|models| {
-            let count = self.counts_u32.next(models.len() as u32).unwrap();
-            let infos = self
-                .model_infos
-                .chunk(models.iter().enumerate().map(|(i, m)| m.model().get_uniform_info(i as u32)))
-                .unwrap();
-            let vertices = self
-                .vertices
-                .chunk(
-                    models
-                        .iter()
-                        .map(|m| m.model().vertices.iter().cloned())
-                        .flatten()
-                        .collect::<Vec<_>>()
-                        .into_iter(),
+        let models_set = scene
+            .models
+            .get_depends_or_init(|models| {
+                let count = self.counts_u32.next(models.len() as u32).unwrap();
+                let infos = self
+                    .model_infos
+                    .chunk(
+                        models
+                            .iter()
+                            .enumerate()
+                            .map(|(i, m)| m.model().get_uniform_info(i as u32)),
+                    )
+                    .unwrap();
+                let vertices = self
+                    .vertices
+                    .chunk(
+                        models
+                            .iter()
+                            .map(|m| m.model().vertices.iter().cloned())
+                            .flatten()
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    )
+                    .unwrap();
+                let indices = self
+                    .indices
+                    .chunk(
+                        models
+                            .iter()
+                            .map(|m| m.model().indexes.iter().cloned())
+                            .flatten()
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    )
+                    .unwrap();
+                let hit_boxes = self
+                    .hit_boxes
+                    .chunk(models.iter().map(|m| m.hit_box().clone().into_uniform().as_std140()))
+                    .unwrap();
+
+                let (infos, fu2) = ImmutableBuffer::from_buffer(
+                    infos,
+                    BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                    app.graphics_queue.clone(),
                 )
                 .unwrap();
-            let indices = self
-                .indices
-                .chunk(
-                    models
-                        .iter()
-                        .map(|m| m.model().indexes.iter().cloned())
-                        .flatten()
-                        .collect::<Vec<_>>()
-                        .into_iter(),
+                let (vertices, fu3) = ImmutableBuffer::from_buffer(
+                    vertices,
+                    BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                    app.graphics_queue.clone(),
                 )
                 .unwrap();
-            let hit_boxes = self
-                .hit_boxes
-                .chunk(models.iter().map(|m| m.hit_box().clone().into_uniform().as_std140()))
+                let (indices, fu4) = ImmutableBuffer::from_buffer(
+                    indices,
+                    BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                    app.graphics_queue.clone(),
+                )
+                .unwrap();
+                let (hit_boxes, fu5) = ImmutableBuffer::from_buffer(
+                    hit_boxes,
+                    BufferUsage { storage_buffer: true, ..BufferUsage::none() },
+                    app.graphics_queue.clone(),
+                )
                 .unwrap();
 
-            let (infos, fu2) = ImmutableBuffer::from_buffer(
-                infos,
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
-                app.graphics_queue.clone()
-            ).unwrap();
-            let (vertices, fu3) = ImmutableBuffer::from_buffer(
-                vertices,
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
-                app.graphics_queue.clone()
-            ).unwrap();
-            let (indices, fu4) = ImmutableBuffer::from_buffer(
-                indices,
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
-                app.graphics_queue.clone()
-            ).unwrap();
-            let (hit_boxes, fu5) = ImmutableBuffer::from_buffer(
-                hit_boxes,
-                BufferUsage { storage_buffer: true, ..BufferUsage::none() },
-                app.graphics_queue.clone()
-            ).unwrap();
+                fut = Box::new(fu2.join(fu3).join(fu4).join(fu5));
 
-            fut = Box::new(fu2.join(fu3).join(fu4).join(fu5));
+                let models_set = Arc::new(
+                    self.models_set
+                        .next()
+                        .add_buffer(count.clone())
+                        .unwrap()
+                        .add_buffer(infos.clone())
+                        .unwrap()
+                        .add_buffer(vertices.clone())
+                        .unwrap()
+                        .add_buffer(indices.clone())
+                        .unwrap()
+                        .add_buffer(hit_boxes.clone())
+                        .unwrap()
+                        .build()
+                        .unwrap(),
+                );
 
-            let models_set = Arc::new(
-                self.models_set
-                    .next()
-                    .add_buffer(count.clone())
-                    .unwrap()
-                    .add_buffer(infos.clone())
-                    .unwrap()
-                    .add_buffer(vertices.clone())
-                    .unwrap()
-                    .add_buffer(indices.clone())
-                    .unwrap()
-                    .add_buffer(hit_boxes.clone())
-                    .unwrap()
-                    .build()
-                    .unwrap(),
-            );
-
-            models_set
-        }).clone();
+                models_set
+            })
+            .clone();
 
         let point_lights =
             self.point_lights.chunk(point_lights.iter().map(|l| l.clone().into_uniform())).unwrap();
         let point_lights_count = self.point_lights_count.next(point_lights.len() as u32).unwrap();
 
-        let sphere_models_set = scene.sphere_models.get_depends_or_init(|sphere_models| {
-            let sphere_count = self.sphere_count.next(sphere_models.len() as u32).unwrap();
-            let sphere_infos = self
-                .sphere_infos
-                .chunk(
-                    sphere_models.iter().enumerate().map(|(i, m)| m.get_uniform_info(i as u32)),
-                )
-                .unwrap();
-            let spheres = self
-                .spheres
-                .chunk(
-                    sphere_models
-                        .iter()
-                        .map(|m| Point4::new(m.center.x, m.center.y, m.center.z, m.radius))
-                        .collect::<Vec<_>>()
-                        .into_iter(),
-                )
-                .unwrap();
+        let sphere_models_set = scene
+            .sphere_models
+            .get_depends_or_init(|sphere_models| {
+                let sphere_count = self.sphere_count.next(sphere_models.len() as u32).unwrap();
+                let sphere_infos = self
+                    .sphere_infos
+                    .chunk(
+                        sphere_models.iter().enumerate().map(|(i, m)| m.get_uniform_info(i as u32)),
+                    )
+                    .unwrap();
+                let spheres = self
+                    .spheres
+                    .chunk(
+                        sphere_models
+                            .iter()
+                            .map(|m| Point4::new(m.center.x, m.center.y, m.center.z, m.radius))
+                            .collect::<Vec<_>>()
+                            .into_iter(),
+                    )
+                    .unwrap();
 
-            let sphere_models_set = Arc::new(
-                self.sphere_models_set
-                    .next()
-                    .add_buffer(sphere_count.clone())
-                    .unwrap()
-                    .add_buffer(sphere_infos.clone())
-                    .unwrap()
-                    .add_buffer(spheres.clone())
-                    .unwrap()
-                    .build()
-                    .unwrap(),
-            );
-            sphere_models_set
-        }).clone();
+                let sphere_models_set = Arc::new(
+                    self.sphere_models_set
+                        .next()
+                        .add_buffer(sphere_count.clone())
+                        .unwrap()
+                        .add_buffer(sphere_infos.clone())
+                        .unwrap()
+                        .add_buffer(spheres.clone())
+                        .unwrap()
+                        .build()
+                        .unwrap(),
+                );
+                sphere_models_set
+            })
+            .clone();
 
-        let bufs = SceneBuffers {
-            point_lights_count,
-            point_lights,
-            models_set,
-            sphere_models_set,
-        };
+        let bufs = SceneBuffers { point_lights_count, point_lights, models_set, sphere_models_set };
 
         (bufs, fut)
     }

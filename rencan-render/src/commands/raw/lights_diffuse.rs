@@ -1,12 +1,14 @@
-use vulkano::descriptor::DescriptorSet;
-use vulkano::command_buffer::{CommandBuffer, AutoCommandBufferBuilder, DispatchIndirectCommand};
-use std::sync::Arc;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::descriptor::pipeline_layout::PipelineLayout;
-use vulkano::device::Device;
 use crate::core::CommandFactoryContext;
-use vulkano::descriptor::descriptor_set::DescriptorSetsCollection;
-use vulkano::buffer::{BufferAccess, TypedBufferAccess};
+use std::sync::Arc;
+use vulkano::{
+    buffer::{BufferAccess, TypedBufferAccess},
+    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    descriptor::{
+        descriptor_set::DescriptorSetsCollection, pipeline_layout::PipelineLayout, DescriptorSet,
+    },
+    device::Device,
+    pipeline::ComputePipeline,
+};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -25,9 +27,7 @@ impl LightsDiffuseCommandFactory {
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
         let shader = cs::Shader::load(device.clone()).unwrap();
 
-        let constants = cs::SpecializationConstants {
-            constant_0: local_size_x,
-        };
+        let constants = cs::SpecializationConstants { constant_0: local_size_x };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
@@ -43,9 +43,12 @@ impl LightsDiffuseCommandFactory {
         previous_intersections_set: PIS,
         image_set: IMS,
         buffer: &mut AutoCommandBufferBuilder,
-    )
-    where
-        WI: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
+    ) where
+        WI: BufferAccess
+            + TypedBufferAccess<Content = [DispatchIndirectCommand]>
+            + Send
+            + Sync
+            + 'static,
         IMS: DescriptorSet + Send + Sync + 'static,
         IS: DescriptorSet + Send + Sync + 'static,
         PIS: DescriptorSet + Send + Sync + 'static,
@@ -63,7 +66,7 @@ impl LightsDiffuseCommandFactory {
                 self.pipeline.clone(),
                 sets,
                 (),
-                std::iter::empty()
+                std::iter::empty(),
             )
             .unwrap();
     }

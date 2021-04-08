@@ -1,11 +1,15 @@
-use vulkano::descriptor::{DescriptorSet, PipelineLayoutAbstract};
-use vulkano::command_buffer::{CommandBuffer, AutoCommandBufferBuilder};
-use std::sync::Arc;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::descriptor::pipeline_layout::{PipelineLayout, PipelineLayoutDesc};
-use vulkano::device::Device;
 use crate::core::CommandFactoryContext;
-use vulkano::descriptor::descriptor::ShaderStages;
+use std::sync::Arc;
+use vulkano::{
+    command_buffer::{AutoCommandBufferBuilder, CommandBuffer},
+    descriptor::{
+        descriptor::ShaderStages,
+        pipeline_layout::{PipelineLayout, PipelineLayoutDesc},
+        DescriptorSet, PipelineLayoutAbstract,
+    },
+    device::Device,
+    pipeline::ComputePipeline,
+};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -38,9 +42,7 @@ impl TraceRaysCommandFactory {
         let pipeline = match trace_type {
             TraceType::Nearest => {
                 let shader = cs::Shader::load(device.clone()).unwrap();
-                let constants = cs::SpecializationConstants {
-                    constant_0: local_size_x,
-                };
+                let constants = cs::SpecializationConstants { constant_0: local_size_x };
                 Arc::new(
                     ComputePipeline::<Box<dyn PipelineLayoutAbstract + Send + Sync>>::with_pipeline_layout(
                         device.clone(),
@@ -58,9 +60,7 @@ impl TraceRaysCommandFactory {
             }
             TraceType::First => {
                 let shader = cs_first::Shader::load(device.clone()).unwrap();
-                let constants = cs_first::SpecializationConstants {
-                    constant_0: local_size_x,
-                };
+                let constants = cs_first::SpecializationConstants { constant_0: local_size_x };
                 Arc::new(
                     ComputePipeline::<Box<dyn PipelineLayoutAbstract + Send + Sync>>::with_pipeline_layout(
                         device.clone(),
@@ -87,8 +87,7 @@ impl TraceRaysCommandFactory {
         intersections_set: IntersSer,
         workgroups: WorkgroupsSet,
         buffer: &mut AutoCommandBufferBuilder,
-    )
-    where
+    ) where
         RaysSet: DescriptorSet + Send + Sync + 'static,
         IntersSer: DescriptorSet + Send + Sync + 'static,
         WorkgroupsSet: DescriptorSet + Send + Sync + 'static,
@@ -98,7 +97,7 @@ impl TraceRaysCommandFactory {
             intersections_set,
             ctx.buffers.models_set.clone(),
             ctx.buffers.sphere_models_set.clone(),
-            workgroups
+            workgroups,
         );
 
         buffer
@@ -107,7 +106,7 @@ impl TraceRaysCommandFactory {
                 self.pipeline.clone(),
                 sets,
                 (),
-                std::iter::empty()
+                std::iter::empty(),
             )
             .unwrap();
     }

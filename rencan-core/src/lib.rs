@@ -3,7 +3,7 @@ pub use auto_command_buffer_builder_wrap::AutoCommandBufferBuilderWrap;
 pub use buffer::BufferAccessData;
 pub use command_factory::{CommandFactory, CommandFactoryContext};
 pub use model::Model;
-pub use ray::{Ray, LightRay};
+pub use ray::{LightRay, Ray};
 pub use screen::Screen;
 pub use setable::Mutable;
 

@@ -59,7 +59,7 @@ void main() {
 
     vec3 color = albedo / PI * light_int.light_intensity * max(dot(normal, light_dir), 0.0);
 
-    color += compute_specular_color(inter.ray.direction, light_dir, inter.normal, light_int.light_intensity);
+    color += inter.model.specular * compute_specular_color(inter.ray.direction, light_dir, inter.normal, light_int.light_intensity);
 
     uvec4 add_color = uvec4(clamp(color, 0, 1) * 255, 255);
     atomicAdd(colors[inter.pixel_id].x, add_color.x);

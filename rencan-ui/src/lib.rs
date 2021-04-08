@@ -226,15 +226,13 @@ fn init_app(
 ) -> (App, Arc<Queue>) {
     let (device, graphics_queue, present_queue) = init_device_and_queues(window, &instance);
 
-    let app = AppBuilder::new(
-        AppInfo::new(instance, graphics_queue, device.clone(), screen),
-    )
-    .then_ray_tracing_pipeline()
-    .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
-    .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
-        device.clone(),
-    )))
-    .build();
+    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen))
+        .then_ray_tracing_pipeline()
+        .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
+        .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
+            device.clone(),
+        )))
+        .build();
 
     (app, present_queue)
 }
