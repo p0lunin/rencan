@@ -31,7 +31,7 @@ void main() {
         return;
     }
 
-    vec4 out_color = vec4(clamp(input_color, 0, 255)) / 255;
+    vec4 out_color = vec4(input_color) / 255;
 
     imageStore(resultImage, pixel_pos, out_color);
 }

@@ -61,9 +61,9 @@ void main() {
 
     color += compute_specular_color(inter.ray.direction, light_dir, inter.normal, light_int.light_intensity);
 
-    uvec4 add_color = uvec4(clamp(color, 0, 1) * 255, 1);
+    uvec4 add_color = uvec4(clamp(color, 0, 1) * 255, 255);
     atomicAdd(colors[inter.pixel_id].x, add_color.x);
     atomicAdd(colors[inter.pixel_id].y, add_color.y);
     atomicAdd(colors[inter.pixel_id].z, add_color.z);
-    atomicAdd(colors[inter.pixel_id].w, 1);
+    atomicAdd(colors[inter.pixel_id].w, add_color.w);
 }
