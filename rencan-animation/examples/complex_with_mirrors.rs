@@ -207,16 +207,16 @@ fn init_scene(device: Arc<Device>) -> Scene {
             SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.3),
         ],
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 1.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 7.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 0.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1500.0),
                 Point3::new(0.0, 2.49, 0.0),
             ),
             PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 0.0),
+                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 300.0),
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],

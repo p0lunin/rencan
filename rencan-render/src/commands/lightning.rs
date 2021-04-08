@@ -6,7 +6,6 @@ use vulkano::{
 
 use crate::core::{AutoCommandBufferBuilderWrap, CommandFactory, CommandFactoryContext, LightRay, Mutable};
 use vulkano::sync::GpuFuture;
-use crate::commands::raw::make_lightning_rays_diffuse::MakeLightningRaysDiffuseCommandFactory;
 use crate::commands::raw::trace_rays_to_light::TraceRaysToLightCommandFactory;
 use crate::commands::raw::lights_diffuse::LightsDiffuseCommandFactory;
 use vulkano::buffer::{CpuAccessibleBuffer, TypedBufferAccess, DeviceLocalBuffer, BufferUsage, BufferAccess};
@@ -17,6 +16,9 @@ use vulkano::device::Queue;
 use once_cell::sync::OnceCell;
 use vulkano::memory::pool::{PotentialDedicatedAllocation, StdMemoryPoolAlloc};
 use crate::commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory;
+use crate::commands::raw::reflect_from_mirror::ReflectFromMirrorsCommandFactory;
+use crate::core::intersection::IntersectionUniform;
+use crate::commands::raw::copy_from_buffer_to_image::CopyFromBufferToImageCommandFactory;
 
 pub mod lightning_cs {
     vulkano_shaders::shader! {
@@ -99,12 +101,14 @@ fn add_lightning(
 }
 
 pub struct LightningV2CommandFactory {
-    make_rays_factory: MakeLightningRaysDiffuseCommandFactory,
     divide_factory: DivideWorkgroupsCommandFactory,
     trace_rays_factory: TraceRaysToLightCommandFactory,
     lights_factory: LightsDiffuseCommandFactory,
-    light_rays: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightRay]>>>>,
+    trace_mirrors_factory: ReflectFromMirrorsCommandFactory,
+    copy_factory: CopyFromBufferToImageCommandFactory,
     intersections_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightRay]>>>>,
+    reflects_intersections_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[IntersectionUniform]>>>>,
+    image_buffer_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[[u32; 4]]>>>>,
     workgroups: OnceCell<[OneBufferSet<Arc<DeviceLocalBuffer<[DispatchIndirectCommand]>>>; 2]>
 }
 
@@ -113,29 +117,31 @@ impl LightningV2CommandFactory {
         let local_size_x =
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
         LightningV2CommandFactory {
-            make_rays_factory: MakeLightningRaysDiffuseCommandFactory::new(device.clone()),
             divide_factory: DivideWorkgroupsCommandFactory::new(device.clone(), local_size_x),
             trace_rays_factory: TraceRaysToLightCommandFactory::new(device.clone()),
             lights_factory: LightsDiffuseCommandFactory::new(device.clone()),
-            light_rays: Mutable::new(0),
+            trace_mirrors_factory: ReflectFromMirrorsCommandFactory::new(device.clone()),
+            copy_factory: CopyFromBufferToImageCommandFactory::new(device.clone()),
             intersections_set: Mutable::new(0),
+            reflects_intersections_set: Mutable::new(0),
+            image_buffer_set: Mutable::new(0),
             workgroups: OnceCell::new(),
         }
     }
-    fn init_rays_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.light_rays.change_with_check_in_place(ctx.buffers.intersections.len() * (ctx.scene.data.point_lights.len() + 1));
-        let layout = self.trace_rays_factory.rays_layout();
-        let one_set = self.light_rays.get_depends_or_init(|&len| {
+    fn init_reflects_intersections_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
+        self.reflects_intersections_set.change_with_check_in_place(ctx.buffers.intersections.len());
+        let layout = self.trace_mirrors_factory.intersections_layout();
+        let one_set = self.reflects_intersections_set.get_depends_or_init(|&len| {
             let buf = ctx.create_device_local_buffer_array(
                 len,
-                BufferUsage {  storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage { storage_buffer: true, transfer_destination: true, ..BufferUsage::none() },
             );
             let set = OneBufferSet::new(
                 buf,
                 layout
             );
             set
-        });
+        }).clone();
         one_set.1.clone()
     }
     fn init_intersections_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
@@ -144,7 +150,23 @@ impl LightningV2CommandFactory {
         let one_set = self.intersections_set.get_depends_or_init(|&len| {
             let buf = ctx.create_device_local_buffer_array(
                 len,
-                BufferUsage {  storage_buffer: true, ..BufferUsage::none() },
+                BufferUsage { storage_buffer: true, transfer_destination: true, ..BufferUsage::none() },
+            );
+            let set = OneBufferSet::new(
+                buf,
+                layout
+            );
+            set
+        }).clone();
+        one_set.1.clone()
+    }
+    fn init_image_buffer_set(&mut self, ctx: &CommandFactoryContext) -> Arc<dyn DescriptorSet + Send + Sync> {
+        self.image_buffer_set.change_with_check_in_place(ctx.app_info.size_of_image_array());
+        let layout = self.trace_rays_factory.intersections_layout();
+        let one_set = self.image_buffer_set.get_depends_or_init(|&len| {
+            let buf = ctx.create_device_local_buffer_array(
+                len,
+                BufferUsage { storage_buffer: true, transfer_destination: true, ..BufferUsage::none() },
             );
             let set = OneBufferSet::new(
                 buf,
@@ -190,80 +212,150 @@ impl CommandFactory for LightningV2CommandFactory {
         ctx: CommandFactoryContext,
         fut: Box<dyn GpuFuture>,
     ) -> Box<dyn GpuFuture> {
-        let mut cmd_zeroes = ctx.create_command_buffer();
-        let mut cmd1 = ctx.create_command_buffer();
-        let mut cmd3 = ctx.create_command_buffer();
-        let mut cmd5 = ctx.create_command_buffer();
-
-        let rays_set = self.init_rays_set(&ctx);
         let intersections_set = self.init_intersections_set(&ctx);
+        let reflects_set = self.init_reflects_intersections_set(&ctx);
+        let image_buffer_set = self.init_image_buffer_set(&ctx);
         let [workgroups_set1, workgroups_set2] = self.init_workgroups_set(&ctx);
 
-        debug_assert_eq!(workgroups_set1.0.len(), 1);
         debug_assert_eq!(workgroups_set2.0.len(), 1);
 
-        cmd_zeroes.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
-        cmd_zeroes.0.fill_buffer(workgroups_set2.0.clone(), 0).unwrap();
+        let cmd_zeroes = ctx.create_command_buffer()
+            .update_with(|buf| {
+                buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
+                buf.0.fill_buffer(workgroups_set2.0.clone(), 0).unwrap();
+                buf.0.fill_buffer(self.intersections_set.get_depends_or_init(|_| unreachable!()).0.clone(), 0).unwrap();
+                buf.0.fill_buffer(self.reflects_intersections_set.get_depends_or_init(|_| unreachable!()).0.clone(), 0).unwrap();
+                buf.0.fill_buffer(self.image_buffer_set.get_depends_or_init(|_| unreachable!()).0.clone(), 0).unwrap();
+            })
+            .build();
 
-        let cmd_zeroes = cmd_zeroes.build();
+        let cmd_1_trace_diffuse = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.trace_rays_factory.add_trace_rays_to_buffer(
+                    &ctx,
+                    ctx.buffers.workgroups.clone(),
+                    ctx.buffers.intersections_set.clone(),
+                    intersections_set.clone(),
+                    workgroups_set2.1.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
 
-        self.make_rays_factory.add_making_rays_to_buffer(
-            &ctx,
-            ctx.buffers.workgroups.clone(),
-            rays_set.clone(),
-            ctx.buffers.intersections_set.clone(),
-            workgroups_set1.1.clone(),
-            &mut cmd1.0,
-        );
+        let cmd_2_divide = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.divide_factory.add_divider_to_buffer(
+                    workgroups_set2.1.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
 
-        let mut cmd2 = ctx.create_command_buffer();
-        self.divide_factory.add_divider_to_buffer(
-            workgroups_set1.1.clone(),
-            &mut cmd2.0
-        );
+        let cmd_3_lights_diffuse = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.lights_factory.add_lights_diffuse_to_buffer(
+                    &ctx,
+                    workgroups_set2.0.clone(),
+                    intersections_set.clone(),
+                    ctx.buffers.intersections_set.clone(),
+                    image_buffer_set.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
 
-        self.trace_rays_factory.add_trace_rays_to_buffer(
-            &ctx,
-            workgroups_set1.0.clone(),
-            rays_set.clone(),
-            intersections_set.clone(),
-            workgroups_set2.1.clone(),
-            &mut cmd3.0
-        );
+        let cmd_4_trace_mirrors = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.trace_mirrors_factory.add_reflects_rays_to_buffer(
+                    &ctx,
+                    ctx.buffers.workgroups.clone(),
+                    ctx.buffers.intersections_set.clone(),
+                    reflects_set.clone(),
+                    workgroups_set1.1.clone(),
+                    &mut buf.0
+                );
+                buf.0.fill_buffer(workgroups_set2.0.clone(), 0).unwrap();
+            })
+            .build();
 
-        let mut cmd4 = ctx.create_command_buffer();
-        self.divide_factory.add_divider_to_buffer(
-            workgroups_set2.1.clone(),
-            &mut cmd4.0
-        );
+        let cmd_5_divide = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.divide_factory.add_divider_to_buffer(
+                    workgroups_set1.1.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
 
-        self.lights_factory.add_lights_diffuse_to_buffer(
-            &ctx,
-            workgroups_set2.0.clone(),
-            intersections_set.clone(),
-            ctx.buffers.intersections_set.clone(),
-            ctx.buffers.image_set.clone(),
-            &mut cmd5.0
-        );
+        let cmd_6_trace_diffuse = ctx.create_command_buffer()
+            .update_with(|buf| {
+                 self.trace_rays_factory.add_trace_rays_to_buffer(
+                    &ctx,
+                    workgroups_set1.0.clone(),
+                    reflects_set.clone(),
+                    intersections_set.clone(),
+                    workgroups_set2.1.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
 
-        let cmd1 = cmd1.build();
-        let cmd2 = cmd2.build();
-        let cmd3 = cmd3.build();
-        let cmd4 = cmd4.build();
-        let cmd5 = cmd5.build();
+        let cmd_7_divide = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.divide_factory.add_divider_to_buffer(
+                    workgroups_set2.1.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
+
+        let cmd_8_lights_diffuse = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.lights_factory.add_lights_diffuse_to_buffer(
+                    &ctx,
+                    workgroups_set2.0.clone(),
+                    intersections_set.clone(),
+                    reflects_set,
+                    image_buffer_set.clone(),
+                    &mut buf.0
+                );
+            })
+            .build();
+
+        let cmd_10_copy_command = ctx.create_command_buffer()
+            .update_with(|buf| {
+                self.copy_factory.add_copy(
+                    &ctx,
+                    image_buffer_set.clone(),
+                    &mut buf.0
+                )
+            })
+            .build();
 
         fut
             .then_execute(ctx.graphics_queue(), cmd_zeroes)
             .unwrap()
-            .then_execute(ctx.graphics_queue(), cmd1)
+            .then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
             .unwrap()
-        .then_execute(ctx.graphics_queue(), cmd2)
+            .then_execute(ctx.graphics_queue(), cmd_2_divide)
             .unwrap()
-        .then_execute(ctx.graphics_queue(), cmd3)
+            .then_signal_semaphore() // vulkano does not provide barrier for this
+            .then_execute(ctx.graphics_queue(), cmd_3_lights_diffuse)
             .unwrap()
-            .then_execute(ctx.graphics_queue(), cmd4)
+            .then_signal_semaphore()
+            .then_execute(ctx.graphics_queue(), cmd_4_trace_mirrors)
             .unwrap()
-            .then_execute(ctx.graphics_queue(), cmd5)
+            .then_execute(ctx.graphics_queue(), cmd_5_divide)
+            .unwrap()
+            .then_signal_semaphore()
+            .then_execute(ctx.graphics_queue(), cmd_6_trace_diffuse)
+            .unwrap()
+            .then_execute(ctx.graphics_queue(), cmd_7_divide)
+            .unwrap()
+            .then_signal_semaphore()
+            .then_execute(ctx.graphics_queue(), cmd_8_lights_diffuse)
+            .unwrap()
+            .then_execute(ctx.graphics_queue(), cmd_10_copy_command)
             .unwrap()
             .boxed()
     }

@@ -12,16 +12,16 @@ use vulkano::descriptor::descriptor_set::UnsafeDescriptorSetLayout;
 mod cs {
     vulkano_shaders::shader! {
         ty: "compute",
-        path: "shaders/lightning/trace_rays_to_lights.glsl"
+        path: "shaders/lightning/reflect_from_mirrors.glsl"
     }
 }
 
-pub struct TraceRaysToLightCommandFactory {
+pub struct ReflectFromMirrorsCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
     local_size_x: u32,
 }
 
-impl TraceRaysToLightCommandFactory {
+impl ReflectFromMirrorsCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let local_size_x =
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
@@ -38,10 +38,10 @@ impl TraceRaysToLightCommandFactory {
                 None
             ).unwrap(),
         );
-        TraceRaysToLightCommandFactory { pipeline, local_size_x }
+        ReflectFromMirrorsCommandFactory { pipeline, local_size_x }
     }
 
-    pub fn add_trace_rays_to_buffer<PIS, WI, WOS, IntersSer>(
+    pub fn add_reflects_rays_to_buffer<PIS, WI, WOS, IntersSer>(
         &self,
         ctx: &CommandFactoryContext,
         workgroups_input: WI,
@@ -60,7 +60,6 @@ impl TraceRaysToLightCommandFactory {
             intersections_set,
             ctx.buffers.models_set.clone(),
             ctx.buffers.sphere_models_set.clone(),
-            ctx.buffers.lights_set.clone(),
             workgroups_out_set,
             previous_intersections_set,
         );
@@ -76,9 +75,6 @@ impl TraceRaysToLightCommandFactory {
             .unwrap();
     }
 
-    pub fn rays_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
-        self.pipeline.layout().descriptor_set_layout(0).unwrap().clone()
-    }
     pub fn intersections_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
         self.pipeline.layout().descriptor_set_layout(0).unwrap().clone()
     }

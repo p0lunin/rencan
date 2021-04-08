@@ -37,6 +37,11 @@ impl AutoCommandBufferBuilderWrap {
         self
     }
 
+    pub fn update_with(mut self, f: impl FnOnce(&mut Self)) -> Self {
+        f(&mut self);
+        self
+    }
+
     pub fn build(self) -> Box<AutoCommandBuffer> {
         Box::new(self.0.build().unwrap())
     }

@@ -12,16 +12,16 @@ use vulkano::descriptor::descriptor_set::UnsafeDescriptorSetLayout;
 mod cs {
     vulkano_shaders::shader! {
         ty: "compute",
-        path: "shaders/lightning/trace_rays_to_lights.glsl"
+        path: "shaders/lightning/copy_from_buffer_to_image.glsl"
     }
 }
 
-pub struct TraceRaysToLightCommandFactory {
+pub struct CopyFromBufferToImageCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
     local_size_x: u32,
 }
 
-impl TraceRaysToLightCommandFactory {
+impl CopyFromBufferToImageCommandFactory {
     pub fn new(device: Arc<Device>) -> Self {
         let local_size_x =
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
@@ -38,36 +38,27 @@ impl TraceRaysToLightCommandFactory {
                 None
             ).unwrap(),
         );
-        TraceRaysToLightCommandFactory { pipeline, local_size_x }
+        CopyFromBufferToImageCommandFactory { pipeline, local_size_x }
     }
 
-    pub fn add_trace_rays_to_buffer<PIS, WI, WOS, IntersSer>(
+    pub fn add_copy<CI>(
         &self,
         ctx: &CommandFactoryContext,
-        workgroups_input: WI,
-        previous_intersections_set: PIS,
-        intersections_set: IntersSer,
-        workgroups_out_set: WOS,
+        colors_input: CI,
         buffer: &mut AutoCommandBufferBuilder,
     )
     where
-        PIS: DescriptorSet + Send + Sync + 'static,
-        WI: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
-        WOS: DescriptorSet + Send + Sync + 'static,
-        IntersSer: DescriptorSet + Send + Sync + 'static,
+        CI: DescriptorSet + Send + Sync + 'static,
     {
         let sets = (
-            intersections_set,
-            ctx.buffers.models_set.clone(),
-            ctx.buffers.sphere_models_set.clone(),
-            ctx.buffers.lights_set.clone(),
-            workgroups_out_set,
-            previous_intersections_set,
+            ctx.buffers.global_app_set.clone(),
+            colors_input,
+            ctx.buffers.image_set.clone(),
         );
 
         buffer
-            .dispatch_indirect(
-                workgroups_input,
+            .dispatch(
+                [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
                 self.pipeline.clone(),
                 sets,
                 (),
@@ -76,10 +67,7 @@ impl TraceRaysToLightCommandFactory {
             .unwrap();
     }
 
-    pub fn rays_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
-        self.pipeline.layout().descriptor_set_layout(0).unwrap().clone()
-    }
-    pub fn intersections_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
-        self.pipeline.layout().descriptor_set_layout(0).unwrap().clone()
+    fn image_buffer_set_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
+        self.pipeline.descriptor_set_layout(1).unwrap().clone()
     }
 }
