@@ -2,6 +2,7 @@ mod models;
 
 use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
 use rencan_render::core::{
+    camera::Camera,
     light::{DirectionLight, LightInfo, PointLight},
     model::{AppModel, SphereModel},
     Model, Scene,
@@ -13,7 +14,6 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use rencan_render::core::camera::Camera;
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -110,7 +110,7 @@ fn main() {
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],
-        Camera::from_origin().move_at(0.0, 0.0, 5.0)
+        Camera::from_origin().move_at(0.0, 0.0, 5.0),
     );
 
     std::thread::spawn(move || loop {
@@ -136,7 +136,8 @@ fn main() {
             Event::RedrawEventsCleared => {
                 //rx.recv().unwrap();
                 //while let Ok(rot) = rot_rx.try_recv() {
-                //    scene.data.global_light.direction = rot * &scene.data.global_light.direction;
+                //    scene.data.global_light.direction = rot *
+                // &scene.data.global_light.direction;
                 //}
                 frames += 1;
                 if Instant::now() >= next {

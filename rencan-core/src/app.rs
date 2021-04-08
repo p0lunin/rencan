@@ -145,11 +145,15 @@ impl GlobalBuffers {
                     .chunk(std::iter::once(DispatchIndirectCommand { x: 0, y: 0, z: 0 }))
                     .unwrap(),
             ),
-            Arc::new(self.camera.next(scene.data.camera.clone().into_uniform().as_std140()).unwrap()),
+            Arc::new(
+                self.camera.next(scene.data.camera.clone().into_uniform().as_std140()).unwrap(),
+            ),
             Arc::new(self.screen.next(app.screen.clone()).unwrap()),
             image,
-            Arc::new(self.direction_light.next(scene.data.global_light.clone().into_uniform()).unwrap()),
-            model_bufs
+            Arc::new(
+                self.direction_light.next(scene.data.global_light.clone().into_uniform()).unwrap(),
+            ),
+            model_bufs,
         );
         (bufs, fut)
     }
@@ -293,7 +297,12 @@ impl SetsStorage {
             self.image_set.next().add_image(output_image.clone()).unwrap().build().unwrap(),
         );
         let workgroups_set = Arc::new(
-            self.workgroups_set.next().add_buffer(intersections_count.clone()).unwrap().build().unwrap()
+            self.workgroups_set
+                .next()
+                .add_buffer(intersections_count.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
         );
 
         Buffers {

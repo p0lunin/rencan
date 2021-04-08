@@ -7,10 +7,7 @@ pub struct Mutable<State, Depends> {
 
 impl<State, Depends> Mutable<State, Depends> {
     pub fn new(state: State) -> Self {
-        Self {
-            state,
-            depends: None,
-        }
+        Self { state, depends: None }
     }
     pub fn change(self, f: impl FnOnce(State) -> State) -> Self {
         let state = f(self.state);
@@ -18,18 +15,17 @@ impl<State, Depends> Mutable<State, Depends> {
     }
     pub fn change_with_check(self, new_state: State) -> Self
     where
-        State: PartialEq<State>
+        State: PartialEq<State>,
     {
         if self.state == new_state {
             self
-        }
-        else {
+        } else {
             Self::new(new_state)
         }
     }
     pub fn change_with_check_in_place(&mut self, new_state: State)
     where
-        State: PartialEq<State>
+        State: PartialEq<State>,
     {
         if self.state != new_state {
             let mut new_val = Self::new(new_state);
@@ -38,7 +34,7 @@ impl<State, Depends> Mutable<State, Depends> {
     }
     pub fn get_depends_or_init(&mut self, f: impl FnOnce(&State) -> Depends) -> &Depends {
         match &self.depends {
-            Some(_) => {},
+            Some(_) => {}
             None => {
                 self.depends = Some(f(&self.state));
             }

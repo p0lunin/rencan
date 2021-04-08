@@ -1,18 +1,21 @@
-use rencan_render::{App, AppBuilder, AppBuilderRtExt};
-use vulkano::instance::{Instance, InstanceExtensions, PhysicalDevice};
-use std::sync::Arc;
-use vulkano::device::{Queue, Device, Features, DeviceExtensions};
-use rencan_render::core::{Screen, AppInfo, Scene};
-use rencan_render::core::camera::Camera;
-use std::path::{PathBuf, Path};
-use ffmpeg::software::scaling::Context;
-use ffmpeg::format::Pixel;
-use vulkano::image::view::ImageView;
-use vulkano::image::{AttachmentImage, ImageUsage, ImageDimensions};
-use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage};
-use vulkano::command_buffer::AutoCommandBufferBuilder;
-use vulkano::sync::GpuFuture;
+use ffmpeg::{format::Pixel, software::scaling::Context};
 use image::Rgba;
+use rencan_render::{
+    core::{camera::Camera, AppInfo, Scene, Screen},
+    App, AppBuilder, AppBuilderRtExt,
+};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+use vulkano::{
+    buffer::{BufferUsage, CpuAccessibleBuffer},
+    command_buffer::AutoCommandBufferBuilder,
+    device::{Device, DeviceExtensions, Features, Queue},
+    image::{view::ImageView, AttachmentImage, ImageDimensions, ImageUsage},
+    instance::{Instance, InstanceExtensions, PhysicalDevice},
+    sync::GpuFuture,
+};
 
 pub struct Renderer {
     app: AnimationApp,
@@ -33,8 +36,9 @@ impl Renderer {
             Pixel::RGB24,
             app.screen().width(),
             app.screen().height(),
-            ffmpeg::software::scaling::Flags::empty()
-        ).unwrap();
+            ffmpeg::software::scaling::Flags::empty(),
+        )
+        .unwrap();
 
         let buffer_image = ImageView::new(
             AttachmentImage::with_usage(
@@ -52,54 +56,46 @@ impl Renderer {
         )
         .unwrap();
 
-        Renderer {
-            app,
-            context,
-            output_file: output_file.as_ref().into(),
-            buffer_image,
-        }
+        Renderer { app, context, output_file: output_file.as_ref().into(), buffer_image }
     }
 
     pub fn render_frame(&mut self, scene: &mut Scene) {
-        let (fut, _) = self.app.app.render(
-            vulkano::sync::now(self.app.vulkan_device()),
-            scene,
-            {
+        let (fut, _) = self
+            .app
+            .app
+            .render(vulkano::sync::now(self.app.vulkan_device()), scene, {
                 let image = self.buffer_image.clone();
                 move |_| image
-            }
-        ).unwrap();
+            })
+            .unwrap();
 
         let image_buf = CpuAccessibleBuffer::from_iter(
             self.app.vulkan_device(),
             BufferUsage::all(),
             false,
-            (0 .. self.app.app.info().size_of_image_array() * 4).map(|_| 0u8)
-        ).expect("failed to create buffer");
+            (0..self.app.app.info().size_of_image_array() * 4).map(|_| 0u8),
+        )
+        .expect("failed to create buffer");
 
         let mut cmd = AutoCommandBufferBuilder::new(
             self.app.vulkan_device(),
-            self.app.app.info().graphics_queue.family()
-        ).unwrap();
+            self.app.app.info().graphics_queue.family(),
+        )
+        .unwrap();
         cmd.copy_image_to_buffer(self.buffer_image.image().clone(), image_buf.clone()).unwrap();
         let cmd = cmd.build().unwrap();
 
-        let copy_fut = fut
-            .then_execute(self.app.app.info().graphics_queue.clone(), cmd)
-            .unwrap();
+        let copy_fut = fut.then_execute(self.app.app.info().graphics_queue.clone(), cmd).unwrap();
 
-        copy_fut
-            .then_signal_fence_and_flush()
-            .unwrap()
-            .wait(None)
-            .unwrap();
+        copy_fut.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
         let mut content = image_buf.read().unwrap();
 
         let image = image::ImageBuffer::<Rgba<u8>, _>::from_raw(
             self.app.screen().width(),
             self.app.screen().height(),
-            &content[..]
-        ).unwrap();
+            &content[..],
+        )
+        .unwrap();
         image.save(Path::new(self.output_file.as_ref())).unwrap();
     }
 }
@@ -114,10 +110,7 @@ impl AnimationApp {
         let instance = init_instance();
         let app = init_app(instance, screen);
 
-        Self {
-            app,
-            fps,
-        }
+        Self { app, fps }
     }
     pub fn vulkan_device(&self) -> Arc<Device> {
         self.app.info().device.clone()
@@ -127,9 +120,7 @@ impl AnimationApp {
     }
 }
 
-fn init_device_and_queue(
-    instance: &Arc<Instance>,
-) -> (Arc<Device>, Arc<Queue>) {
+fn init_device_and_queue(instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>) {
     #[cfg(debug_assertions)]
     PhysicalDevice::enumerate(&instance).for_each(|d| {
         println!("Device available: {}", d.name());
@@ -137,18 +128,12 @@ fn init_device_and_queue(
 
     let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
 
-    let family = physical
-        .queue_families()
-        .find(|&q| q.supports_compute())
-        .unwrap();
+    let family = physical.queue_families().find(|&q| q.supports_compute()).unwrap();
 
     let (device, mut queues) = Device::new(
         physical,
         &Features::none(),
-        &DeviceExtensions {
-            khr_storage_buffer_storage_class: true,
-            ..DeviceExtensions::none()
-        },
+        &DeviceExtensions { khr_storage_buffer_storage_class: true, ..DeviceExtensions::none() },
         std::iter::once((family, 1.0)),
     )
     .unwrap();
@@ -159,28 +144,19 @@ fn init_device_and_queue(
 }
 
 fn init_instance() -> Arc<Instance> {
-    Instance::new(
-        None,
-        &InstanceExtensions::none(),
-        None,
-    ).unwrap()
+    Instance::new(None, &InstanceExtensions::none(), None).unwrap()
 }
 
-fn init_app(
-    instance: Arc<Instance>,
-    screen: Screen,
-) -> App {
+fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
     let (device, graphics_queue) = init_device_and_queue(&instance);
 
-    let app = AppBuilder::new(
-        AppInfo::new(instance, graphics_queue, device.clone(), screen),
-    )
-    .then_ray_tracing_pipeline()
-    .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
-    .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
-        device.clone(),
-    )))
-    .build();
+    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen))
+        .then_ray_tracing_pipeline()
+        .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
+        .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
+            device.clone(),
+        )))
+        .build();
 
     app
 }

@@ -1,19 +1,19 @@
-use rencan_animation::{AnimationApp, Renderer};
-use rencan_render::core::{Screen, Scene};
-use vulkano::device::Device;
-use std::sync::Arc;
-use rencan_render::core::model::SphereModel;
-use rencan_render::core::light::{DirectionLight, LightInfo, PointLight};
 use nalgebra::{Point3, Point4, Vector3};
-use rencan_render::core::camera::Camera;
+use rencan_animation::{AnimationApp, Renderer};
+use rencan_render::core::{
+    camera::Camera,
+    light::{DirectionLight, LightInfo, PointLight},
+    model::SphereModel,
+    Scene, Screen,
+};
+use std::sync::Arc;
+use vulkano::device::Device;
 
 fn init_scene(device: Arc<Device>) -> Scene {
     Scene::new(
         device,
         vec![],
-        vec![
-            SphereModel::new(Point3::new(0.0, 0.0, 0.0), 0.5),
-        ],
+        vec![SphereModel::new(Point3::new(0.0, 0.0, 0.0), 0.5)],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 20.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
@@ -28,22 +28,14 @@ fn init_scene(device: Arc<Device>) -> Scene {
                 Point3::new(0.0, -2.0, 0.0),
             ),
         ],
-        Camera::from_origin().move_at(0.0, 0.0, 3.0)
+        Camera::from_origin().move_at(0.0, 0.0, 3.0),
     )
 }
 
 fn main() {
-    let app = AnimationApp::new(
-        Screen::new(1000, 1000),
-        60
-    );
+    let app = AnimationApp::new(Screen::new(1000, 1000), 60);
     let device = app.vulkan_device();
-    let mut renderer = Renderer::new(
-        app,
-        &"some.png"
-    );
+    let mut renderer = Renderer::new(app, &"some.png");
     let mut scene = init_scene(device);
-    renderer.render_frame(
-        &mut scene
-    );
+    renderer.render_frame(&mut scene);
 }

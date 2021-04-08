@@ -4,13 +4,15 @@ use vulkano::{
     descriptor::pipeline_layout::PipelineLayout, device::Device, pipeline::ComputePipeline,
 };
 
-use crate::core::{camera::Camera, CommandFactory, CommandFactoryContext, Screen};
+use crate::{
+    commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory,
+    core::{camera::Camera, CommandFactory, CommandFactoryContext, Screen},
+};
 use nalgebra::Point3;
 use vulkano::{
     descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
     sync::GpuFuture,
 };
-use crate::commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -43,10 +45,7 @@ impl RayTraceCommandFactory {
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        let divide_factory = DivideWorkgroupsCommandFactory::new(
-            device.clone(),
-            local_size_x,
-        );
+        let divide_factory = DivideWorkgroupsCommandFactory::new(device.clone(), local_size_x);
         RayTraceCommandFactory {
             pipeline,
             divide_factory,
@@ -90,9 +89,9 @@ impl CommandFactory for RayTraceCommandFactory {
             .unwrap()
             .build();
 
-        let mut divide_command = ctx
-            .create_command_buffer();
-        self.divide_factory.add_divider_to_buffer(buffers.workgroups_set.clone(), &mut divide_command.0);
+        let mut divide_command = ctx.create_command_buffer();
+        self.divide_factory
+            .add_divider_to_buffer(buffers.workgroups_set.clone(), &mut divide_command.0);
         let divide_command = divide_command.build();
 
         fut.then_execute(ctx.graphics_queue(), ray_trace_command)

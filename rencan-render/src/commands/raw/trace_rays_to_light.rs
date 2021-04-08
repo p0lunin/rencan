@@ -1,13 +1,17 @@
-use vulkano::descriptor::{DescriptorSet, PipelineLayoutAbstract};
-use vulkano::command_buffer::{CommandBuffer, AutoCommandBufferBuilder, DispatchIndirectCommand};
-use std::sync::Arc;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::descriptor::pipeline_layout::{PipelineLayout, PipelineLayoutDesc};
-use vulkano::device::Device;
 use crate::core::CommandFactoryContext;
-use vulkano::descriptor::descriptor::ShaderStages;
-use vulkano::buffer::{BufferAccess, TypedBufferAccess};
-use vulkano::descriptor::descriptor_set::UnsafeDescriptorSetLayout;
+use std::sync::Arc;
+use vulkano::{
+    buffer::{BufferAccess, TypedBufferAccess},
+    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    descriptor::{
+        descriptor::ShaderStages,
+        descriptor_set::UnsafeDescriptorSetLayout,
+        pipeline_layout::{PipelineLayout, PipelineLayoutDesc},
+        DescriptorSet, PipelineLayoutAbstract,
+    },
+    device::Device,
+    pipeline::ComputePipeline,
+};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -27,16 +31,10 @@ impl TraceRaysToLightCommandFactory {
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
 
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let constants = cs::SpecializationConstants {
-            constant_0: local_size_x,
-        };
+        let constants = cs::SpecializationConstants { constant_0: local_size_x };
         let pipeline = Arc::new(
-            ComputePipeline::new(
-                device.clone(),
-                &shader.main_entry_point(),
-                &constants,
-                None
-            ).unwrap(),
+            ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
+                .unwrap(),
         );
         TraceRaysToLightCommandFactory { pipeline, local_size_x }
     }
@@ -49,10 +47,13 @@ impl TraceRaysToLightCommandFactory {
         intersections_set: IntersSer,
         workgroups_out_set: WOS,
         buffer: &mut AutoCommandBufferBuilder,
-    )
-    where
+    ) where
         PIS: DescriptorSet + Send + Sync + 'static,
-        WI: BufferAccess + TypedBufferAccess<Content = [DispatchIndirectCommand]> + Send + Sync + 'static,
+        WI: BufferAccess
+            + TypedBufferAccess<Content = [DispatchIndirectCommand]>
+            + Send
+            + Sync
+            + 'static,
         WOS: DescriptorSet + Send + Sync + 'static,
         IntersSer: DescriptorSet + Send + Sync + 'static,
     {
@@ -71,7 +72,7 @@ impl TraceRaysToLightCommandFactory {
                 self.pipeline.clone(),
                 sets,
                 (),
-                std::iter::empty()
+                std::iter::empty(),
             )
             .unwrap();
     }

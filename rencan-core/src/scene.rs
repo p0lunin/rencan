@@ -1,11 +1,15 @@
-use crate::{light::{DirectionLight, PointLight}, model::{AppModel, SphereModel}, model_buffers::{SceneBuffers, SceneBuffersStorage}, AppInfo};
+use crate::{
+    camera::Camera,
+    light::{DirectionLight, PointLight},
+    model::{AppModel, SphereModel},
+    model_buffers::{SceneBuffers, SceneBuffersStorage},
+    setable::Mutable,
+    AppInfo,
+};
 use std::sync::Arc;
-use vulkano::device::Device;
-use crate::setable::Mutable;
-use vulkano::buffer::TypedBufferAccess;
-use vulkano::descriptor::DescriptorSet;
-use vulkano::sync::GpuFuture;
-use crate::camera::Camera;
+use vulkano::{
+    buffer::TypedBufferAccess, descriptor::DescriptorSet, device::Device, sync::GpuFuture,
+};
 
 pub struct Scene {
     pub data: SceneData,
