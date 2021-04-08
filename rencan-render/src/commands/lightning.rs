@@ -588,18 +588,6 @@ impl CommandFactory for LightningV2CommandFactory {
             .build();
 
         fut
-            /*.then_execute(ctx.graphics_queue(), cmd_9_make_gi_rays)
-            .unwrap()
-            .then_execute(ctx.graphics_queue(), cmd_10_divide)
-            .unwrap()
-            .then_signal_semaphore()
-            .then_execute(ctx.graphics_queue(), cmd_11_trace_gi_rays)
-            .unwrap()
-            .then_execute(ctx.graphics_queue(), cmd_12_divide)
-            .unwrap()
-            .then_signal_semaphore()
-            .then_execute(ctx.graphics_queue(), cmd_13_lights)
-            .unwrap()*/
             .then_execute(ctx.graphics_queue(), cmd_last_copy_command)
             .unwrap()
             .boxed()
