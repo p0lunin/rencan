@@ -20,7 +20,7 @@ layout(std140, set = 2, binding = 0) readonly buffer PreviousIntersections {
     Intersection previous_intersections[];
 };
 
-layout(std140, set = 3, binding = 0) readonly buffer GiThethas {
+layout(set = 3, binding = 0) readonly buffer GiThethas {
     float gi_thethas[];
 };
 
@@ -33,7 +33,8 @@ void main() {
         return;
     }
 
-    vec3 color = gi_thethas[idx] * compute_light_color(
+    float theta = gi_thethas[light_int.inter_id];
+    vec3 color = theta * compute_light_color(
         inter.model,
         light_int.light_intensity,
         inter.normal,

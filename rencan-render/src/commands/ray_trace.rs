@@ -10,7 +10,6 @@ use crate::{
 };
 use nalgebra::Point3;
 use vulkano::{
-    descriptor::{descriptor_set::PersistentDescriptorSet, PipelineLayoutAbstract},
     sync::GpuFuture,
 };
 

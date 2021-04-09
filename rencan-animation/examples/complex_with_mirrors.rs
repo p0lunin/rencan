@@ -143,10 +143,10 @@ mod models {
             ],
             indices![
                 A2, C2, B2, A2, D2,
-                C2, /*
+                C2,
                                 D1, B1, C1,
                                 D1, A1, B1,
-                    */
+
                 B1, A2, B2, B1, A1, A2, A1, D2, A2, A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2,
                 C1, B1, B2,
             ],
@@ -210,17 +210,13 @@ fn init_scene(device: Arc<Device>) -> Scene {
         models,
         vec![SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.3)],
         DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 7.0),
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1500.0),
-                Point3::new(0.0, 2.49, 0.0),
-            ),
-            PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 300.0),
-                Point3::new(0.0, -2.0, 0.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1000.0),
+                Point3::new(0.0, 2.4, 0.0),
             ),
         ],
         Camera::from_origin().move_at(1.0, 0.3, 0.5).rotate(0.0, std::f32::consts::FRAC_PI_2, 0.0),

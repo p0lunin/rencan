@@ -2,11 +2,10 @@ use crate::core::CommandFactoryContext;
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
-    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
     descriptor::{
-        descriptor::ShaderStages,
         descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout, PipelineLayoutDesc},
+        pipeline_layout::{PipelineLayout},
         DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
@@ -22,7 +21,6 @@ mod cs {
 
 pub struct TraceRaysToLightCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    local_size_x: u32,
 }
 
 impl TraceRaysToLightCommandFactory {
@@ -36,7 +34,7 @@ impl TraceRaysToLightCommandFactory {
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        TraceRaysToLightCommandFactory { pipeline, local_size_x }
+        TraceRaysToLightCommandFactory { pipeline }
     }
 
     pub fn add_trace_rays_to_buffer<PIS, WI, WOS, IntersSer>(

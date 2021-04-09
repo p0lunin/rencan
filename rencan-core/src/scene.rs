@@ -8,7 +8,7 @@ use crate::{
 };
 use std::sync::Arc;
 use vulkano::{
-    buffer::TypedBufferAccess, descriptor::DescriptorSet, device::Device, sync::GpuFuture,
+    descriptor::DescriptorSet, device::Device, sync::GpuFuture,
 };
 
 pub struct Scene {

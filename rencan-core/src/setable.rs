@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 pub struct Mutable<State, Depends> {
     state: State,
     depends: Option<Depends>,
@@ -28,7 +26,7 @@ impl<State, Depends> Mutable<State, Depends> {
         State: PartialEq<State>,
     {
         if self.state != new_state {
-            let mut new_val = Self::new(new_state);
+            let new_val = Self::new(new_state);
             *self = new_val;
         }
     }

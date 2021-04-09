@@ -49,11 +49,11 @@ layout(std140, set = 4, binding = 0) readonly buffer Intersections {
     Intersection previous_intersections[];
 };
 
-layout(std140, set = 5, binding = 0) writeonly buffer GiThetas {
+layout(set = 5, binding = 0) writeonly buffer GiThetas {
     float gi_ethas[];
 };
 
-layout(push_constant) uniform RandomSeed {
+layout(push_constant) readonly uniform RandomSeed {
     float val1;
     float val2;
 } random;
@@ -91,12 +91,10 @@ void main() {
 
     if (inter.model.material == MATERIAL_DIFFUSE) {
         float r1;
-        float r2 = inter.distance * length(inter.point);
+        float r2;
 
-        vec3 indirect_color = vec3(0.0);
-
-        r1 = rand(vec2(random.val1, random.val2));
-        r2 = rand(vec2(r1, r2));
+        r1 = rand(vec2(random.val1*idx, random.val2*idx));
+        r2 = rand(vec2(random.val2*idx, r1));
         vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
         mat3 transf = create_coordinate_system(inter.normal);
 
@@ -107,8 +105,8 @@ void main() {
         Intersection next_inter = trace(next_ray, inter.pixel_id);
         if (next_inter.is_intersect == 1.0) {
             uint idx = next_idx();
-            gi_intersects[next_idx()] = next_inter;
-            gi_ethas[idx] = r1;
+            gi_ethas[idx] = r1 * inter.model.albedo / PI;
+            gi_intersects[idx] = next_inter;
         }
     }
 }

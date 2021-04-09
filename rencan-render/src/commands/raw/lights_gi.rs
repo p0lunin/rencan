@@ -2,9 +2,9 @@ use crate::core::CommandFactoryContext;
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
-    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
     descriptor::{
-        descriptor_set::DescriptorSetsCollection, pipeline_layout::PipelineLayout, DescriptorSet,
+        pipeline_layout::PipelineLayout, DescriptorSet,
     },
     device::Device,
     pipeline::ComputePipeline,
@@ -37,7 +37,7 @@ impl LightsGiCommandFactory {
 
     pub fn add_lights_diffuse_to_buffer<WI, IMS, IS, PIS, GTS>(
         &self,
-        ctx: &CommandFactoryContext,
+        _: &CommandFactoryContext,
         workgroups_input: WI,
         intersections_set: IS,
         previous_intersections_set: PIS,

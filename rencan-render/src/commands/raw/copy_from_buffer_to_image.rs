@@ -1,13 +1,10 @@
 use crate::core::CommandFactoryContext;
 use std::sync::Arc;
 use vulkano::{
-    buffer::{BufferAccess, TypedBufferAccess},
-    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    command_buffer::{AutoCommandBufferBuilder},
     descriptor::{
-        descriptor::ShaderStages,
-        descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout, PipelineLayoutDesc},
-        DescriptorSet, PipelineLayoutAbstract,
+        pipeline_layout::{PipelineLayout},
+        DescriptorSet,
     },
     device::Device,
     pipeline::ComputePipeline,
@@ -59,9 +56,5 @@ impl CopyFromBufferToImageCommandFactory {
                 std::iter::empty(),
             )
             .unwrap();
-    }
-
-    fn image_buffer_set_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
-        self.pipeline.descriptor_set_layout(1).unwrap().clone()
     }
 }

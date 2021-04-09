@@ -1,6 +1,6 @@
 use crate::{
     hitbox::HitBoxRectangleUniformStd140, light::PointLightUniform, model::ModelUniformInfo,
-    scene::SceneData, AppInfo, Scene,
+    scene::SceneData, AppInfo,
 };
 use crevice::std140::AsStd140;
 use nalgebra::Point4;
@@ -15,7 +15,7 @@ use vulkano::{
         descriptor_set::FixedSizeDescriptorSetsPool, pipeline_layout::PipelineLayout,
         DescriptorSet, PipelineLayoutAbstract,
     },
-    device::{Device, Queue},
+    device::{Device},
     memory::pool::StdMemoryPool,
     pipeline::ComputePipeline,
     sync::GpuFuture,

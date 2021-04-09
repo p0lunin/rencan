@@ -2,11 +2,10 @@ use crate::core::CommandFactoryContext;
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
-    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
+    command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
     descriptor::{
-        descriptor::ShaderStages,
         descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout, PipelineLayoutDesc},
+        pipeline_layout::{PipelineLayout},
         DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
@@ -22,7 +21,6 @@ mod cs {
 
 pub struct MakeGiRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
-    local_size_x: u32,
 }
 
 impl MakeGiRaysCommandFactory {
@@ -36,7 +34,7 @@ impl MakeGiRaysCommandFactory {
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        MakeGiRaysCommandFactory { pipeline, local_size_x }
+        MakeGiRaysCommandFactory { pipeline }
     }
 
     pub fn add_making_gi_rays<PIS, WI, WOS, IntersSer, GTS>(
@@ -73,7 +71,7 @@ impl MakeGiRaysCommandFactory {
                 workgroups_input,
                 self.pipeline.clone(),
                 sets,
-                cs::ty::RandomSeed { val1: 0.0, val2: 0.0 },
+                cs::ty::RandomSeed { val1: rand::random(), val2: rand::random() },
                 std::iter::empty(),
             )
             .unwrap();

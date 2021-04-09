@@ -7,9 +7,9 @@ use vulkano::{
 };
 
 use crate::{
-    camera::{Camera, CameraUniform},
+    camera::{CameraUniform},
     intersection::IntersectionUniform,
-    light::{DirectionLight, DirectionLightUniform},
+    light::{DirectionLightUniform},
     model_buffers::SceneBuffers,
     ray::Ray,
     AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,

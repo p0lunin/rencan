@@ -17,7 +17,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use rencan_core::{camera::Camera, AppInfo, Scene, Screen};
+use rencan_core::{AppInfo, Scene, Screen};
 use rencan_render::{App, AppBuilder, AppBuilderRtExt};
 use std::collections::HashSet;
 use vulkano::{
@@ -231,6 +231,7 @@ fn init_app(
         .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
+            1,
         )))
         .build();
 
