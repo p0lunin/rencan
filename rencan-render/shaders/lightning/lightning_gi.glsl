@@ -34,13 +34,14 @@ void main() {
     }
 
     float theta = gi_thethas[light_int.inter_id];
-    vec3 color = theta * compute_light_color(
+    vec3 light_color = compute_light_color(
         inter.model,
         light_int.light_intensity,
         inter.normal,
         light_int.ray.direction,
         inter.ray.direction
-    ) / (1 / (2 * PI)) / SAMPLES_PER_BOUNCE;
+    );
+    vec3 color = theta * (clamp(light_color, 0, 1)) / (1 / (2 * PI)) / SAMPLES_PER_BOUNCE;
 
     uvec4 add_color = uvec4(clamp(color, 0, 1) * (255 * 255 * 255), (255 * 255 * 255));
     atomicAdd(colors[inter.pixel_id].x, add_color.x);

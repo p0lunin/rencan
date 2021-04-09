@@ -105,7 +105,7 @@ void main() {
         Intersection next_inter = trace(next_ray, inter.pixel_id);
         if (next_inter.is_intersect == 1.0) {
             uint idx = next_idx();
-            gi_ethas[idx] = r1 * inter.model.albedo / PI;
+            gi_ethas[idx] = r1;
             gi_intersects[idx] = next_inter;
         }
     }
