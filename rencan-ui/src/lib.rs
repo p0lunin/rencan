@@ -231,7 +231,7 @@ fn init_app(
         .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
-            1,
+            2,
         )))
         .build();
 

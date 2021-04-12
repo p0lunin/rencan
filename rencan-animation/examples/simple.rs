@@ -33,9 +33,9 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1000, 1000), 60);
+    let app = AnimationApp::new(Screen::new(1000, 1000));
     let device = app.vulkan_device();
-    let mut renderer = Renderer::new(app, &"some.png");
+    let mut renderer = Renderer::new(app, 60, &"some.png");
     let mut scene = init_scene(device);
     renderer.render_frame_to_image(&mut scene);
 }

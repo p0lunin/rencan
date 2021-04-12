@@ -376,7 +376,6 @@ impl LightningV2CommandFactory {
             .then_signal_semaphore() // vulkano does not provide barrier for this
             .then_execute(ctx.graphics_queue(), cmd_3_lights_diffuse)
             .unwrap()
-            .then_signal_semaphore()
             .boxed()
     }
 
@@ -492,13 +491,11 @@ impl LightningV2CommandFactory {
         fut
             .then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
             .unwrap()
-            .then_signal_semaphore()
             .then_execute(ctx.graphics_queue(), cmd_2_divide)
             .unwrap()
             .then_signal_semaphore() // vulkano does not provide barrier for this
             .then_execute(ctx.graphics_queue(), cmd_3_lights_diffuse)
             .unwrap()
-            .then_signal_semaphore()
             .boxed()
     }
 }
