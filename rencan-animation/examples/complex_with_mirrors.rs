@@ -224,9 +224,26 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1980, 1020), 60);
+    let app = AnimationApp::new(Screen::new(1080, 1080));
     let device = app.vulkan_device();
-    let mut renderer = Renderer::new(app, &"some.png");
+
+    let mut renderer = Renderer::new(app, 25, &"some.mp4");
     let mut scene = init_scene(device);
-    renderer.render_frame(&mut scene);
+
+    for i in 0..75 {
+        println!("Render frame {}", i);
+        renderer.render_frame_to_video(&mut scene);
+
+        scene.update_camera(|camera| {
+            camera.rotate(0.0, 0.07, 0.0)
+        });
+    }
+    renderer.end_video();
+
+    /*
+    let mut renderer = Renderer::new(app, 25, &"some.png");
+    let mut scene = init_scene(device);
+
+    renderer.render_frame_to_image(&mut scene);
+     */
 }

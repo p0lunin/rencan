@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Point4, Vector3};
+use nalgebra::{Point3, Point4, Vector3, UnitQuaternion};
 use rencan_animation::{AnimationApp, Renderer};
 use rencan_render::core::{
     camera::Camera,
@@ -20,12 +20,8 @@ fn init_scene(device: Arc<Device>) -> Scene {
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 3000.0),
+                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 0.0),
                 Point3::new(0.0, 2.49, 0.0),
-            ),
-            PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 1500.0),
-                Point3::new(0.0, -2.0, 0.0),
             ),
         ],
         Camera::from_origin().move_at(0.0, 0.0, 3.0),
@@ -33,9 +29,16 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1000, 1000), 60);
+    let app = AnimationApp::new(Screen::new(1000, 1000));
     let device = app.vulkan_device();
-    let mut renderer = Renderer::new(app, &"some.png");
+    let mut renderer = Renderer::new(app, 60, &"video.mp4");
     let mut scene = init_scene(device);
-    renderer.render_frame_to_image(&mut scene);
+    for i in 0..180 {
+        println!("Render frame {}", i);
+        renderer.render_frame_to_video(&mut scene);
+        scene.data.global_light.direction =
+            UnitQuaternion::from_euler_angles(1.0/60.0, 1.0/60.0, 1.0/60.0)
+                * &scene.data.global_light.direction;
+    }
+    renderer.end_video();
 }

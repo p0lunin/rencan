@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=shaders/ray_tracing.glsl");
     println!("cargo:rerun-if-changed=shaders/checkboard_pattern.glsl");
     println!("cargo:rerun-if-changed=shaders/lightning.glsl");
-    println!("cargo:rerun-if-changed=shaders/squeeze.glsl");
+    println!("cargo:rerun-if-changed=shaders/fxaa.glsl");
     println!("cargo:rerun-if-changed=shaders/sky/blue.glsl");
     println!("cargo:rerun-if-changed=shaders/lightning/lightning.glsl");
     println!("cargo:rerun-if-changed=shaders/lightning/make_lightning_rays_lambertarian.glsl");
