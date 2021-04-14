@@ -6,12 +6,11 @@ mod sky;
 //mod squeeze;
 
 pub use checkboard_pattern::CheckBoardCommandFactory;
-pub use lightning::LightningCommandFactory;
 pub use ray_trace::RayTraceCommandFactory;
 //pub use squeeze::SqueezeCommandFactory;
 pub use lightning::LightningV2CommandFactory;
 pub use sky::SkyCommandFactory;
 
 pub mod shaders {
-    pub use super::{lightning::lightning_cs as lightning_shader, ray_trace::ray_trace_shader};
+    pub use super::{ray_trace::ray_trace_shader};
 }

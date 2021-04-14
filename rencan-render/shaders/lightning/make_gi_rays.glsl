@@ -89,7 +89,7 @@ void main() {
 
     Intersection inter = previous_intersections[idx];
 
-    if (inter.model.material == MATERIAL_DIFFUSE) {
+    if (inter.model_material.material == MATERIAL_DIFFUSE) {
         float r1;
         float r2;
 
@@ -103,7 +103,7 @@ void main() {
         Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
 
         Intersection next_inter = trace(next_ray, inter.pixel_id);
-        if (next_inter.is_intersect == 1.0) {
+        if (next_inter.is_intersect == 1) {
             uint idx = next_idx();
             gi_ethas[idx] = r1;
             gi_intersects[idx] = next_inter;

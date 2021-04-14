@@ -4,15 +4,19 @@ struct Ray {
     float max_distance;
 };
 
+struct ModelMaterial {
+    uint material;
+    float albedo;
+    float diffuse;
+    float specular;
+};
+
 struct ModelInfo {
     mat4 isometry;
     uint model_id;
     uint vertices_length;
     uint indexes_length;
-    uint material;
-    float albedo;
-    float diffuse;
-    float specular;
+    ModelMaterial material;
 };
 
 struct Intersection {
@@ -20,9 +24,7 @@ struct Intersection {
     vec3 normal;
     vec2 barycentric_coords;
     uint is_intersect;
-    ModelInfo model;
-    uint triangle_idx;
-    uint vertices_offset;
+    ModelMaterial model_material;
     float distance;
     Ray ray;
     uint pixel_id;
@@ -37,15 +39,13 @@ struct LightRay {
 Intersection intersection_succ(
     vec3 point,
     vec3 normal,
-    ModelInfo model,
-    uint triangle_idx,
-    uint vertices_offset,
+    ModelMaterial model_material,
     vec2 barycentric_coords,
     float distance,
     Ray ray,
     uint pixel_id
 ) {
-    return Intersection(point, normal, barycentric_coords, 1, model, triangle_idx, vertices_offset, distance, ray, pixel_id);
+    return Intersection(point, normal, barycentric_coords, 1, model_material, distance, ray, pixel_id);
 }
 
 Intersection intersection_none() {
@@ -109,14 +109,14 @@ vec3 compute_specular_color(vec3 primary_ray, vec3 light_ray, vec3 surface_norma
 }
 
 vec3 compute_light_color(
-    ModelInfo model,
+    ModelMaterial model,
     vec3 light_intensity,
     vec3 inter_normal,
     vec3 light_direction,
     vec3 eye_ray_direction
 ) {
     vec3 color = model.albedo / PI * light_intensity * max(dot(inter_normal, light_direction), 0.0);
-    color += model.specular *
-        compute_specular_color(eye_ray_direction, light_direction, inter_normal, light_intensity, 200);
+    color = model.specular *
+        compute_specular_color(eye_ray_direction, light_direction, inter_normal, light_intensity, 200) + color;
     return color;
 }

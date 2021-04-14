@@ -34,21 +34,18 @@ void main() {
 
     LightRay light_int = intersections[idx];
     Intersection inter = previous_intersections[light_int.inter_id];
-    if (inter.is_intersect != 1) {
-        return;
-    }
 
     vec3 color = compute_light_color(
-        inter.model,
+        inter.model_material,
         light_int.light_intensity,
         inter.normal,
         light_int.ray.direction,
         inter.ray.direction
     );
 
-    uvec4 add_color = uvec4(clamp(color, 0, 1) * (255 * 255 * 255), (255 * 255 * 255));
+    uvec3 add_color = uvec3(color * (255 * 255 * 255));
     atomicAdd(colors[inter.pixel_id].x, add_color.x);
     atomicAdd(colors[inter.pixel_id].y, add_color.y);
     atomicAdd(colors[inter.pixel_id].z, add_color.z);
-    atomicAdd(colors[inter.pixel_id].w, add_color.w);
+    atomicAdd(colors[inter.pixel_id].w, (255 * 255 * 255));
 }

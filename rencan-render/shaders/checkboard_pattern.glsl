@@ -49,12 +49,7 @@ void main() {
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
     if (inter.is_intersect == 1) {
-        uvec3 index = indexes[inter.triangle_idx];
-
-        vec3 local_coords =
-            vertices[inter.vertices_offset + index.y] * inter.barycentric_coords.x +
-            vertices[inter.vertices_offset + index.z] * inter.barycentric_coords.y +
-            vertices[inter.vertices_offset + index.x] * (1 - inter.barycentric_coords.x - inter.barycentric_coords.y);
+        vec3 local_coords = inter.point;
 
         local_coords = local_coords / CHESSBOARD_SCALE;
 

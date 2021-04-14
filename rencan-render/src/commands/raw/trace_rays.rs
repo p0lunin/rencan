@@ -18,13 +18,6 @@ mod cs {
     }
 }
 
-mod cs_first {
-    vulkano_shaders::shader! {
-        ty: "compute",
-        path: "shaders/trace_rays_first.glsl"
-    }
-}
-
 pub enum TraceType {
     Nearest,
     First,
@@ -59,22 +52,7 @@ impl TraceRaysCommandFactory {
                 )
             }
             TraceType::First => {
-                let shader = cs_first::Shader::load(device.clone()).unwrap();
-                let constants = cs_first::SpecializationConstants { constant_0: local_size_x };
-                Arc::new(
-                    ComputePipeline::<Box<dyn PipelineLayoutAbstract + Send + Sync>>::with_pipeline_layout(
-                        device.clone(),
-                        &shader.main_entry_point(),
-                        &constants,
-                        Box::new(
-                            PipelineLayout::new(
-                                device.clone(),
-                                cs_first::Layout(ShaderStages::compute())
-                            ).unwrap()
-                        ),
-                        None
-                    ).unwrap(),
-                )
+                unimplemented!()
             }
         };
         TraceRaysCommandFactory { pipeline, local_size_x }

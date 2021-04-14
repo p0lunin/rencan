@@ -136,9 +136,7 @@ Intersection trace_triangles(
                 inter = intersection_succ(
                     inter_point,
                     normal,
-                    model,
-                    offset_indexes + i,
-                    offset_vertices,
+                    model.material,
                     res.barycentric_coords,
                     res.distance,
                     origin_ray,
@@ -184,9 +182,7 @@ Intersection trace_spheres(
             inter = intersection_succ(
                 inter_point,
                 normal,
-                model,
-                0,
-                0,
+                model.material,
                 res.barycentric_coords,
                 res.distance,
                 origin_ray,
@@ -213,12 +209,9 @@ Intersection trace(
     }
 }
 
-Intersection trace_first(
-    Ray origin_ray,
-    uint pixel_id
+bool trace_any(
+    Ray origin_ray
 ) {
-    Intersection inter = intersection_none();
-
     Ray ray = origin_ray;
 
     uint offset_vertices = 0;
@@ -248,28 +241,13 @@ Intersection trace_first(
             vec3[3] vertices = vec3[](vertice1, vertice2, vertice3);
             IntersectResult res = _intersect(ray, vertices);
             if (res.intersect && res.distance < ray.max_distance) {
-                vec3 inter_point =
-                    origin_ray.origin +
-                    origin_ray.direction * res.distance +
-                    res.normal * 0.001;
-                inter = intersection_succ(
-                    inter_point,
-                    res.normal,
-                    model,
-                    offset_indexes + i,
-                    offset_vertices,
-                    res.barycentric_coords,
-                    res.distance,
-                    origin_ray,
-                    pixel_id
-                );
-                return inter;
+                return true;
             }
         }
         offset_indexes += model.indexes_length;
         offset_vertices += model.vertices_length;
     }
 
-    return trace_spheres(origin_ray, pixel_id, 1.0/0.0);
+    return trace_spheres(origin_ray, 0, 1.0/0.0).is_intersect == 1;
 }
 

@@ -58,13 +58,13 @@ impl Model {
                 * self.scaling)
                 .into(),
             model_id,
+            _offset: 0,
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
             albedo,
             diffuse,
             specular,
             material,
-            offset: 0.0,
         }
     }
 }
@@ -75,11 +75,11 @@ pub struct ModelUniformInfo {
     pub model_id: u32,
     pub vertices_length: u32,
     pub indexes_length: u32,
+    pub _offset: u32,
     pub material: u32,
     pub albedo: f32,
     pub diffuse: f32,
     pub specular: f32,
-    pub offset: f32,
 }
 
 #[allow(dead_code)]
@@ -156,7 +156,7 @@ impl SphereModel {
             diffuse,
             specular,
             material,
-            offset: 0.0,
+            _offset: 0,
         }
     }
 }

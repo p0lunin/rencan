@@ -64,7 +64,7 @@ void main() {
     vec3 next_direction;
     Ray reflect_ray;
 
-    while (inter.is_intersect == 1 && inter.model.material == MATERIAL_MIRROR && depth < MAX_DEPTH) {
+    while (inter.is_intersect == 1 && inter.model_material.material == MATERIAL_MIRROR && depth < MAX_DEPTH) {
         depth += 1;
         next_direction = reflect(inter.ray.direction, inter.normal);
         reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
@@ -72,7 +72,7 @@ void main() {
         inter = trace(reflect_ray, inter.pixel_id);
     }
 
-    if (inter.is_intersect == 1 && inter.model.material != MATERIAL_MIRROR && depth >= 1) {
+    if (inter.is_intersect == 1 && inter.model_material.material != MATERIAL_MIRROR && depth >= 1) {
         next_after_mirrors_intersections[next_idx()] = inter;
     }
 }
