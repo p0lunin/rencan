@@ -18,7 +18,7 @@ mod cs {
 }
 
 pub struct CopyFromBufferToImageCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
     local_size_x: u32,
 }
 

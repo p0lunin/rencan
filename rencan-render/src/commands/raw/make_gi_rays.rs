@@ -20,16 +20,16 @@ mod cs {
 }
 
 pub struct MakeGiRaysCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl MakeGiRaysCommandFactory {
-    pub fn new(device: Arc<Device>, samples_per_bounce: u32) -> Self {
+    pub fn new(device: Arc<Device>) -> Self {
         let local_size_x =
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
 
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let constants = cs::SpecializationConstants { constant_0: local_size_x, SAMPLES_PER_BOUNCE: samples_per_bounce };
+        let constants = cs::SpecializationConstants { constant_0: local_size_x, };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
@@ -71,7 +71,7 @@ impl MakeGiRaysCommandFactory {
                 workgroups_input,
                 self.pipeline.clone(),
                 sets,
-                cs::ty::RandomSeed { val1: rand::random(), val2: rand::random() },
+                (rand::random::<f32>(), rand::random::<f32>()),
                 std::iter::empty(),
             )
             .unwrap();

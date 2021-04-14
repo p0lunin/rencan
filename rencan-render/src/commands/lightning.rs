@@ -59,7 +59,7 @@ impl LightningV2CommandFactory {
             lights_factory: LightsDiffuseCommandFactory::new(device.clone()),
             trace_mirrors_factory: ReflectFromMirrorsCommandFactory::new(device.clone()),
             copy_factory: CopyFromBufferToImageCommandFactory::new(device.clone()),
-            make_gi_rays_factory: MakeGiRaysCommandFactory::new(device.clone(), samples_per_bounce),
+            make_gi_rays_factory: MakeGiRaysCommandFactory::new(device.clone()),
             lights_gi_factory: LightsGiCommandFactory::new(device.clone(), samples_per_bounce),
             intersections_set: Mutable::new(0),
             image_buffer_set: Mutable::new(0),

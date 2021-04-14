@@ -18,7 +18,7 @@ mod cs {
 }
 
 pub struct LightsDiffuseCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl LightsDiffuseCommandFactory {

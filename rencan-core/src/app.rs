@@ -184,7 +184,8 @@ impl SetsStorage {
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
-                path: "shaders/sets.glsl"
+                path: "shaders/sets.glsl",
+                include: ["OPTIMIZE_NO"]
             }
         }
 
@@ -209,6 +210,7 @@ impl SetsStorage {
             })
             .clone();
 
+        let _ = 2;
         let global_app_set = FixedSizeDescriptorSetsPool::new(
             pip.layout().descriptor_set_layout(0).unwrap().clone(),
         );

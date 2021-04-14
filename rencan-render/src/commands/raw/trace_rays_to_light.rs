@@ -20,7 +20,7 @@ mod cs {
 }
 
 pub struct TraceRaysToLightCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl TraceRaysToLightCommandFactory {

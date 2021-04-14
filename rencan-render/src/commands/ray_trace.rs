@@ -25,7 +25,7 @@ pub mod ray_trace_shader {
 }
 
 pub struct RayTraceCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
     divide_factory: DivideWorkgroupsCommandFactory,
     prev_camera: Camera,
     prev_screen: Screen,

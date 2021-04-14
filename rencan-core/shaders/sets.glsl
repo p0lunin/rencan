@@ -13,7 +13,7 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(std140, set = 1, binding = 0) readonly buffer Intersections {
+layout(std140, set = 1, binding = 0) buffer Intersections {
     Intersection intersections[];
 };
 
@@ -55,7 +55,7 @@ layout(std140, set = 4, binding = 2) readonly buffer PointLights {
 
 layout(set = 5, binding = 0, rgba8) readonly uniform image2D resultImage;
 
-layout(set = 6, binding = 0) readonly buffer Workgroups {
+layout(set = 6, binding = 0) buffer Workgroups {
     uint x_dimension;
     uint y_dimension;
     uint z_dimension;

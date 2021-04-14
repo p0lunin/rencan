@@ -20,7 +20,7 @@ mod cs {
 }
 
 pub struct ReflectFromMirrorsCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl ReflectFromMirrorsCommandFactory {

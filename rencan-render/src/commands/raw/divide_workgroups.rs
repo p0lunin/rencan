@@ -14,14 +14,14 @@ mod cs {
 }
 
 pub struct DivideWorkgroupsCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl DivideWorkgroupsCommandFactory {
     pub fn new(device: Arc<Device>, divider: u32) -> Self {
         let shader = cs::Shader::load(device.clone()).unwrap();
 
-        let constants = cs::SpecializationConstants { DIVIDER: divider };
+        let constants = cs::SpecializationConstants { constant_0: divider };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),

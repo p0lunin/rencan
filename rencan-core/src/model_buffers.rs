@@ -43,7 +43,8 @@ impl SceneBuffersStorage {
         mod cs {
             vulkano_shaders::shader! {
                 ty: "compute",
-                path: "shaders/sets.glsl"
+                path: "shaders/sets.glsl",
+                include: ["OPTIMIZE_NO"]
             }
         }
 

@@ -16,7 +16,7 @@ pub mod blue_sky_cs {
 }
 
 pub struct SkyCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<blue_sky_cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<blue_sky_cs::MainLayout>>>,
     local_size_x: u32,
 }
 

@@ -18,7 +18,7 @@ mod cs {
 }
 
 pub struct LightsGiCommandFactory {
-    pipeline: Arc<ComputePipeline<PipelineLayout<cs::Layout>>>,
+    pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
 }
 
 impl LightsGiCommandFactory {
@@ -27,7 +27,7 @@ impl LightsGiCommandFactory {
             device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
         let shader = cs::Shader::load(device.clone()).unwrap();
 
-        let constants = cs::SpecializationConstants { constant_0: local_size_x, SAMPLES_PER_BOUNCE: samples };
+        let constants = cs::SpecializationConstants { constant_0: local_size_x, constant_1: samples };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),

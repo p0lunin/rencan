@@ -44,7 +44,7 @@ impl TraceRaysCommandFactory {
                         Box::new(
                             PipelineLayout::new(
                                 device.clone(),
-                                cs::Layout(ShaderStages::compute())
+                                cs::MainLayout(ShaderStages::compute())
                             ).unwrap()
                         ),
                         None
