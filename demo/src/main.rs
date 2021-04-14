@@ -124,7 +124,8 @@ fn main() {
     let frame_duration = Duration::from_micros(microseconds_per_frame);
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
+        //*control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
+        *control_flow = ControlFlow::Poll;
 
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {

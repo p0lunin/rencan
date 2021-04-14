@@ -41,8 +41,6 @@ pub struct LightningV2CommandFactory {
     make_gi_rays_factory: MakeGiRaysCommandFactory,
     lights_gi_factory: LightsGiCommandFactory,
     intersections_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[LightRay]>>>>,
-    reflects_intersections_set:
-        Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[IntersectionUniform]>>>>,
     image_buffer_set: Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[[u32; 4]]>>>>,
     gi_intersections_set:
         Mutable<usize, OneBufferSet<Arc<DeviceLocalBuffer<[IntersectionUniform]>>>>,
@@ -64,36 +62,12 @@ impl LightningV2CommandFactory {
             make_gi_rays_factory: MakeGiRaysCommandFactory::new(device.clone(), samples_per_bounce),
             lights_gi_factory: LightsGiCommandFactory::new(device.clone(), samples_per_bounce),
             intersections_set: Mutable::new(0),
-            reflects_intersections_set: Mutable::new(0),
             image_buffer_set: Mutable::new(0),
             gi_intersections_set: Mutable::new(0),
             gi_thetas_set: Mutable::new(0),
             workgroups: OnceCell::new(),
             samples_per_bounce,
         }
-    }
-    fn init_reflects_intersections_set(
-        &mut self,
-        ctx: &CommandFactoryContext,
-    ) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.reflects_intersections_set.change_with_check_in_place(ctx.buffers.intersections.len());
-        let layout = self.trace_mirrors_factory.intersections_layout();
-        let one_set = self
-            .reflects_intersections_set
-            .get_depends_or_init(|&len| {
-                let buf = ctx.create_device_local_buffer_array(
-                    len,
-                    BufferUsage {
-                        storage_buffer: true,
-                        transfer_destination: true,
-                        ..BufferUsage::none()
-                    },
-                );
-                let set = OneBufferSet::new(buf, layout);
-                set
-            })
-            .clone();
-        one_set.1.clone()
     }
     fn init_intersections_set(
         &mut self,
@@ -268,6 +242,24 @@ impl LightningV2CommandFactory {
             })
             .build();
 
+        let cmd_trace_mirrors = ctx
+            .create_command_buffer()
+            .update_with(|buf| {
+                self.trace_mirrors_factory.add_reflects_rays_to_buffer(
+                    &ctx,
+                    ctx.buffers.workgroups.clone(),
+                    ctx.buffers.intersections_set.clone(),
+                    &mut buf.0,
+                );
+            })
+            .build();
+
+        let fut = fut
+            .then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
+            .unwrap()
+            .then_execute_same_queue(cmd_trace_mirrors)
+            .unwrap();
+
         let cmd_2_divide = ctx
             .create_command_buffer()
             .update_with(|buf| {
@@ -290,8 +282,6 @@ impl LightningV2CommandFactory {
             .build();
 
         fut
-            .then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
-            .unwrap()
             .then_execute(ctx.graphics_queue(), cmd_2_divide)
             .unwrap()
             .then_signal_semaphore() // vulkano does not provide barrier for this
@@ -300,17 +290,14 @@ impl LightningV2CommandFactory {
             .boxed()
     }
 
-    fn add_reflects_pipeline<WS1, WB2, RS>(
+    fn add_reflects_pipeline<WS1, RS>(
         &self,
         ctx: &CommandFactoryContext,
         workgroups_set1: WS1,
-        workgroups_buf2: WB2,
-        reflects_set: RS,
         fut: impl GpuFuture + 'static
     ) -> Box<dyn GpuFuture>
     where
         WS1: DescriptorSet + Clone + Send + Sync + 'static,
-        WB2: BufferAccess + Clone + Send + Sync + 'static,
         RS: DescriptorSet + Clone + Send + Sync + 'static,
     {
         let cmd_trace_mirrors = ctx
@@ -320,8 +307,6 @@ impl LightningV2CommandFactory {
                     &ctx,
                     ctx.buffers.workgroups.clone(),
                     ctx.buffers.intersections_set.clone(),
-                    reflects_set.clone(),
-                    workgroups_set1.clone(),
                     &mut buf.0,
                 );
             })
@@ -331,7 +316,6 @@ impl LightningV2CommandFactory {
             .create_command_buffer()
             .update_with(|buf| {
                 self.divide_factory.add_divider_to_buffer(workgroups_set1.clone(), &mut buf.0);
-                buf.0.fill_buffer(workgroups_buf2.clone(), 0).unwrap();
             })
             .build();
 
@@ -428,7 +412,6 @@ impl CommandFactory for LightningV2CommandFactory {
         fut: Box<dyn GpuFuture>,
     ) -> Box<dyn GpuFuture> {
         let intersections_set = self.init_intersections_set(&ctx);
-        let reflects_set = self.init_reflects_intersections_set(&ctx);
         let image_buffer_set = self.init_image_buffer_set(&ctx);
         let gi_intersections_set = self.init_gi_intersections_set(&ctx);
         let gi_thetas_set = self.init_gi_thetas_set(&ctx);
@@ -449,15 +432,6 @@ impl CommandFactory for LightningV2CommandFactory {
                 buf.0
                     .fill_buffer(
                         self.intersections_set.get_depends_or_init(|_| unreachable!()).0.clone(),
-                        0,
-                    )
-                    .unwrap();
-                buf.0
-                    .fill_buffer(
-                        self.reflects_intersections_set
-                            .get_depends_or_init(|_| unreachable!())
-                            .0
-                            .clone(),
                         0,
                     )
                     .unwrap();
@@ -496,25 +470,6 @@ impl CommandFactory for LightningV2CommandFactory {
             fut
         );
 
-        let fut = self.add_reflects_pipeline(
-            &ctx,
-            workgroups_set1.1.clone(),
-            workgroups_set2.0.clone(),
-            reflects_set.clone(),
-            fut
-        );
-
-        let fut = self.add_lightning_commands(
-            &ctx,
-            workgroups_set1.0.clone(),
-            workgroups_set2.0.clone(),
-            workgroups_set2.1.clone(),
-            reflects_set.clone(),
-            intersections_set.clone(),
-            image_buffer_set.clone(),
-            fut
-        );
-
         let mut fut = fut.boxed();
         for _ in 0..self.samples_per_bounce {
             let cmd_zeros = ctx
@@ -531,59 +486,6 @@ impl CommandFactory for LightningV2CommandFactory {
                         &ctx,
                         ctx.buffers.workgroups.clone(),
                         ctx.buffers.intersections_set.clone(),
-                        gi_intersections_set.clone(),
-                        workgroups_set3.1.clone(),
-                        gi_thetas_set.clone(),
-                        &mut buf.0,
-                    );
-                })
-                .build();
-
-            let cmd_divide = ctx
-                .create_command_buffer()
-                .update_with(|buf| {
-                    self.divide_factory.add_divider_to_buffer(workgroups_set3.1.clone(), &mut buf.0);
-                    buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
-                })
-                .build();
-
-            let this_fut = fut
-                .then_execute_same_queue(cmd_zeros)
-                .unwrap()
-                .then_execute_same_queue(cmd_make_gi_rays)
-                .unwrap()
-                .then_execute_same_queue(cmd_divide)
-                .unwrap()
-                .then_signal_semaphore()
-                .boxed();
-            fut = self.add_gi_lightning_commands(
-                &ctx,
-                workgroups_set3.0.clone(),
-                workgroups_set1.0.clone(),
-                workgroups_set1.1.clone(),
-                gi_intersections_set.clone(),
-                intersections_set.clone(),
-                image_buffer_set.clone(),
-                gi_thetas_set.clone(),
-                this_fut,
-            );
-            fut.flush().unwrap();
-        }
-        for _ in 0..self.samples_per_bounce {
-            let cmd_zeros = ctx
-                .create_command_buffer()
-                .update_with(|buf| {
-                    buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
-                    buf.0.fill_buffer(workgroups_set3.0.clone(), 0).unwrap();
-                })
-                .build();
-            let cmd_make_gi_rays = ctx
-                .create_command_buffer()
-                .update_with(|buf| {
-                    self.make_gi_rays_factory.add_making_gi_rays(
-                        &ctx,
-                        ctx.buffers.workgroups.clone(),
-                        reflects_set.clone(),
                         gi_intersections_set.clone(),
                         workgroups_set3.1.clone(),
                         gi_thetas_set.clone(),

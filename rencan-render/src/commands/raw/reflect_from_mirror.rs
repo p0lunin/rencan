@@ -37,30 +37,24 @@ impl ReflectFromMirrorsCommandFactory {
         ReflectFromMirrorsCommandFactory { pipeline }
     }
 
-    pub fn add_reflects_rays_to_buffer<PIS, WI, WOS, IntersSer>(
+    pub fn add_reflects_rays_to_buffer<WI, IntersSer>(
         &self,
         ctx: &CommandFactoryContext,
         workgroups_input: WI,
-        previous_intersections_set: PIS,
         intersections_set: IntersSer,
-        workgroups_out_set: WOS,
         buffer: &mut AutoCommandBufferBuilder,
     ) where
-        PIS: DescriptorSet + Send + Sync + 'static,
         WI: BufferAccess
             + TypedBufferAccess<Content = [DispatchIndirectCommand]>
             + Send
             + Sync
             + 'static,
-        WOS: DescriptorSet + Send + Sync + 'static,
         IntersSer: DescriptorSet + Send + Sync + 'static,
     {
         let sets = (
-            intersections_set,
             ctx.buffers.models_set.clone(),
             ctx.buffers.sphere_models_set.clone(),
-            workgroups_out_set,
-            previous_intersections_set,
+            intersections_set,
         );
 
         buffer
@@ -72,9 +66,5 @@ impl ReflectFromMirrorsCommandFactory {
                 std::iter::empty(),
             )
             .unwrap();
-    }
-
-    pub fn intersections_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
-        self.pipeline.layout().descriptor_set_layout(0).unwrap().clone()
     }
 }
