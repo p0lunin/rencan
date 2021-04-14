@@ -59,21 +59,26 @@ layout(push_constant) readonly uniform RandomSeed {
 #include "../include/ray_tracing.glsl"
 
 vec3 uniform_sample_hemisphere(float r1, float r2) {
-    // cos(theta) = r1 = y
-    // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta))
     float sinTheta = sqrt(1 - r1 * r1);
     float phi = 2 * PI * r2;
-    float x = sinTheta * cos(phi);
-    float z = sinTheta * sin(phi);
-    return vec3(x, r1, z);
+    vec2 xz = sinTheta * vec2(cos(phi), sin(phi));
+    vec3 direction = vec3(xz.x, r1, xz.y);
+
+    return direction;
 }
 
 mat3 create_coordinate_system(vec3 normal) {
     vec3 normal_x;
-    if (abs(normal.x) > abs(normal.y))
-        normal_x = vec3(normal.z, 0, -normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z);
-    else
-        normal_x = vec3(0, -normal.z, normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
+    float deleter;
+    if (abs(normal.x) > abs(normal.y)) {
+        normal_x = vec3(normal.z, 0, -normal.x);
+        deleter = sqrt(normal.x * normal.x + normal.z * normal.z);
+    }
+    else {
+        normal_x = vec3(0, -normal.z, normal.y);
+        deleter = sqrt(normal.y * normal.y + normal.z * normal.z);
+    }
+    normal_x /= deleter;
     vec3 normal_y = cross(normal, normal_x);
     return mat3(normal_x, normal, normal_y);
 }
@@ -87,24 +92,22 @@ void main() {
 
     Intersection inter = previous_intersections[idx];
 
-    if (inter.model_material.material == MATERIAL_DIFFUSE) {
-        float r1;
-        float r2;
+    float r1;
+    float r2;
 
-        r1 = rand(vec2(random.val1*idx, random.val2*idx));
-        r2 = rand(vec2(random.val2*idx, r1));
-        vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
-        mat3 transf = create_coordinate_system(inter.normal);
+    r1 = rand(vec2(random.val1*idx, random.val2*idx));
+    r2 = rand(vec2(random.val2*idx, r1));
+    vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
+    mat3 transf = create_coordinate_system(inter.normal);
 
-        vec3 next_ray_direction_global = transf * next_ray_direction;
+    vec3 next_ray_direction_global = transf * next_ray_direction;
 
-        Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
+    Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
 
-        Intersection next_inter = trace(next_ray, inter.pixel_id);
-        if (next_inter.is_intersect == 1) {
-            uint idx = next_idx();
-            gi_ethas[idx] = r1;
-            gi_intersects[idx] = next_inter;
-        }
+    Intersection next_inter = trace(next_ray, inter.pixel_id);
+    if (next_inter.is_intersect == 1) {
+        uint idx = next_idx();
+        gi_ethas[idx] = r1;
+        gi_intersects[idx] = next_inter;
     }
 }
