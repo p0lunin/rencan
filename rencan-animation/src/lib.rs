@@ -22,6 +22,8 @@ use ffmpeg::util::frame::Video;
 use itertools::Itertools;
 use ffmpeg::codec::traits::Encoder;
 use std::io::Write;
+use std::sync::mpsc::SyncSender;
+use std::thread::JoinHandle;
 
 pub struct FFMpeg {
     context: ffmpeg::format::context::Output,
@@ -154,15 +156,35 @@ impl FFMpeg {
 
 pub struct Renderer {
     app: AnimationApp,
-    ffmpeg: FFMpeg,
     output_file: Box<str>,
+    sender: SyncSender<Arc<CpuAccessibleBuffer<[u8]>>>,
+    handle: JoinHandle<()>,
 
     buffer_image: Arc<ImageView<Arc<AttachmentImage>>>,
 }
 
 impl Renderer {
     pub fn new(app: AnimationApp, fps: u32, output_file: impl AsRef<str>) -> Self {
-        let ffmpeg = FFMpeg::new(output_file.as_ref(), app.screen().width(), app.screen().height(), fps as i32);
+        let (sender, receiver) = std::sync::mpsc::sync_channel::<Arc<CpuAccessibleBuffer<[u8]>>>(10);
+
+        let file = output_file.as_ref().to_string();
+        let width = app.screen().width();
+        let height = app.screen().height();
+        let handle = std::thread::spawn(move || {
+            let mut ffmpeg = FFMpeg::new(
+                file,
+                width,
+                height,
+                fps as i32
+            );
+            for buf in receiver.iter() {
+                let mut content = buf.read().unwrap();
+                println!("Frame rendered! Passing to ffmpeg...");
+
+                ffmpeg.write_frame(&content[..]);
+            }
+            ffmpeg.end();
+        });
 
         let buffer_image = ImageView::new(
             AttachmentImage::with_usage(
@@ -180,7 +202,7 @@ impl Renderer {
         )
         .unwrap();
 
-        Renderer { app, ffmpeg, output_file: output_file.as_ref().into(), buffer_image }
+        Renderer { handle, sender, app, output_file: output_file.as_ref().into(), buffer_image }
     }
 
     pub fn render_frame_to_video(&mut self, scene: &mut Scene) {
@@ -212,11 +234,8 @@ impl Renderer {
         let copy_fut = fut.then_execute(self.app.app.info().graphics_queue.clone(), cmd).unwrap();
 
         copy_fut.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-        let mut content = image_buf.read().unwrap();
 
-        println!("Frame rendered! Passing to ffmpeg...");
-
-        self.ffmpeg.write_frame(&content[..]);
+        self.sender.send(image_buf).unwrap();
     }
 
     pub fn render_frame_to_image(&mut self, scene: &mut Scene) {
@@ -259,8 +278,10 @@ impl Renderer {
         image.save(Path::new(self.output_file.as_ref())).unwrap();
     }
 
-    pub fn end_video(&mut self) {
-        self.ffmpeg.end();
+    pub fn end_video(mut self) {
+        let Self { sender, handle, .. } = self;
+        std::mem::drop(sender);
+        handle.join().unwrap();
     }
 
     pub fn app_mut(&mut self) -> &mut App {
@@ -322,7 +343,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
-            0,
+            3096,
         )))
         .build();
 

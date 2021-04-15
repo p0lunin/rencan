@@ -208,15 +208,15 @@ fn init_scene(device: Arc<Device>) -> Scene {
     Scene::new(
         device,
         models,
-        vec![SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.3)],
+        vec![SphereModel::new(Point3::new(0.0, -1.2, 0.0), 0.3)],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1000.0),
-                Point3::new(0.0, 2.4, 0.0),
+                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
+                Point3::new(0.0, 2.3, 0.0),
             ),
         ],
         Camera::from_origin().move_at(1.0, 0.3, 0.5).rotate(0.0, std::f32::consts::FRAC_PI_2, 0.0),
@@ -227,23 +227,19 @@ fn main() {
     let app = AnimationApp::new(Screen::new(1080, 1080));
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 25, &"some.mp4");
+    let mut renderer = Renderer::new(app, 30, &"some.png");
     let mut scene = init_scene(device);
-
-    for i in 0..75 {
+/*
+    for i in 0..1 {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene);
 
         scene.update_camera(|camera| {
-            camera.rotate(0.0, 0.07, 0.0)
+            camera.rotate(0.0, 0.01, 0.0)
         });
     }
     renderer.end_video();
-
-    /*
-    let mut renderer = Renderer::new(app, 25, &"some.png");
-    let mut scene = init_scene(device);
-
+*/
     renderer.render_frame_to_image(&mut scene);
-     */
+
 }

@@ -43,7 +43,7 @@ void main() {
         inter.ray.direction
     );
 
-    uvec3 add_color = uvec3(color * (255 * 255 * 255));
+    uvec3 add_color = uvec3(clamp(color, 0, 1) * (255 * 255 * 255));
     atomicAdd(colors[inter.pixel_id].x, add_color.x);
     atomicAdd(colors[inter.pixel_id].y, add_color.y);
     atomicAdd(colors[inter.pixel_id].z, add_color.z);
