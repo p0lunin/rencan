@@ -115,7 +115,7 @@ vec3 compute_light_color(
     vec3 light_direction,
     vec3 eye_ray_direction
 ) {
-    vec3 color = model.albedo / PI * light_intensity * max(dot(inter_normal, light_direction), 0.0);
+    vec3 color = model.diffuse * model.albedo / PI * light_intensity * max(dot(inter_normal, light_direction), 0.0);
     color = model.specular *
         compute_specular_color(eye_ray_direction, light_direction, inter_normal, light_intensity, 200) + color;
     return color;

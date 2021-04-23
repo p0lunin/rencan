@@ -322,7 +322,7 @@ fn init_device_and_queue(instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>) 
         physical,
         &Features::none(),
         &DeviceExtensions { khr_storage_buffer_storage_class: true, ..DeviceExtensions::none() },
-        std::iter::once((family, 1.0)),
+        std::iter::once((physical.queue_family_by_id(2).unwrap(), 1.0)),
     )
     .unwrap();
 
@@ -343,7 +343,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen) -> App {
         .then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
-            3096,
+            256,
         )))
         .build();
 
