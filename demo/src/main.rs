@@ -62,6 +62,16 @@ fn make_plane(position: Point3<f32>, scale: f32) -> AppModel {
 fn init_scene(device: Arc<Device>) -> Scene {
     let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
+    models.push(models::make_mirror(
+        Point3::new(-4.99, 0.0, 0.0),
+        UnitQuaternion::from_euler_angles(0.0, std::f32::consts::FRAC_PI_2, 0.0),
+        2.0,
+    ));
+    models.push(models::make_mirror(
+        Point3::new(4.99, 0.0, 0.0),
+        UnitQuaternion::from_euler_angles(0.0, -std::f32::consts::FRAC_PI_2, 0.0),
+        2.0,
+    ));
     Scene::new(
         device,
         models,
