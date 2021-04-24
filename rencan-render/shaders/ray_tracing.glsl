@@ -46,13 +46,101 @@ layout(std140, set = 3, binding = 2) readonly buffer Spheres {
     Sphere[] spheres;
 };
 
-layout(set = 4, binding = 0) writeonly buffer IntersectionsCount {
+layout(std140, set = 4, binding = 0) readonly uniform DirectLightInfo {
+    DirectLight global_light;
+};
+layout(std140, set = 4, binding = 1) readonly uniform PointLightsInfo {
+    uint point_lights_count;
+};
+layout(std140, set = 4, binding = 2) readonly buffer PointLights {
+    PointLight[] point_lights;
+};
+
+layout(set = 5, binding = 0) writeonly buffer IntersectionsCount {
     uint count_intersections;
     uint _y_dimension;
     uint _z_dimension;
 };
 
+layout(set = 6, binding = 0, rgba8) writeonly uniform image2D resultImage;
+
+// TODO: push_constant for offsets
+
 #include "include/ray_tracing.glsl"
+
+LightRay make_shadow_ray_for_direction_light(
+    vec3 inter_point,
+    vec3 inter_normal
+) {
+    vec3 point = inter_point + inter_normal * 0.001;
+
+    Ray ray = Ray(point, -global_light.direction, 1.0 / 0.0);
+
+    vec3 intensity = global_light.intensity * global_light.color;
+
+    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
+}
+
+LightRay make_shadow_ray_for_point_light(
+    vec3 inter_point,
+    vec3 inter_normal,
+    PointLight light
+) {
+    vec3 direction_ray = light.position - inter_point;
+
+    vec3 point = inter_point + inter_normal * 0.001;
+    float distance = length(direction_ray);
+
+    Ray ray = Ray(point, normalize(direction_ray), distance);
+
+    vec3 intensity = light.intensity * light.color / (4 * PI * distance * distance);
+
+    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
+}
+
+vec3 compute_color_diffuse_material(Intersection inter) {
+    LightRay global_light_ray = make_shadow_ray_for_direction_light(inter.point, inter.normal);
+    bool is_global_light_inter = trace_any(global_light_ray.ray);
+
+    vec3 color;
+
+    if (is_global_light_inter) {
+        color = compute_light_color(
+            inter.model_material,
+            global_light_ray.light_intensity,
+            inter.normal,
+            global_light_ray.ray.direction,
+            inter.ray.direction
+        );
+    }
+    else {
+        color = vec3(0.0);
+    }
+
+    for (int i = 0; i < point_lights_count; i++) {
+        PointLight light = point_lights[i];
+        vec3 light_dir = light.position - inter.point;
+        float distance_to_light = length(light_dir);
+
+        LightRay light_ray = make_shadow_ray_for_point_light(
+            inter.point,
+            inter.normal,
+            light
+        );
+        if (trace_any(light_ray.ray)) {
+            continue;
+        }
+        color += compute_light_color(
+            inter.model_material,
+            light_ray.light_intensity,
+            inter.normal,
+            light_ray.ray.direction,
+            inter.ray.direction
+        );
+    }
+
+    return color;
+}
 
 Ray compute_primary_ray(
     uvec2 screen,
@@ -86,8 +174,36 @@ void main() {
     );
     Intersection inter = trace(ray, idx);
 
-    if (inter.is_intersect == 1) {
+    if (inter.is_intersect == 0) {
+        return;
+    }
+
+    bool computed = false;
+    vec3 color = vec3(0.0);
+    for (int i = 0; !computed && i < 100; i++) {
+        switch (inter.model_material.material) {
+            case MATERIAL_DIFFUSE:
+                color = compute_color_diffuse_material(inter);
+                computed = true;
+                break;
+            case MATERIAL_MIRROR:
+                vec3 next_direction = reflect(inter.ray.direction, inter.normal);
+                Ray reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
+                Intersection mirror_inter = trace(reflect_ray, inter.pixel_id);
+                if (mirror_inter.is_intersect == 0.0) {
+                    computed = true;
+                }
+                else {
+                    inter = mirror_inter;
+                }
+                break;
+        }
+    }
+
+    if (inter.is_intersect == 1 && inter.model_material.material == MATERIAL_DIFFUSE) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
         intersections[intersection_idx] = inter;
+
+        imageStore(resultImage, ivec2(idx % screen.x, idx / screen.x), vec4(color, 1.0));
     }
 }

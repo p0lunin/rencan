@@ -19,7 +19,7 @@ layout(set = 1, binding = 0) readonly buffer InputBuffer {
     uvec4 colors[];
 };
 
-layout(set = 2, binding = 0, rgba8) writeonly uniform image2D resultImage;
+layout(set = 2, binding = 0, rgba8) uniform image2D resultImage;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
@@ -33,5 +33,6 @@ void main() {
 
     vec4 out_color = vec4(input_color) / (255 * 255 * 255);
 
-    imageStore(resultImage, pixel_pos, out_color);
+    vec4 this_color = imageLoad(resultImage, pixel_pos);
+    imageStore(resultImage, pixel_pos, this_color + out_color);
 }

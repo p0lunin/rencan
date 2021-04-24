@@ -12,6 +12,7 @@ use nalgebra::Point3;
 use vulkano::{
     sync::GpuFuture,
 };
+use vulkano::format::ClearValue;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -70,13 +71,26 @@ impl CommandFactory for RayTraceCommandFactory {
 
         let buffers = &ctx.buffers;
 
+        let fut = {
+            let cmd = ctx.create_command_buffer()
+                .update_with(|buf| {
+                    buf.0.clear_color_image(ctx.buffers.image.image().clone(), ClearValue::Float([0.0; 4])).unwrap();
+                })
+                .build();
+            fut.then_execute(ctx.graphics_queue(), cmd)
+                .unwrap()
+                .boxed()
+        };
+
         let set_0 = buffers.global_app_set.clone();
         let set_1 = buffers.intersections_set.clone();
         let set_2 = buffers.models_set.clone();
         let set_3 = buffers.sphere_models_set.clone();
-        let set_4 = buffers.workgroups_set.clone();
+        let set_4 = buffers.lights_set.clone();
+        let set_5 = buffers.workgroups_set.clone();
+        let set_6 = buffers.image_set.clone();
 
-        let sets = (set_0, set_1, set_2, set_3, set_4);
+        let sets = (set_0, set_1, set_2, set_3, set_4, set_5, set_6);
 
         let ray_trace_command = ctx
             .create_command_buffer()
