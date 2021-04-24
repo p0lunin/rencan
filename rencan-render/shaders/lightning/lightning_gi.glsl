@@ -31,13 +31,9 @@ void main() {
     Intersection inter = previous_intersections[light_int.inter_id];
 
     float theta = gi_thethas[light_int.inter_id];
-    vec3 light_color = compute_light_color(
-        inter.model_material,
-        light_int.light_intensity,
-        inter.normal,
-        light_int.ray.direction,
-        inter.ray.direction
-    );
+    vec3 light_color = inter.model_material.diffuse
+        * inter.model_material.albedo / PI
+        * light_int.light_intensity * max(dot(inter.normal, light_int.ray.direction), 0.0);
     vec3 color = clamp(light_color, 0, 1) * theta * 2 * PI / SAMPLES_PER_BOUNCE;
 
     uvec3 add_color = uvec3(color * (255 * 255 * 255));
