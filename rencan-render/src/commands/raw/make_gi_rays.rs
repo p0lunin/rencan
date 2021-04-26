@@ -69,12 +69,14 @@ impl MakeGiRaysCommandFactory {
             gi_thetas_set,
         );
 
+        let (rand1, rand2) = self.give_random_numbers(sample_number);
+
         buffer
             .dispatch_indirect(
                 workgroups_input,
                 self.pipeline.clone(),
                 sets,
-                self.give_random_numbers(sample_number),
+                (rand1, rand2, ctx.app_info.size_of_image_array() as u32 * ctx.render_step),
                 std::iter::empty(),
             )
             .unwrap();

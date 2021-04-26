@@ -421,7 +421,7 @@ fn init_app(instance: Arc<Instance>, screen: Screen, msaa: u8) -> App {
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
-            128,
+            256,
         )))
         .build();
 

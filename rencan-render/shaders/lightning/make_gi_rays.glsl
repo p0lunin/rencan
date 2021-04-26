@@ -54,6 +54,7 @@ layout(set = 5, binding = 0) writeonly buffer GiThetas {
 layout(push_constant) readonly uniform RandomSeed {
     float val1;
     float val2;
+    uint offset;
 } random;
 
 #include "../include/ray_tracing.glsl"
@@ -95,8 +96,8 @@ void main() {
     float r1;
     float r2;
 
-    r1 = rand(vec2(random.val1*idx, random.val2*idx));
-    r2 = rand(vec2(random.val2*idx, r1));
+    r1 = rand(vec2(random.val1*(random.offset+idx), random.val2*(random.offset+idx)));
+    r2 = rand(vec2(random.val2*(random.offset+idx), r1));
     vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
     mat3 transf = create_coordinate_system(inter.normal);
 
