@@ -24,6 +24,7 @@ pub struct CommandFactoryContext<'a> {
     pub buffers: Buffers,
     pub scene: &'a Scene,
     pub camera: &'a Camera,
+    pub render_step: u32,
 }
 
 impl CommandFactoryContext<'_> {

@@ -21,6 +21,7 @@ mod cs {
 
 pub struct MakeGiRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
+    random_values: Vec<f32>,
 }
 
 impl MakeGiRaysCommandFactory {
@@ -34,11 +35,13 @@ impl MakeGiRaysCommandFactory {
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
         );
-        MakeGiRaysCommandFactory { pipeline }
+        let random_values = (0..2048).into_iter().map(|_| rand::random()).collect();
+        MakeGiRaysCommandFactory { pipeline, random_values }
     }
 
     pub fn add_making_gi_rays<PIS, WI, WOS, IntersSer, GTS>(
         &self,
+        sample_number: u32,
         ctx: &CommandFactoryContext,
         workgroups_input: WI,
         previous_intersections_set: PIS,
@@ -71,7 +74,7 @@ impl MakeGiRaysCommandFactory {
                 workgroups_input,
                 self.pipeline.clone(),
                 sets,
-                (rand::random::<f32>(), rand::random::<f32>()),
+                self.give_random_numbers(sample_number),
                 std::iter::empty(),
             )
             .unwrap();
@@ -83,5 +86,11 @@ impl MakeGiRaysCommandFactory {
 
     pub fn gi_thetas_set(&self) -> Arc<UnsafeDescriptorSetLayout> {
         self.pipeline.layout().descriptor_set_layout(5).unwrap().clone()
+    }
+
+    fn give_random_numbers(&self, sample_number: u32) -> (f32, f32) {
+        let idx1 = sample_number as usize % self.random_values.len();
+        let idx2 = (idx1 * 2) as usize % self.random_values.len();
+        (self.random_values[idx1], self.random_values[idx2])
     }
 }

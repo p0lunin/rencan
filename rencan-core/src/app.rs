@@ -28,6 +28,7 @@ use vulkano::{
     memory::pool::StdMemoryPool,
     pipeline::ComputePipeline,
 };
+use vulkano::format::ClearValue;
 
 pub struct App {
     info: AppInfo,
@@ -54,11 +55,12 @@ impl App {
             self.info.size_of_image_array(),
         );
     }
-    pub fn render<Prev, F>(
+    pub fn render<Prev, F, AMF>(
         &mut self,
         previous: Prev,
         scene: &mut Scene,
         image_create: F,
+        add_msaa: AMF,
     ) -> Result<
         (impl GpuFuture + 'static, Arc<ImageView<Arc<AttachmentImage>>>),
         CommandBufferExecError,
@@ -66,22 +68,56 @@ impl App {
     where
         Prev: GpuFuture + 'static,
         F: FnOnce(&AppInfo) -> Arc<ImageView<Arc<AttachmentImage>>>,
+        AMF: FnOnce(Box<dyn GpuFuture>, CommandFactoryContext) -> (Box<dyn GpuFuture>, Arc<ImageView<Arc<AttachmentImage>>>)
     {
         let image = image_create(&self.info);
-        let (buffers, fut) = self.create_buffers(image.clone(), scene);
+        let (mut buffers, mut fut_local) = self.create_buffers(image.clone(), scene);
+        let fut: Box<dyn GpuFuture> = Box::new(previous.join(fut_local));
+
+        let mut ctx = CommandFactoryContext {
+            app_info: &self.info,
+            buffers: buffers.clone(),
+            scene,
+            camera: &scene.data.camera,
+            render_step: 0
+        };
+
+        let mut fut = {
+            let cmd = ctx.create_command_buffer()
+                .update_with(|buf| {
+                    buf.0.clear_color_image(ctx.buffers.image.image().clone(), ClearValue::Float([0.0; 4])).unwrap();
+                })
+                .build();
+            fut.then_execute(ctx.graphics_queue(), cmd)
+                .unwrap()
+                .boxed()
+        };
+
+        for i in 0..self.info.render_steps {
+            let ctx = CommandFactoryContext {
+                app_info: &self.info,
+                buffers: buffers.clone(),
+                scene,
+                camera: &scene.data.camera,
+                render_step: i
+            };
+            for factory in self.commands.iter_mut() {
+                fut = factory.make_command(ctx.clone(), fut);
+            }
+            let (buffers_, fut_local) = self.create_buffers(image.clone(), scene);
+            buffers = buffers_;
+            fut = fut.join(fut_local).boxed();
+        }
+
         let ctx = CommandFactoryContext {
             app_info: &self.info,
             buffers: buffers.clone(),
             scene,
             camera: &scene.data.camera,
+            render_step: 0
         };
 
-        let mut fut: Box<dyn GpuFuture> = Box::new(previous.join(fut));
-        for factory in self.commands.iter_mut() {
-            fut = factory.make_command(ctx.clone(), fut);
-        }
-
-        Ok((fut, image))
+        Ok(add_msaa(fut, ctx))
     }
     fn create_buffers(
         &mut self,

@@ -24,6 +24,7 @@ use vulkano::{
     image::{view::ImageView, AttachmentImage, ImageAccess},
     swapchain::SupportedPresentModes,
 };
+use rencan_render::commands::raw::msaa::MsaaCommandFactory;
 
 pub struct GuiApp {
     app: App,
@@ -35,14 +36,16 @@ pub struct GuiApp {
     prev: Option<Box<dyn GpuFuture>>,
 
     buffer_image: Arc<ImageView<Arc<AttachmentImage>>>,
+
+    msaa: Arc<MsaaCommandFactory>,
 }
 
 impl GuiApp {
-    pub fn new(window: WindowBuilder, event_loop: &EventLoop<()>) -> Self {
+    pub fn new(window: WindowBuilder, event_loop: &EventLoop<()>, msaa: u8) -> Self {
         let instance = init_vulkan();
         let surface = window.build_vk_surface(event_loop, instance.clone()).unwrap();
         let screen = Screen(surface.window().inner_size().into());
-        let (app, present_queue) = init_app(&surface, instance, screen);
+        let (app, present_queue) = init_app(&surface, instance, screen, msaa);
         let (swap_chain, images) =
             init_swapchain(&surface, app.info().device.clone(), app.info().graphics_queue.clone());
         let prev =
@@ -63,6 +66,8 @@ impl GuiApp {
         )
         .unwrap();
 
+        let msaa = Arc::new(MsaaCommandFactory::new(app.info().device.clone(), msaa as u32));
+
         GuiApp {
             app,
             present_queue,
@@ -72,6 +77,7 @@ impl GuiApp {
             must_recreate_swapchain: false,
             prev,
             buffer_image,
+            msaa,
         }
     }
 
@@ -136,7 +142,46 @@ impl GuiApp {
             .app
             .render(fut, scene, {
                 let image = self.buffer_image.clone();
-                move |_| image
+                {
+                    let mut dims = self.app.info().screen.0;
+                    dims[0] *= self.app.info().msaa as u32;
+                    dims[1] *= self.app.info().msaa as u32;
+                    let image = ImageView::new(
+                        AttachmentImage::with_usage(
+                            self.device(),
+                            dims,
+                            self.buffer_image.image().format(),
+                            ImageUsage {
+                                storage: true,
+                                transfer_destination: true,
+                                ..ImageUsage::none()
+                            }
+                        ).unwrap()
+                    ).unwrap();
+                    move |_| image
+                }
+            },
+                {
+                    use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
+                    let image = self.buffer_image.clone();
+                    let msaa = self.msaa.clone();
+                    move |fut, ctx| {
+                        let cmd = ctx.create_command_buffer()
+                            .update_with(|buf| {
+                                msaa.add_msaa(
+                                    &ctx,
+                                    PersistentDescriptorSet::start(msaa.output_image_layout())
+                                        .add_image(image.clone())
+                                        .unwrap()
+                                        .build()
+                                        .unwrap(),
+                                    &mut buf.0
+                                )
+                            })
+                            .build();
+                        let fut = fut.then_execute(ctx.graphics_queue(), cmd).unwrap().boxed();
+                        (fut, image)
+                    }
             })
             .unwrap();
 
@@ -223,15 +268,16 @@ fn init_app(
     window: &Arc<Surface<Window>>,
     instance: Arc<Instance>,
     screen: Screen,
+    msaa: u8,
 ) -> (App, Arc<Queue>) {
     let (device, graphics_queue, present_queue) = init_device_and_queues(window, &instance);
 
-    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen))
+    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen, 2, msaa))
         .then_ray_tracing_pipeline()
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
             device.clone(),
-            2,
+            1,
         )))
         .build();
 

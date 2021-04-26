@@ -6,3 +6,4 @@ pub mod trace_rays;
 pub mod trace_rays_to_light;
 pub mod make_gi_rays;
 pub mod lights_gi;
+pub mod msaa;

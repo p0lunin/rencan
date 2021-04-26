@@ -218,10 +218,10 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1920, 1080));
+    let app = AnimationApp::new(Screen::new(1920, 1080), 2);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, &"some.png");
+    let mut renderer = Renderer::new(app, 30, 2, &"some.png");
     let mut scene = init_scene(device);
 /*
     for i in 0..1 {

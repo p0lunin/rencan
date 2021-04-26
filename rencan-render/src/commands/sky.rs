@@ -52,7 +52,7 @@ impl CommandFactory for SkyCommandFactory {
         let command = ctx
             .create_command_buffer()
             .dispatch(
-                ctx.app_info.size_of_image_array() as u32 / self.local_size_x,
+                ctx.app_info.size_of_image_array() as u32 * ctx.app_info.render_steps / self.local_size_x,
                 self.pipeline.clone(),
                 (set_0, set_1),
             )

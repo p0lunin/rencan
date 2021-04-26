@@ -71,17 +71,6 @@ impl CommandFactory for RayTraceCommandFactory {
 
         let buffers = &ctx.buffers;
 
-        let fut = {
-            let cmd = ctx.create_command_buffer()
-                .update_with(|buf| {
-                    buf.0.clear_color_image(ctx.buffers.image.image().clone(), ClearValue::Float([0.0; 4])).unwrap();
-                })
-                .build();
-            fut.then_execute(ctx.graphics_queue(), cmd)
-                .unwrap()
-                .boxed()
-        };
-
         let set_0 = buffers.global_app_set.clone();
         let set_1 = buffers.intersections_set.clone();
         let set_2 = buffers.models_set.clone();
@@ -94,12 +83,15 @@ impl CommandFactory for RayTraceCommandFactory {
 
         let ray_trace_command = ctx
             .create_command_buffer()
-            .dispatch(
-                ctx.app_info.size_of_image_array() as u32 / self.local_size_x,
-                self.pipeline.clone(),
-                sets,
-            )
-            .unwrap()
+            .update_with(|buf| {
+                buf.0.dispatch(
+                    [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
+                    self.pipeline.clone(),
+                    sets,
+                    (ctx.app_info.size_of_image_array() as u32 * ctx.render_step),
+                    std::iter::empty()
+                ).unwrap();
+            })
             .build();
 
         let mut divide_command = ctx.create_command_buffer();

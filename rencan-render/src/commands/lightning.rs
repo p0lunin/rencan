@@ -471,7 +471,7 @@ impl CommandFactory for LightningV2CommandFactory {
         );
 
         let mut fut = fut.boxed();
-        for _ in 0..self.samples_per_bounce {
+        for sample_number in 0..self.samples_per_bounce {
             let cmd_zeros = ctx
                 .create_command_buffer()
                 .update_with(|buf| {
@@ -483,6 +483,7 @@ impl CommandFactory for LightningV2CommandFactory {
                 .create_command_buffer()
                 .update_with(|buf| {
                     self.make_gi_rays_factory.add_making_gi_rays(
+                        sample_number,
                         &ctx,
                         ctx.buffers.workgroups.clone(),
                         ctx.buffers.intersections_set.clone(),

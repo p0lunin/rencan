@@ -21,9 +21,13 @@ layout(set = 1, binding = 0) readonly buffer InputBuffer {
 
 layout(set = 2, binding = 0, rgba8) uniform image2D resultImage;
 
+layout(push_constant) readonly uniform Offsets {
+    uint offset;
+} offsets;
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    ivec2 pixel_pos = ivec2(idx % screen.x, idx / screen.x);
+    ivec2 pixel_pos = ivec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2));
 
     uvec4 input_color = colors[idx];
 
@@ -34,5 +38,7 @@ void main() {
     vec4 out_color = vec4(input_color) / (255 * 255 * 255);
 
     vec4 this_color = imageLoad(resultImage, pixel_pos);
-    imageStore(resultImage, pixel_pos, this_color + out_color);
+
+    vec4 res_color = this_color + out_color;
+    imageStore(resultImage, pixel_pos, res_color);
 }

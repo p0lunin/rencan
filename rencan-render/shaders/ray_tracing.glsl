@@ -64,13 +64,16 @@ layout(set = 5, binding = 0) writeonly buffer IntersectionsCount {
 
 layout(set = 6, binding = 0, rgba8) writeonly uniform image2D resultImage;
 
-// TODO: push_constant for offsets
+layout(push_constant) readonly uniform Offsets {
+    uint offset;
+} offsets;
 
 #include "include/ray_tracing.glsl"
 
 LightRay make_shadow_ray_for_direction_light(
     vec3 inter_point,
-    vec3 inter_normal
+    vec3 inter_normal,
+    uint idx
 ) {
     vec3 point = inter_point + inter_normal * 0.001;
 
@@ -78,13 +81,14 @@ LightRay make_shadow_ray_for_direction_light(
 
     vec3 intensity = global_light.intensity * global_light.color;
 
-    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
+    return LightRay(ray, intensity, idx);
 }
 
 LightRay make_shadow_ray_for_point_light(
     vec3 inter_point,
     vec3 inter_normal,
-    PointLight light
+    PointLight light,
+    uint idx
 ) {
     vec3 direction_ray = light.position - inter_point;
 
@@ -95,11 +99,11 @@ LightRay make_shadow_ray_for_point_light(
 
     vec3 intensity = light.intensity * light.color / (4 * PI * distance * distance);
 
-    return LightRay(ray, intensity, gl_GlobalInvocationID.x);
+    return LightRay(ray, intensity, idx);
 }
 
 vec3 compute_color_diffuse_material(Intersection inter) {
-    LightRay global_light_ray = make_shadow_ray_for_direction_light(inter.point, inter.normal);
+    LightRay global_light_ray = make_shadow_ray_for_direction_light(inter.point, inter.normal, inter.pixel_id);
     bool is_global_light_inter = trace_any(global_light_ray.ray);
 
     vec3 color;
@@ -125,7 +129,8 @@ vec3 compute_color_diffuse_material(Intersection inter) {
         LightRay light_ray = make_shadow_ray_for_point_light(
             inter.point,
             inter.normal,
-            light
+            light,
+            inter.pixel_id
         );
         if (trace_any(light_ray.ray)) {
             continue;
@@ -154,8 +159,8 @@ Ray compute_primary_ray(
 
     vec3 origin = camera_origin;
 
-    float x = (2 * ((this_point.x + 0.5) / float(screen.x)) - 1) * aspect_ratio * scale;
-    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y))) * scale;
+    float x = (2 * ((this_point.x + 0.5) / float(screen.x * 2)) - 1) * aspect_ratio * scale;
+    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y * 2))) * scale;
 
     vec3 direction = normalize(camera_rotation * vec3(x, y, -1.0));
 
@@ -167,7 +172,7 @@ void main() {
 
     Ray ray = compute_primary_ray(
         screen,
-        uvec2(idx % screen.x, idx / screen.x),
+        uvec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2)),
         fov,
         pos,
         rotation
@@ -189,7 +194,7 @@ void main() {
             case MATERIAL_MIRROR:
                 vec3 next_direction = reflect(inter.ray.direction, inter.normal);
                 Ray reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
-                Intersection mirror_inter = trace(reflect_ray, inter.pixel_id);
+                Intersection mirror_inter = trace(reflect_ray, idx);
                 if (mirror_inter.is_intersect == 0.0) {
                     computed = true;
                 }
@@ -200,10 +205,10 @@ void main() {
         }
     }
 
-    if (inter.is_intersect == 1 && inter.model_material.material == MATERIAL_DIFFUSE) {
+    if (computed && inter.is_intersect == 1 && inter.model_material.material == MATERIAL_DIFFUSE) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
         intersections[intersection_idx] = inter;
 
-        imageStore(resultImage, ivec2(idx % screen.x, idx / screen.x), vec4(color, 1.0));
+        imageStore(resultImage, ivec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2)), vec4(color, 1.0));
     }
 }

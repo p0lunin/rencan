@@ -100,7 +100,7 @@ fn main() {
         .with_resizable(true)
         .with_inner_size(Size::Physical(PhysicalSize::new(512, 512)));
 
-    let mut app = rencan_ui::GuiApp::new(window, &event_loop);
+    let mut app = rencan_ui::GuiApp::new(window, &event_loop, 2);
 
     let mut frames = 0;
     let mut next = Instant::now() + Duration::from_secs(1);

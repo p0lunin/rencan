@@ -52,7 +52,7 @@ impl CopyFromBufferToImageCommandFactory {
                 [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
                 self.pipeline.clone(),
                 sets,
-                (),
+                (ctx.app_info.size_of_image_array() as u32 * ctx.render_step),
                 std::iter::empty(),
             )
             .unwrap();
