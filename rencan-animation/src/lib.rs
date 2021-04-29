@@ -441,7 +441,7 @@ fn init_device_and_queue(instance: &Arc<Instance>) -> (Arc<Device>, Arc<Queue>) 
         physical,
         &Features::none(),
         &DeviceExtensions { khr_storage_buffer_storage_class: true, ..DeviceExtensions::none() },
-        std::iter::once((physical.queue_family_by_id(0).unwrap(), 1.0)),
+        std::iter::once((family, 1.0)),
     )
     .unwrap();
 

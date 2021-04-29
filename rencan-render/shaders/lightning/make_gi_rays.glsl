@@ -78,8 +78,9 @@ vec3 uniform_sample_hemisphere(float r1, float r2) {
     return direction;
 }
 
-void create_coordinate_system(vec3 normal, out vec3 normal_t, out vec3 normal_b) {
+mat3 create_coordinate_system(vec3 normal) {
     float deleter;
+    vec3 normal_t, normal_b;
     if (abs(normal.x) > abs(normal.y)) {
         normal_t = vec3(normal.z, 0, -normal.x);
         deleter = sqrt(normal.x * normal.x + normal.z * normal.z);
@@ -90,6 +91,7 @@ void create_coordinate_system(vec3 normal, out vec3 normal_t, out vec3 normal_b)
     }
     normal_t /= deleter;
     normal_b = cross(normal, normal_t);
+    return mat3(normal_t, normal, normal_b);
 }
 
 uint next_idx() {
@@ -108,14 +110,9 @@ void main() {
     r2 = rand(vec2(random.val2*(random.offset+idx), r1));
 
     vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
-    vec3 Nt, Nb;
-    create_coordinate_system(inter.normal, Nt, Nb);
+    mat3 transf = create_coordinate_system(inter.normal);
 
-    vec3 next_ray_direction_global = vec3(
-        next_ray_direction.x * Nb.x + next_ray_direction.y * inter.normal.x + next_ray_direction.z * Nt.x,
-        next_ray_direction.x * Nb.y + next_ray_direction.y * inter.normal.y + next_ray_direction.z * Nt.y,
-        next_ray_direction.x * Nb.z + next_ray_direction.y * inter.normal.z + next_ray_direction.z * Nt.z
-    );
+    vec3 next_ray_direction_global = transf * next_ray_direction;
 
     Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
 
