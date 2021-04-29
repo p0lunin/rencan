@@ -192,13 +192,20 @@ mod models {
     }
 }
 
+fn calculate_sphere_pos(time: f32) -> Point3<f32> {
+    Point3::new(time.sin() * 3.0, -2.2, time.cos() * 3.0)
+}
+
 fn init_scene(device: Arc<Device>) -> Scene {
     let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
     Scene::new(
         device,
         models,
-        vec![SphereModel::new(Point3::new(0.0, -1.2, 0.0), 0.3)],
+        vec![
+            SphereModel::new(Point3::new(0.0, -1.2, 0.0), 0.3),
+            SphereModel::new(calculate_sphere_pos(0.0), 0.3)
+        ],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
@@ -211,29 +218,30 @@ fn init_scene(device: Arc<Device>) -> Scene {
         ],
         Camera::from_origin().move_at(4.185082,
                 1.1902695,
-                4.007931,).rotate(-0.24999996,
+                4.007931,).rotate(-0.34,
         0.8000001,
         0.0,),
     )
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1920, 1080), 2);
+    let app = AnimationApp::new(Screen::new(1280, 720), 2);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, 2, &"some.png");
+    let mut renderer = Renderer::new(app, 30, 2, &"some.mp4");
     let mut scene = init_scene(device);
-/*
-    for i in 0..1 {
+
+    for i in 0..30 {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene);
 
-        scene.update_camera(|camera| {
-            camera.rotate(0.0, 0.01, 0.0)
+        scene.data.sphere_models = scene.data.sphere_models.change(|mut spheres| {
+            spheres[1].center = calculate_sphere_pos(i as f32 / 30.0);
+            spheres
         });
     }
     renderer.end_video();
-*/
-    renderer.render_frame_to_image(&mut scene);
+
+    //renderer.render_frame_to_image(&mut scene);
 
 }

@@ -58,7 +58,7 @@ layout(push_constant) readonly uniform RandomSeed {
 } random;
 
 #include "../include/ray_tracing.glsl"
-
+/*
 vec3 uniform_sample_hemisphere(float r1, float r2) {
     float sinTheta = sqrt(1 - r1 * r1);
     float phi = 2 * PI * r2;
@@ -66,22 +66,30 @@ vec3 uniform_sample_hemisphere(float r1, float r2) {
     vec3 direction = vec3(xz.x, r1, xz.y);
 
     return direction;
+}*/
+
+vec3 uniform_sample_hemisphere(float r1, float r2) {
+    vec3 direction = vec3(
+        sqrt(r1) * cos(2 * PI * r2),
+        sqrt(1 - r1),
+        sqrt(r1) * sin(2 * PI * r2)
+    );
+
+    return direction;
 }
 
-mat3 create_coordinate_system(vec3 normal) {
-    vec3 normal_x;
+void create_coordinate_system(vec3 normal, out vec3 normal_t, out vec3 normal_b) {
     float deleter;
     if (abs(normal.x) > abs(normal.y)) {
-        normal_x = vec3(normal.z, 0, -normal.x);
+        normal_t = vec3(normal.z, 0, -normal.x);
         deleter = sqrt(normal.x * normal.x + normal.z * normal.z);
     }
     else {
-        normal_x = vec3(0, -normal.z, normal.y);
+        normal_t = vec3(0, -normal.z, normal.y);
         deleter = sqrt(normal.y * normal.y + normal.z * normal.z);
     }
-    normal_x /= deleter;
-    vec3 normal_y = cross(normal, normal_x);
-    return mat3(normal_x, normal, normal_y);
+    normal_t /= deleter;
+    normal_b = cross(normal, normal_t);
 }
 
 uint next_idx() {
@@ -98,10 +106,16 @@ void main() {
 
     r1 = rand(vec2(random.val1*(random.offset+idx), random.val2*(random.offset+idx)));
     r2 = rand(vec2(random.val2*(random.offset+idx), r1));
-    vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
-    mat3 transf = create_coordinate_system(inter.normal);
 
-    vec3 next_ray_direction_global = transf * next_ray_direction;
+    vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
+    vec3 Nt, Nb;
+    create_coordinate_system(inter.normal, Nt, Nb);
+
+    vec3 next_ray_direction_global = vec3(
+        next_ray_direction.x * Nb.x + next_ray_direction.y * inter.normal.x + next_ray_direction.z * Nt.x,
+        next_ray_direction.x * Nb.y + next_ray_direction.y * inter.normal.y + next_ray_direction.z * Nt.y,
+        next_ray_direction.x * Nb.z + next_ray_direction.y * inter.normal.z + next_ray_direction.z * Nt.z
+    );
 
     Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
 

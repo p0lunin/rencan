@@ -495,35 +495,35 @@ impl CommandFactory for LightningV2CommandFactory {
                 })
                 .build();
 
-            let cmd_divide = ctx
-                .create_command_buffer()
-                .update_with(|buf| {
-                    self.divide_factory.add_divider_to_buffer(workgroups_set3.1.clone(), &mut buf.0);
-                    buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
-                })
-                .build();
+                let cmd_divide = ctx
+                    .create_command_buffer()
+                    .update_with(|buf| {
+                        self.divide_factory.add_divider_to_buffer(workgroups_set3.1.clone(), &mut buf.0);
+                        buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
+                    })
+                    .build();
 
-            let this_fut = fut
-                .then_execute_same_queue(cmd_zeros)
-                .unwrap()
-                .then_execute_same_queue(cmd_make_gi_rays)
-                .unwrap()
-                .then_execute_same_queue(cmd_divide)
-                .unwrap()
-                .then_signal_semaphore()
-                .boxed();
-            fut = self.add_gi_lightning_commands(
-                &ctx,
-                workgroups_set3.0.clone(),
-                workgroups_set1.0.clone(),
-                workgroups_set1.1.clone(),
-                gi_intersections_set.clone(),
-                intersections_set.clone(),
-                image_buffer_set.clone(),
-                gi_thetas_set.clone(),
-                this_fut,
-            );
-            fut.flush().unwrap();
+                let this_fut = fut
+                    .then_execute_same_queue(cmd_zeros)
+                    .unwrap()
+                    .then_execute_same_queue(cmd_make_gi_rays)
+                    .unwrap()
+                    .then_execute_same_queue(cmd_divide)
+                    .unwrap()
+                    .then_signal_semaphore()
+                    .boxed();
+                fut = self.add_gi_lightning_commands(
+                    &ctx,
+                    workgroups_set3.0.clone(),
+                    workgroups_set1.0.clone(),
+                    workgroups_set1.1.clone(),
+                    gi_intersections_set.clone(),
+                    intersections_set.clone(),
+                    image_buffer_set.clone(),
+                    gi_thetas_set.clone(),
+                    this_fut,
+                );
+                fut.flush().unwrap();
         }
 
         let cmd_last_copy_command = ctx
@@ -541,7 +541,7 @@ impl CommandFactory for LightningV2CommandFactory {
 }
 
 #[derive(Clone)]
-struct OneBufferSet<Buf>(Buf, Arc<dyn DescriptorSet + Send + Sync>);
+pub struct OneBufferSet<Buf>(pub Buf, pub Arc<dyn DescriptorSet + Send + Sync>);
 
 impl<Buf> OneBufferSet<Buf>
 where

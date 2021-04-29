@@ -76,7 +76,11 @@ impl MakeGiRaysCommandFactory {
                 workgroups_input,
                 self.pipeline.clone(),
                 sets,
-                (rand1, rand2, ctx.app_info.size_of_image_array() as u32 * ctx.render_step),
+                (
+                    rand1,
+                    rand2,
+                    ctx.app_info.size_of_image_array() as u32 * ctx.render_step,
+                ),
                 std::iter::empty(),
             )
             .unwrap();
