@@ -228,9 +228,9 @@ fn main() {
     let app = AnimationApp::new(Screen::new(1280, 720), 2);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, 2, &"some.mp4");
+    let mut renderer = Renderer::new(app, 30, 2, &"some.png");
     let mut scene = init_scene(device);
-
+/*
     for i in 0..30 {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene);
@@ -241,7 +241,7 @@ fn main() {
         });
     }
     renderer.end_video();
-
-    //renderer.render_frame_to_image(&mut scene);
+*/
+    renderer.render_frame_to_image(&mut scene);
 
 }

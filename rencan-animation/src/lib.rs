@@ -378,7 +378,7 @@ impl Renderer {
                                 );
                             })
                             .build();
-
+/*
                         let mut output_img = None;
                         let cmd2 = ctx.create_command_buffer()
                             .update_with(|buf| {
@@ -394,13 +394,13 @@ impl Renderer {
                                 output_img = Some(img);
                             })
                             .build();
+
+ */
                         let fut = fut
                             .then_execute(ctx.graphics_queue(), cmd)
                             .unwrap()
-                            .then_execute_same_queue(cmd2)
-                            .unwrap()
                             .boxed();
-                        (fut, output_img.unwrap())
+                        (fut, image.clone())
                     }
                 }
             )

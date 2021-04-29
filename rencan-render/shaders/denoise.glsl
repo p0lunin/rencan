@@ -89,7 +89,7 @@ void main() {
 
     float cum_w = 0.0;
     for (int i = 0; i<25; i++) {
-        ivec2 xy = min(max(pixel_pos + offset[i] * 3, ivec2(0)), ivec2(screen));
+        ivec2 xy = min(max(pixel_pos + offset[i], ivec2(0)), ivec2(screen));
 
         vec3 ctmp = imageLoad(inputImage, xy).xyz;
         vec3 t = cval - ctmp;
@@ -102,5 +102,5 @@ void main() {
     }
 
     vec3 color = sum/cum_w;
-    imageStore(resultImage, pixel_pos, vec4(cval, 1.0));
+    imageStore(resultImage, pixel_pos, vec4(color, 1.0));
 }
