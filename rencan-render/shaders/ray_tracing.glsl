@@ -66,6 +66,7 @@ layout(set = 6, binding = 0, rgba8) writeonly uniform image2D resultImage;
 
 layout(push_constant) readonly uniform Offsets {
     uint offset;
+    uint msaa;
 } offsets;
 
 #include "include/ray_tracing.glsl"
@@ -159,8 +160,8 @@ Ray compute_primary_ray(
 
     vec3 origin = camera_origin;
 
-    float x = (2 * ((this_point.x + 0.5) / float(screen.x * 2)) - 1) * aspect_ratio * scale;
-    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y * 2))) * scale;
+    float x = (2 * ((this_point.x + 0.5) / float(screen.x * offsets.msaa)) - 1) * aspect_ratio * scale;
+    float y = (1 - 2 * ((this_point.y + 0.5) / float(screen.y * offsets.msaa))) * scale;
 
     vec3 direction = normalize(camera_rotation * vec3(x, y, -1.0));
 
@@ -172,7 +173,7 @@ void main() {
 
     Ray ray = compute_primary_ray(
         screen,
-        uvec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2)),
+        uvec2((offsets.offset + idx) % (screen.x * offsets.msaa), (offsets.offset + idx) / (screen.x * offsets.msaa)),
         fov,
         pos,
         rotation
@@ -209,6 +210,13 @@ void main() {
         uint intersection_idx = atomicAdd(count_intersections, 1);
         intersections[intersection_idx] = inter;
 
-        imageStore(resultImage, ivec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2)), vec4(color, 1.0));
+        imageStore(
+            resultImage,
+            ivec2(
+                (offsets.offset + idx) % (screen.x * offsets.msaa),
+                (offsets.offset + idx) / (screen.x * offsets.msaa)
+            ),
+            vec4(color, 1.0)
+        );
     }
 }

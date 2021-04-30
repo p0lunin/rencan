@@ -23,11 +23,12 @@ layout(set = 2, binding = 0, rgba8) uniform image2D resultImage;
 
 layout(push_constant) readonly uniform Offsets {
     uint offset;
+    uint msaa;
 } offsets;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    ivec2 pixel_pos = ivec2((offsets.offset + idx) % (screen.x * 2), (offsets.offset + idx) / (screen.x * 2));
+    ivec2 pixel_pos = ivec2((offsets.offset + idx) % (screen.x * offsets.msaa), (offsets.offset + idx) / (screen.x * offsets.msaa));
 
     uvec4 input_color = colors[idx];
 

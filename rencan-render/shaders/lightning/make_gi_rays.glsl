@@ -58,7 +58,7 @@ layout(push_constant) readonly uniform RandomSeed {
 } random;
 
 #include "../include/ray_tracing.glsl"
-/*
+
 vec3 uniform_sample_hemisphere(float r1, float r2) {
     float sinTheta = sqrt(1 - r1 * r1);
     float phi = 2 * PI * r2;
@@ -66,8 +66,8 @@ vec3 uniform_sample_hemisphere(float r1, float r2) {
     vec3 direction = vec3(xz.x, r1, xz.y);
 
     return direction;
-}*/
-
+}
+/*
 vec3 uniform_sample_hemisphere(float r1, float r2) {
     vec3 direction = vec3(
         sqrt(r1) * cos(2 * PI * r2),
@@ -76,22 +76,22 @@ vec3 uniform_sample_hemisphere(float r1, float r2) {
     );
 
     return direction;
-}
+}*/
 
 mat3 create_coordinate_system(vec3 normal) {
+    vec3 normal_x;
     float deleter;
-    vec3 normal_t, normal_b;
     if (abs(normal.x) > abs(normal.y)) {
-        normal_t = vec3(normal.z, 0, -normal.x);
+        normal_x = vec3(normal.z, 0, -normal.x);
         deleter = sqrt(normal.x * normal.x + normal.z * normal.z);
     }
     else {
-        normal_t = vec3(0, -normal.z, normal.y);
+        normal_x = vec3(0, -normal.z, normal.y);
         deleter = sqrt(normal.y * normal.y + normal.z * normal.z);
     }
-    normal_t /= deleter;
-    normal_b = cross(normal, normal_t);
-    return mat3(normal_t, normal, normal_b);
+    normal_x /= deleter;
+    vec3 normal_y = cross(normal, normal_x);
+    return mat3(normal_x, normal, normal_y);
 }
 
 uint next_idx() {

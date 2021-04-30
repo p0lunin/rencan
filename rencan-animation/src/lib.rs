@@ -170,7 +170,8 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(app: AnimationApp, fps: u32, msaa: u8, output_file: impl AsRef<str>) -> Self {
+    pub fn new(app: AnimationApp, fps: u32, output_file: impl AsRef<str>) -> Self {
+        let msaa = app.app.info().msaa;
         let (sender, receiver) = std::sync::mpsc::sync_channel::<Arc<CpuAccessibleBuffer<[u8]>>>(10);
 
         let file = output_file.as_ref().to_string();
@@ -457,7 +458,7 @@ fn init_instance() -> Arc<Instance> {
 fn init_app(instance: Arc<Instance>, screen: Screen, msaa: u8) -> App {
     let (device, graphics_queue) = init_device_and_queue(&instance);
 
-    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen, 2, msaa))
+    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen, msaa as u32 * 2, msaa))
         .then_ray_tracing_pipeline()
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
