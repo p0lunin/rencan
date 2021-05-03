@@ -90,18 +90,17 @@ vec3 _intersect_box(HitBoxRectangle hit_box, Ray ray) {
     return vec3(1.0, tN, tF);
 }
 
-Intersection trace_triangles(
+bool trace_triangles(
     Ray origin_ray,
     uint pixel_id,
-    float max_distance
+    inout float distance,
+    out Intersection inter
 ) {
-    float distance = max_distance;
-
     uint offset_vertices = 0;
     uint offset_indexes = 0;
 
-    Intersection inter = intersection_none();
     Ray ray = origin_ray;
+    bool is_inter = false;
 
     for (int model_idx = 0; model_idx < model_counts; model_idx++) {
         HitBoxRectangle hit_box = hit_boxes[model_idx];
@@ -137,11 +136,11 @@ Intersection trace_triangles(
                     inter_point,
                     normal,
                     model.material,
-                    res.barycentric_coords,
                     res.distance,
                     origin_ray,
                     pixel_id
                 );
+                is_inter = true;
                 break;
             }
         }
@@ -149,18 +148,17 @@ Intersection trace_triangles(
         offset_vertices += model.vertices_length;
     }
 
-    return inter;
+    return is_inter;
 }
 
-Intersection trace_spheres(
+bool trace_spheres(
     Ray origin_ray,
     uint pixel_id,
-    float max_distance
+    inout float distance,
+    out Intersection inter
 ) {
-    float distance = max_distance;
-
-    Intersection inter = intersection_none();
     Ray ray = origin_ray;
+    bool is_inter = false;
 
     for (int model_idx = 0; model_idx < sphere_models_count; model_idx++) {
         ModelInfo model = sphere_models[model_idx];
@@ -183,30 +181,29 @@ Intersection trace_spheres(
                 inter_point,
                 normal,
                 model.material,
-                res.barycentric_coords,
                 res.distance,
                 origin_ray,
                 pixel_id
             );
+            is_inter = true;
             break;
         }
     }
 
-    return inter;
+    return is_inter;
 }
 
-Intersection trace(
+bool trace(
     Ray origin_ray,
-    uint pixel_id
+    uint pixel_id,
+    out Intersection inter
 ) {
-    Intersection inter_1 = trace_triangles(origin_ray, pixel_id, 1.0/0.0);
-    if (inter_1.is_intersect == 0) {
-        return trace_spheres(origin_ray, pixel_id, 1.0/0.0);
-    }
-    else {
-        Intersection inter_2 = trace_spheres(origin_ray, pixel_id, inter_1.distance);
-        return inter_2.is_intersect == 1 ? inter_2 : inter_1;
-    }
+    float distance = 1.0/0.0;
+    bool inter1 = trace_triangles(origin_ray, pixel_id, distance, inter);
+    Intersection intersection2;
+    bool inter2 = trace_spheres(origin_ray, pixel_id, distance, intersection2);
+    if (inter2) inter = intersection2;
+    return inter1 || inter2;
 }
 
 bool trace_any(
@@ -248,6 +245,9 @@ bool trace_any(
         offset_vertices += model.vertices_length;
     }
 
-    return trace_spheres(origin_ray, 0, 1.0/0.0).is_intersect == 1;
+    Intersection _int;
+    float dist = 1.0/0.0;
+
+    return trace_spheres(origin_ray, 0, dist, _int);
 }
 

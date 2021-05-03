@@ -178,26 +178,26 @@ void main() {
         pos,
         rotation
     );
-    Intersection inter = trace(ray, idx);
-
-    if (inter.is_intersect == 0) {
-        return;
-    }
+    Intersection inter;
+    bool is_inter = trace(ray, idx, inter);
 
     bool computed = false;
     vec3 color = vec3(0.0);
-    for (int i = 0; !computed && i < 100; i++) {
+    for (int i = 0; is_inter && !computed && i < 100; i++) {
         switch (inter.model_material.material) {
             case MATERIAL_DIFFUSE:
                 color = compute_color_diffuse_material(inter);
                 computed = true;
+                is_inter = true;
                 break;
             case MATERIAL_MIRROR:
                 vec3 next_direction = reflect(inter.ray.direction, inter.normal);
                 Ray reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
-                Intersection mirror_inter = trace(reflect_ray, idx);
-                if (mirror_inter.is_intersect == 0.0) {
+                Intersection mirror_inter;
+                bool is_mirror_inter = trace(reflect_ray, idx, mirror_inter);
+                if (!is_mirror_inter) {
                     computed = true;
+                    is_inter = false;
                 }
                 else {
                     inter = mirror_inter;
@@ -206,7 +206,7 @@ void main() {
         }
     }
 
-    if (computed && inter.is_intersect == 1 && inter.model_material.material == MATERIAL_DIFFUSE) {
+    if (computed && is_inter && inter.model_material.material == MATERIAL_DIFFUSE) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
         intersections[intersection_idx] = inter;
 

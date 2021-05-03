@@ -45,20 +45,21 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     Intersection inter = previous_intersections[idx];
+    bool is_inter = true;
     uint depth = 0;
 
     vec3 next_direction;
     Ray reflect_ray;
 
-    while (inter.is_intersect == 1 && inter.model_material.material == MATERIAL_MIRROR && depth < MAX_DEPTH) {
+    while (is_inter && inter.model_material.material == MATERIAL_MIRROR && depth < MAX_DEPTH) {
         depth += 1;
         next_direction = reflect(inter.ray.direction, inter.normal);
         reflect_ray = Ray(inter.point, next_direction, 1.0 / 0.0);
 
-        inter = trace(reflect_ray, inter.pixel_id);
+        is_inter = trace(reflect_ray, inter.pixel_id, inter);
     }
 
-    if (inter.is_intersect == 1 && inter.model_material.material != MATERIAL_MIRROR && depth >= 1) {
+    if (is_inter && inter.model_material.material != MATERIAL_MIRROR && depth >= 1) {
         previous_intersections[idx] = inter;
     }
 }

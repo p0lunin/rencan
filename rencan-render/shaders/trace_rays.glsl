@@ -53,9 +53,10 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     Ray ray = rays[idx];
-    Intersection inter = trace(ray, idx);
+    Intersection inter;
+    bool is_inter = trace(ray, idx, inter);
 
-    if (inter.is_intersect == 1) {
+    if (is_inter) {
         uint intersection_idx = atomicAdd(count_intersections, 1);
         intersections[intersection_idx] = inter;
     }

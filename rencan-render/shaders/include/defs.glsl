@@ -22,8 +22,6 @@ struct ModelInfo {
 struct Intersection {
     vec3 point;
     vec3 normal;
-    vec2 barycentric_coords;
-    uint is_intersect;
     ModelMaterial model_material;
     float distance;
     Ray ray;
@@ -40,18 +38,11 @@ Intersection intersection_succ(
     vec3 point,
     vec3 normal,
     ModelMaterial model_material,
-    vec2 barycentric_coords,
     float distance,
     Ray ray,
     uint pixel_id
 ) {
-    return Intersection(point, normal, barycentric_coords, 1, model_material, distance, ray, pixel_id);
-}
-
-Intersection intersection_none() {
-    Intersection intersect;
-    intersect.is_intersect = 0;
-    return intersect;
+    return Intersection(point, normal, model_material, distance, ray, pixel_id);
 }
 
 struct DirectLight {

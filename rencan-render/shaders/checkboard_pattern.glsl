@@ -48,17 +48,12 @@ void main() {
 
     ivec2 pos = ivec2(idx % screen.x, idx / screen.x);
 
-    if (inter.is_intersect == 1) {
-        vec3 local_coords = inter.point;
+    vec3 local_coords = inter.point;
 
-        local_coords = local_coords / CHESSBOARD_SCALE;
+    local_coords = local_coords / CHESSBOARD_SCALE;
 
-        float chessboard = fract((floor(local_coords.x) + floor(local_coords.y) + floor(local_coords.z)) * 0.5);
-        chessboard = chessboard * 2;
+    float chessboard = fract((floor(local_coords.x) + floor(local_coords.y) + floor(local_coords.z)) * 0.5);
+    chessboard = chessboard * 2;
 
-        imageStore(resultImage, pos, vec4(chessboard));
-    }
-    else if (inter.is_intersect == 0) {
-        imageStore(resultImage, pos, vec4(0.3, 0.4, 0.7, 0.0));
-    }
+    imageStore(resultImage, pos, vec4(chessboard));
 }
