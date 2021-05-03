@@ -49,14 +49,15 @@ impl Model {
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
-        ModelUniformInfo {
-            isometry: (Isometry3::from_parts(
+        let isometry = Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
             )
-            .to_matrix()
-                * self.scaling)
-                .into(),
+            .to_matrix() * self.scaling;
+        let inverse_isometry = isometry.try_inverse().unwrap();
+        ModelUniformInfo {
+            isometry: isometry.into(),
+            inverse_isometry: inverse_isometry.into(),
             model_id,
             _offset: 0,
             vertices_length: self.vertices.len() as u32,
@@ -72,6 +73,7 @@ impl Model {
 #[repr(C, packed)]
 pub struct ModelUniformInfo {
     pub isometry: mint::ColumnMatrix4<f32>,
+    pub inverse_isometry: mint::ColumnMatrix4<f32>,
     pub model_id: u32,
     pub vertices_length: u32,
     pub indexes_length: u32,
@@ -141,14 +143,15 @@ impl SphereModel {
 
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
         let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
-        ModelUniformInfo {
-            isometry: (Isometry3::from_parts(
+        let isometry = Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
             )
-            .to_matrix()
-                * self.scaling)
-                .into(),
+            .to_matrix() * self.scaling;
+        let inverse_isometry = isometry.try_inverse().unwrap();
+        ModelUniformInfo {
+            isometry: isometry.into(),
+            inverse_isometry: inverse_isometry.into(),
             model_id,
             vertices_length: 0,
             indexes_length: 0,

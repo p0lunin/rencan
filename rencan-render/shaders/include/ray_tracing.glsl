@@ -106,7 +106,7 @@ bool trace_triangles(
         HitBoxRectangle hit_box = hit_boxes[model_idx];
         ModelInfo model = models[model_idx];
 
-        mat4 global_to_model = inverse(model.isometry);
+        mat4 global_to_model = model.inverse_isometry;
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
         ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
@@ -163,7 +163,7 @@ bool trace_spheres(
     for (int model_idx = 0; model_idx < sphere_models_count; model_idx++) {
         ModelInfo model = sphere_models[model_idx];
 
-        mat4 global_to_model = inverse(model.isometry);
+        mat4 global_to_model = model.inverse_isometry;
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
         ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
@@ -193,6 +193,29 @@ bool trace_spheres(
     return is_inter;
 }
 
+bool trace_any_spheres(
+    Ray origin_ray
+) {
+    Ray ray = origin_ray;
+
+    for (int model_idx = 0; model_idx < sphere_models_count; model_idx++) {
+        ModelInfo model = sphere_models[model_idx];
+
+        mat4 global_to_model = model.inverse_isometry;
+        ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
+        ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
+
+        Sphere sphere = spheres[model_idx];
+
+        IntersectResult res = _intersect_sphere(sphere, ray);
+        if (res.intersect && res.distance < ray.max_distance) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool trace(
     Ray origin_ray,
     uint pixel_id,
@@ -218,7 +241,7 @@ bool trace_any(
         HitBoxRectangle hit_box = hit_boxes[model_idx];
         ModelInfo model = models[model_idx];
 
-        mat4 global_to_model = inverse(model.isometry);
+        mat4 global_to_model = model.inverse_isometry;
         ray.origin = (global_to_model * vec4(origin_ray.origin, 1.0)).xyz;
         ray.direction = (global_to_model * vec4(origin_ray.direction, 0.0)).xyz;
 
@@ -245,9 +268,6 @@ bool trace_any(
         offset_vertices += model.vertices_length;
     }
 
-    Intersection _int;
-    float dist = 1.0/0.0;
-
-    return trace_spheres(origin_ray, 0, dist, _int);
+    return trace_any_spheres(origin_ray);
 }
 
