@@ -74,6 +74,9 @@ impl App {
         let (mut buffers, mut fut_local) = self.create_buffers(image.clone(), scene);
         let fut: Box<dyn GpuFuture> = Box::new(previous.join(fut_local));
 
+        // device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+        let recommend_workgroups_length = 64;
+
         let mut ctx = CommandFactoryContext {
             app_info: &self.info,
             buffers: buffers.clone(),
@@ -99,7 +102,7 @@ impl App {
                 buffers: buffers.clone(),
                 scene,
                 camera: &scene.data.camera,
-                render_step: i
+                render_step: i,
             };
             for factory in self.commands.iter_mut() {
                 fut = factory.make_command(ctx.clone(), fut);

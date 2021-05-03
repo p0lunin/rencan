@@ -85,13 +85,13 @@ void main() {
     vec3 sum = vec3(0.0);
     float c_phi = 1.0;
     float n_phi = 0.5;
-	vec3 cval = imageLoad(inputImage, pixel_pos).xyz;
+	vec3 cval = clamp(imageLoad(inputImage, pixel_pos).xyz, 0, 1);
 
     float cum_w = 0.0;
     for (int i = 0; i<25; i++) {
-        ivec2 xy = min(max(pixel_pos + offset[i], ivec2(0)), ivec2(screen));
+        ivec2 xy = min(max(pixel_pos + offset[i] * 2, ivec2(0)), ivec2(screen));
 
-        vec3 ctmp = imageLoad(inputImage, xy).xyz;
+        vec3 ctmp = clamp(imageLoad(inputImage, xy).xyz, 0, 1);
         vec3 t = cval - ctmp;
         float dist2 = dot(t,t);
         float c_w = min(exp(-(dist2)/c_phi), 1.0);
@@ -102,5 +102,6 @@ void main() {
     }
 
     vec3 color = sum/cum_w;
-    imageStore(resultImage, pixel_pos, vec4(color, 1.0));
+    vec3 out_color = cval * 0.3 + color * 0.7;
+    imageStore(resultImage, pixel_pos, vec4(out_color, 1.0));
 }

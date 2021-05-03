@@ -28,6 +28,7 @@ use vulkano::image::{ImageAccess};
 use rencan_render::commands::raw::msaa::MsaaCommandFactory;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use rencan_render::commands::raw::denoise::DenoiseCommandFactory;
+use std::time::Instant;
 
 pub struct FFMpeg {
     context: ffmpeg::format::context::Output,
@@ -184,11 +185,14 @@ impl Renderer {
                 height,
                 fps as i32
             );
+            let mut i = 0;
             for buf in receiver.iter() {
                 let mut content = buf.read().unwrap();
-                println!("Frame rendered! Passing to ffmpeg...");
+                println!("Frame {} gets! Passing to ffmpeg...", i);
 
                 ffmpeg.write_frame(&content[..]);
+                println!("Frame {} passed...", i);
+                i += 1;
             }
             ffmpeg.end();
         });
@@ -209,10 +213,10 @@ impl Renderer {
         )
         .unwrap();
 
-        let msaa = Arc::new(MsaaCommandFactory::new(app.vulkan_device(), msaa as u32));
+        let msaa = Arc::new(MsaaCommandFactory::new(app.app.info(), msaa as u32));
         let denoise = Arc::new(
             DenoiseCommandFactory::new(
-                app.vulkan_device(),
+                app.app.info(),
                 buffer_image.image().format(),
                 buffer_image.image().dimensions().width_height()
             )
@@ -221,54 +225,9 @@ impl Renderer {
         Renderer { handle, sender, app, output_file: output_file.as_ref().into(), buffer_image, msaa, denoise }
     }
 
-    pub fn render_frame_to_video(&mut self, scene: &mut Scene) {
-        let (fut, _) = self
-            .app
-            .app
-            .render(
-                vulkano::sync::now(self.app.vulkan_device()),
-                scene,
-                {
-                    let mut dims = self.app.app.info().screen.0;
-                    dims[0] *= self.app.app.info().msaa as u32;
-                    dims[1] *= self.app.app.info().msaa as u32;
-                    let image = ImageView::new(
-                        AttachmentImage::with_usage(
-                            self.app.vulkan_device(),
-                            dims,
-                            self.buffer_image.image().format(),
-                            ImageUsage {
-                                storage: true,
-                                transfer_destination: true,
-                                ..ImageUsage::none()
-                            }
-                        ).unwrap()
-                    ).unwrap();
-                    move |_| image
-                },
-                {
-                    let image = self.buffer_image.clone();
-                    let msaa = self.msaa.clone();
-                    move |fut, ctx| {
-                        let cmd = ctx.create_command_buffer()
-                            .update_with(|buf| {
-                                msaa.add_msaa(
-                                    &ctx,
-                                    PersistentDescriptorSet::start(msaa.output_image_layout())
-                                        .add_image(image.clone())
-                                        .unwrap()
-                                        .build()
-                                        .unwrap(),
-                                    &mut buf.0
-                                )
-                            })
-                            .build();
-                        let fut = fut.then_execute(ctx.graphics_queue(), cmd).unwrap().boxed();
-                        (fut, image)
-                    }
-                }
-            )
-            .unwrap();
+    pub fn render_frame_to_video(&mut self, scene: &mut Scene, frame_num: u32) {
+        println!("Start renders {} frame", frame_num);
+        let (fut, img) = self.render(scene);
 
         let image_buf = CpuAccessibleBuffer::from_iter(
             self.app.vulkan_device(),
@@ -283,12 +242,16 @@ impl Renderer {
             self.app.app.info().graphics_queue.family(),
         )
         .unwrap();
-        cmd.copy_image_to_buffer(self.buffer_image.image().clone(), image_buf.clone()).unwrap();
+        cmd.copy_image_to_buffer(img.image().clone(), image_buf.clone()).unwrap();
         let cmd = cmd.build().unwrap();
 
         let copy_fut = fut.then_execute(self.app.app.info().graphics_queue.clone(), cmd).unwrap();
 
+        println!("All commands passed, wait...");
+
         copy_fut.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+
+        println!("Frame {} rendered!", frame_num);
 
         self.sender.send(image_buf).unwrap();
     }
@@ -314,7 +277,10 @@ impl Renderer {
 
         let copy_fut = fut.then_execute(self.app.app.info().graphics_queue.clone(), cmd).unwrap();
 
+        let instant = Instant::now();
+
         copy_fut.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+        println!("Render time: {}ms", instant.elapsed().as_millis());
         let mut content = image_buf.read().unwrap();
 
         let image = image::ImageBuffer::<Rgba<u8>, _>::from_raw(
@@ -379,7 +345,7 @@ impl Renderer {
                                 );
                             })
                             .build();
-/*
+
                         let mut output_img = None;
                         let cmd2 = ctx.create_command_buffer()
                             .update_with(|buf| {
@@ -396,12 +362,14 @@ impl Renderer {
                             })
                             .build();
 
- */
+
                         let fut = fut
                             .then_execute(ctx.graphics_queue(), cmd)
                             .unwrap()
+                            .then_execute_same_queue(cmd2)
+                            .unwrap()
                             .boxed();
-                        (fut, image.clone())
+                        (fut, output_img.unwrap())
                     }
                 }
             )
@@ -414,9 +382,9 @@ pub struct AnimationApp {
 }
 
 impl AnimationApp {
-    pub fn new(screen: Screen, msaa: u8) -> Self {
+    pub fn new(screen: Screen, steps: u32, msaa: u8) -> Self {
         let instance = init_instance();
-        let app = init_app(instance, screen, msaa);
+        let app = init_app(instance, screen, steps, msaa);
 
         Self { app }
     }
@@ -455,14 +423,24 @@ fn init_instance() -> Arc<Instance> {
     Instance::new(None, &InstanceExtensions::none(), None).unwrap()
 }
 
-fn init_app(instance: Arc<Instance>, screen: Screen, msaa: u8) -> App {
+fn init_app(instance: Arc<Instance>, screen: Screen, steps: u32, msaa: u8) -> App {
     let (device, graphics_queue) = init_device_and_queue(&instance);
 
-    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen, msaa as u32 * 2, msaa))
+    let info = AppInfo::new(
+        instance,
+        graphics_queue,
+        device.clone(),
+        screen,
+        steps,
+        msaa,
+        32
+    );
+
+    let app = AppBuilder::new(info.clone())
         .then_ray_tracing_pipeline()
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
-            device.clone(),
+            &info,
             64,
         )))
         .build();

@@ -5,6 +5,7 @@ use vulkano::{
     instance::Instance,
 };
 
+#[derive(Clone)]
 pub struct AppInfo {
     pub instance: Arc<Instance>,
     pub graphics_queue: Arc<Queue>,
@@ -12,6 +13,7 @@ pub struct AppInfo {
     pub screen: Screen,
     pub render_steps: u32,
     pub msaa: u8,
+    pub recommend_workgroups_length: u32,
 }
 
 impl AppInfo {
@@ -22,8 +24,9 @@ impl AppInfo {
         screen: Screen,
         render_steps: u32,
         msaa: u8,
+        recommend_workgroups_length: u32,
     ) -> Self {
-        AppInfo { instance, graphics_queue, device, screen, render_steps, msaa }
+        AppInfo { instance, graphics_queue, device, screen, render_steps, msaa, recommend_workgroups_length }
     }
 
     pub fn size_of_image_array(&self) -> usize {

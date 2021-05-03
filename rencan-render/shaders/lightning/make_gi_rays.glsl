@@ -51,10 +51,20 @@ layout(set = 5, binding = 0) writeonly buffer GiThetas {
     float gi_ethas[];
 };
 
+layout(set = 6, binding = 0) readonly uniform Info {
+    uvec2 screen;
+};
+layout(std140, set = 6, binding = 1) readonly uniform Camera {
+    vec3 pos;
+    mat3 rotation;
+    float fov;
+};
+
 layout(push_constant) readonly uniform RandomSeed {
     float val1;
     float val2;
     uint offset;
+    uint msaa;
 } random;
 
 #include "../include/ray_tracing.glsl"
@@ -102,12 +112,16 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     Intersection inter = previous_intersections[idx];
+    ivec2 pixel_pos = ivec2(
+        (random.offset + idx) % (screen.x * random.msaa),
+        (random.offset + idx) / (screen.x * random.msaa)
+    );
 
     float r1;
     float r2;
 
-    r1 = rand(vec2(random.val1*(random.offset+idx), random.val2*(random.offset+idx)));
-    r2 = rand(vec2(random.val2*(random.offset+idx), r1));
+    r1 = rand(pixel_pos * random.val1);
+    r2 = rand(pixel_pos * random.val2);
 
     vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
     mat3 transf = create_coordinate_system(inter.normal);

@@ -225,7 +225,7 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
-    let app = AnimationApp::new(Screen::new(1280, 720), 4);
+    let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
     let device = app.vulkan_device();
 
     let mut renderer = Renderer::new(app, 30, &"some.png");
@@ -233,7 +233,7 @@ fn main() {
 /*
     for i in 0..30 {
         println!("Render frame {}", i);
-        renderer.render_frame_to_video(&mut scene);
+        renderer.render_frame_to_video(&mut scene, i);
 
         scene.data.sphere_models = scene.data.sphere_models.change(|mut spheres| {
             spheres[1].center = calculate_sphere_pos(i as f32 / 30.0);
@@ -243,5 +243,4 @@ fn main() {
     renderer.end_video();
 */
     renderer.render_frame_to_image(&mut scene);
-
 }

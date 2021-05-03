@@ -7,7 +7,7 @@ pub trait AppBuilderRtExt: Sized {
 
 impl AppBuilderRtExt for AppBuilder {
     fn then_ray_tracing_pipeline(self) -> Self {
-        let device = self.info().device.clone();
-        self.then_command(Box::new(commands::RayTraceCommandFactory::new(device)))
+        let cmd = Box::new(commands::RayTraceCommandFactory::new(self.info()));
+        self.then_command(cmd)
     }
 }

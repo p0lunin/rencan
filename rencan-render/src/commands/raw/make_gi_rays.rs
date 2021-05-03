@@ -1,4 +1,4 @@
-use crate::core::CommandFactoryContext;
+use crate::core::{CommandFactoryContext, AppInfo};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
@@ -25,9 +25,10 @@ pub struct MakeGiRaysCommandFactory {
 }
 
 impl MakeGiRaysCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+    pub fn new(info: &AppInfo) -> Self {
+        let device = &info.device;
+        let shader = cs::Shader::load(device.clone()).unwrap();
+        let local_size_x = info.recommend_workgroups_length;
 
         let shader = cs::Shader::load(device.clone()).unwrap();
         let constants = cs::SpecializationConstants { constant_0: local_size_x, };
@@ -67,6 +68,7 @@ impl MakeGiRaysCommandFactory {
             workgroups_out_set,
             previous_intersections_set,
             gi_thetas_set,
+            ctx.buffers.global_app_set.clone(),
         );
 
         let (rand1, rand2) = self.give_random_numbers(sample_number);
@@ -80,6 +82,7 @@ impl MakeGiRaysCommandFactory {
                     rand1,
                     rand2,
                     ctx.app_info.size_of_image_array() as u32 * ctx.render_step,
+                    ctx.app_info.msaa
                 ),
                 std::iter::empty(),
             )

@@ -66,7 +66,7 @@ impl GuiApp {
         )
         .unwrap();
 
-        let msaa = Arc::new(MsaaCommandFactory::new(app.info().device.clone(), msaa as u32));
+        let msaa = Arc::new(MsaaCommandFactory::new(app.info(), msaa as u32));
 
         GuiApp {
             app,
@@ -272,11 +272,21 @@ fn init_app(
 ) -> (App, Arc<Queue>) {
     let (device, graphics_queue, present_queue) = init_device_and_queues(window, &instance);
 
-    let app = AppBuilder::new(AppInfo::new(instance, graphics_queue, device.clone(), screen, 2, msaa))
+    let info = AppInfo::new(
+        instance,
+        graphics_queue,
+        device.clone(),
+        screen,
+        2,
+        msaa,
+        32
+    );
+
+    let app = AppBuilder::new(info.clone())
         .then_ray_tracing_pipeline()
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
         .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
-            device.clone(),
+            &info,
             1,
         )))
         .build();

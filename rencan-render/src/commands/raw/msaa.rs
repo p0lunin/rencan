@@ -1,4 +1,4 @@
-use crate::core::CommandFactoryContext;
+use crate::core::{CommandFactoryContext, AppInfo};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
@@ -24,9 +24,10 @@ pub struct MsaaCommandFactory {
 }
 
 impl MsaaCommandFactory {
-    pub fn new(device: Arc<Device>, msaa_multiplier: u32) -> Self {
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+    pub fn new(info: &AppInfo, msaa_multiplier: u32) -> Self {
+        let device = &info.device;
+        let shader = cs::Shader::load(device.clone()).unwrap();
+        let local_size_x = info.recommend_workgroups_length;
 
         let shader = cs::Shader::load(device.clone()).unwrap();
         let constants = cs::SpecializationConstants { constant_0: local_size_x, constant_1: msaa_multiplier };

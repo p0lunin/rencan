@@ -31,6 +31,7 @@ use vulkano::{
 };
 use crate::commands::raw::make_gi_rays::MakeGiRaysCommandFactory;
 use crate::commands::raw::lights_gi::LightsGiCommandFactory;
+use crate::core::AppInfo;
 
 pub struct LightningV2CommandFactory {
     divide_factory: DivideWorkgroupsCommandFactory,
@@ -50,17 +51,18 @@ pub struct LightningV2CommandFactory {
 }
 
 impl LightningV2CommandFactory {
-    pub fn new(device: Arc<Device>, samples_per_bounce: u32) -> Self {
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+    pub fn new(info: &AppInfo, samples_per_bounce: u32) -> Self {
+        let device = &info.device;
+        let local_size_x = info.recommend_workgroups_length;
+
         LightningV2CommandFactory {
             divide_factory: DivideWorkgroupsCommandFactory::new(device.clone(), local_size_x),
-            trace_rays_factory: TraceRaysToLightCommandFactory::new(device.clone()),
-            lights_factory: LightsDiffuseCommandFactory::new(device.clone()),
-            trace_mirrors_factory: ReflectFromMirrorsCommandFactory::new(device.clone()),
-            copy_factory: CopyFromBufferToImageCommandFactory::new(device.clone()),
-            make_gi_rays_factory: MakeGiRaysCommandFactory::new(device.clone()),
-            lights_gi_factory: LightsGiCommandFactory::new(device.clone(), samples_per_bounce),
+            trace_rays_factory: TraceRaysToLightCommandFactory::new(info),
+            lights_factory: LightsDiffuseCommandFactory::new(info),
+            trace_mirrors_factory: ReflectFromMirrorsCommandFactory::new(info),
+            copy_factory: CopyFromBufferToImageCommandFactory::new(info),
+            make_gi_rays_factory: MakeGiRaysCommandFactory::new(info),
+            lights_gi_factory: LightsGiCommandFactory::new(info, samples_per_bounce),
             intersections_set: Mutable::new(0),
             image_buffer_set: Mutable::new(0),
             gi_intersections_set: Mutable::new(0),

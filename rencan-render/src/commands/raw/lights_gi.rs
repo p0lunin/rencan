@@ -1,4 +1,4 @@
-use crate::core::CommandFactoryContext;
+use crate::core::{CommandFactoryContext, AppInfo};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
@@ -22,9 +22,9 @@ pub struct LightsGiCommandFactory {
 }
 
 impl LightsGiCommandFactory {
-    pub fn new(device: Arc<Device>, samples: u32) -> Self {
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+    pub fn new(info: &AppInfo, samples: u32) -> Self {
+        let device = &info.device;
+        let local_size_x = info.recommend_workgroups_length;
         let shader = cs::Shader::load(device.clone()).unwrap();
 
         let constants = cs::SpecializationConstants { constant_0: local_size_x, constant_1: samples };

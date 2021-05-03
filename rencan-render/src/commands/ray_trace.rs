@@ -13,6 +13,7 @@ use vulkano::{
     sync::GpuFuture,
 };
 use vulkano::format::ClearValue;
+use crate::core::AppInfo;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -34,10 +35,10 @@ pub struct RayTraceCommandFactory {
 }
 
 impl RayTraceCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(info: &AppInfo) -> Self {
+        let device = &info.device;
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
+        let local_size_x = info.recommend_workgroups_length;
 
         let constants = cs::SpecializationConstants { constant_0: local_size_x };
 

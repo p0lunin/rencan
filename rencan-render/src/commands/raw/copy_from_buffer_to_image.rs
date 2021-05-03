@@ -1,4 +1,4 @@
-use crate::core::CommandFactoryContext;
+use crate::core::{CommandFactoryContext, AppInfo};
 use std::sync::Arc;
 use vulkano::{
     command_buffer::{AutoCommandBufferBuilder},
@@ -23,11 +23,11 @@ pub struct CopyFromBufferToImageCommandFactory {
 }
 
 impl CopyFromBufferToImageCommandFactory {
-    pub fn new(device: Arc<Device>) -> Self {
-        let local_size_x =
-            device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
-
+    pub fn new(info: &AppInfo) -> Self {
+        let device = &info.device;
         let shader = cs::Shader::load(device.clone()).unwrap();
+        let local_size_x = info.recommend_workgroups_length;
+
         let constants = cs::SpecializationConstants { constant_0: local_size_x };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
