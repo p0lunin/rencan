@@ -15,11 +15,11 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(set = 1, binding = 0) readonly buffer InputBuffer {
+layout(set = 1, binding = 0) restrict readonly buffer InputBuffer {
     uvec4 colors[];
 };
 
-layout(set = 2, binding = 0, rgba8) uniform image2D resultImage;
+layout(set = 2, binding = 0, rgba8) restrict uniform image2D resultImage;
 
 layout(push_constant) readonly uniform Offsets {
     uint offset;

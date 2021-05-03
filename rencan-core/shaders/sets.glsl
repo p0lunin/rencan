@@ -53,7 +53,7 @@ layout(std140, set = 4, binding = 2) readonly buffer PointLights {
     PointLight[] point_lights;
 };
 
-layout(set = 5, binding = 0, rgba8) readonly uniform image2D resultImage;
+layout(set = 5, binding = 0, rgba8) uniform image2D resultImage;
 
 layout(set = 6, binding = 0) buffer Workgroups {
     uint x_dimension;

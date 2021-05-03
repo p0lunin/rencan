@@ -17,15 +17,15 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(std140, set = 1, binding = 0) readonly buffer Intersections {
+layout(std140, set = 1, binding = 0) restrict readonly buffer Intersections {
     LightRay intersections[];
 };
 
-layout(set = 2, binding = 0) writeonly buffer ResultImage {
+layout(set = 2, binding = 0) restrict writeonly buffer ResultImage {
     uvec4 colors[];
 };
 
-layout(std140, set = 3, binding = 0) readonly buffer PreviousIntersections {
+layout(std140, set = 3, binding = 0) restrict readonly buffer PreviousIntersections {
     Intersection previous_intersections[];
 };
 

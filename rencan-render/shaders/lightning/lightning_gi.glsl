@@ -8,19 +8,19 @@ layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(constant_id = 1) const uint SAMPLES_PER_BOUNCE = 64;
 
-layout(std140, set = 0, binding = 0) readonly buffer Intersections {
+layout(std140, set = 0, binding = 0) restrict readonly buffer Intersections {
     LightRay intersections[];
 };
 
-layout(set = 1, binding = 0) writeonly buffer ResultImage {
+layout(set = 1, binding = 0) restrict writeonly buffer ResultImage {
     uvec4 colors[];
 };
 
-layout(std140, set = 2, binding = 0) readonly buffer PreviousIntersections {
+layout(std140, set = 2, binding = 0) restrict readonly buffer PreviousIntersections {
     Intersection previous_intersections[];
 };
 
-layout(set = 3, binding = 0) readonly buffer GiThethas {
+layout(set = 3, binding = 0) restrict readonly buffer GiThethas {
     float gi_thethas[];
 };
 
