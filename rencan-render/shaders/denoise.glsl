@@ -91,7 +91,7 @@ void main() {
 
     float cum_w = 0.0;
     for (int i = 0; i<25; i++) {
-        vec2 uv = pixel_coord + texel_step * offset[i] * 1.5;
+        vec2 uv = pixel_coord + texel_step * offset[i] * 2.5;
 
         vec3 ctmp = clamp(texture(inputImage, uv).xyz, 0, 1);
         vec3 t = cval - ctmp;
@@ -104,6 +104,5 @@ void main() {
     }
 
     vec3 color = sum/cum_w;
-    vec3 out_color = cval * 0.3 + color * 0.7;
     imageStore(resultImage, pixel_pos, vec4(color, 1.0));
 }
