@@ -89,6 +89,10 @@ impl DenoiseCommandFactory {
         self.output_image.clone()
     }
 
+    pub fn input_image_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
+        self.pipeline.layout().descriptor_set_layout(1).unwrap().clone()
+    }
+
     pub fn output_image_layout(&self) -> Arc<UnsafeDescriptorSetLayout> {
         self.pipeline.layout().descriptor_set_layout(2).unwrap().clone()
     }

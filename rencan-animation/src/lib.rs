@@ -29,6 +29,7 @@ use rencan_render::commands::raw::msaa::MsaaCommandFactory;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use rencan_render::commands::raw::denoise::DenoiseCommandFactory;
 use std::time::Instant;
+use vulkano::sampler::{Sampler, Filter, MipmapMode, SamplerAddressMode};
 
 pub struct FFMpeg {
     context: ffmpeg::format::context::Output,
@@ -204,6 +205,7 @@ impl Renderer {
                 vulkano::format::Format::R8G8B8A8Unorm,
                 ImageUsage {
                     storage: true,
+                    sampled: true,
                     transfer_source: true,
                     transfer_destination: true,
                     ..ImageUsage::none()
@@ -331,6 +333,7 @@ impl Renderer {
                     let image = self.buffer_image.clone();
                     let msaa = self.msaa.clone();
                     let denoise = self.denoise.clone();
+                    let device = self.app.vulkan_device();
                     move |fut, ctx| {
                         let cmd = ctx.create_command_buffer()
                             .update_with(|buf| {
@@ -349,10 +352,25 @@ impl Renderer {
                         let mut output_img = None;
                         let cmd2 = ctx.create_command_buffer()
                             .update_with(|buf| {
+                                let sampler = Sampler::new(
+                                    device,
+                                    Filter::Linear,
+                                    Filter::Linear,
+                                    MipmapMode::Linear,
+                                    SamplerAddressMode::ClampToEdge,
+                                    SamplerAddressMode::ClampToEdge,
+                                    SamplerAddressMode::ClampToEdge,
+                                    0.0,
+                                    1.0,
+                                    0.0,
+                                    0.0,
+                                )
+                                .unwrap();
+
                                 let img = denoise.add_denoise(
                                     &ctx,
-                                    PersistentDescriptorSet::start(msaa.output_image_layout())
-                                        .add_image(image.clone())
+                                    PersistentDescriptorSet::start(denoise.input_image_layout())
+                                        .add_sampled_image(image.clone(), sampler)
                                         .unwrap()
                                         .build()
                                         .unwrap(),

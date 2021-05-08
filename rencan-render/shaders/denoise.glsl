@@ -11,13 +11,15 @@ layout(std140, set = 0, binding = 1) readonly uniform Camera {
     float fov;
 };
 
-layout(set = 1, binding = 0, rgba8) readonly uniform image2D inputImage;
+layout(set = 1, binding = 0) uniform sampler2D inputImage;
 
 layout(set = 2, binding = 0, rgba8) writeonly uniform image2D resultImage;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
     ivec2 pixel_pos = ivec2(idx % screen.x, idx / screen.x);
+    vec2 pixel_coord = vec2(pixel_pos) / vec2(screen);
+    vec2 texel_step = vec2(1.0) / vec2(screen);
 
     ivec2 offset[25];
     offset[0] = ivec2(-2,-2);
@@ -85,13 +87,13 @@ void main() {
     vec3 sum = vec3(0.0);
     float c_phi = 1.0;
     float n_phi = 0.5;
-	vec3 cval = clamp(imageLoad(inputImage, pixel_pos).xyz, 0, 1);
+	vec3 cval = clamp(texture(inputImage, pixel_coord).xyz, 0, 1);
 
     float cum_w = 0.0;
     for (int i = 0; i<25; i++) {
-        ivec2 xy = min(max(pixel_pos + offset[i], ivec2(0)), ivec2(screen));
+        vec2 uv = pixel_coord + texel_step * offset[i] * 1.5;
 
-        vec3 ctmp = clamp(imageLoad(inputImage, xy).xyz, 0, 1);
+        vec3 ctmp = clamp(texture(inputImage, uv).xyz, 0, 1);
         vec3 t = cval - ctmp;
         float dist2 = dot(t,t);
         float c_w = min(exp(-(dist2)/c_phi), 1.0);
