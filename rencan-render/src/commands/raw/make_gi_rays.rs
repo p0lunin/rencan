@@ -11,6 +11,14 @@ use vulkano::{
     device::Device,
     pipeline::ComputePipeline,
 };
+use std::io::Cursor;
+use vulkano::image::{ImageDimensions, AttachmentImage, ImageUsage};
+use vulkano::image::view::ImageView;
+use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage};
+use vulkano::command_buffer::CommandBuffer;
+use vulkano::format::Format;
+use vulkano::sync::GpuFuture;
+use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -22,6 +30,7 @@ mod cs {
 pub struct MakeGiRaysCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
     random_values: Vec<f32>,
+    noise_set: Arc<dyn DescriptorSet + Send + Sync>,
 }
 
 impl MakeGiRaysCommandFactory {
@@ -37,7 +46,73 @@ impl MakeGiRaysCommandFactory {
                 .unwrap(),
         );
         let random_values = (0..2048).into_iter().map(|_| rand::random()).collect();
-        MakeGiRaysCommandFactory { pipeline, random_values }
+
+        let (texture, tex_future) = {
+            let png_bytes = include_bytes!("../../../img/blue_noise.png").to_vec();
+            let cursor = Cursor::new(png_bytes);
+            let decoder = png::Decoder::new(cursor);
+            let (img_info, mut reader) = decoder.read_info().unwrap();
+            let dimensions = ImageDimensions::Dim2d {
+                width: img_info.width,
+                height: img_info.height,
+                array_layers: 1,
+            };
+            let mut image_data = Vec::new();
+            image_data.resize((img_info.width * img_info.height * 4) as usize, 0);
+            reader.next_frame(&mut image_data).unwrap();
+
+            let image = AttachmentImage::with_usage(
+                device.clone(),
+                [img_info.width, img_info.height],
+                Format::R8G8B8A8Unorm,
+                ImageUsage {
+                    storage: true,
+                    transfer_destination: true,
+                    ..ImageUsage::none()
+                }
+            )
+            .unwrap();
+
+            let buf = CpuAccessibleBuffer::from_iter(
+                device.clone(),
+                BufferUsage {
+                    storage_buffer: true,
+                    transfer_source: true,
+                    ..BufferUsage::none()
+                },
+                false,
+                image_data.into_iter(),
+            ).unwrap();
+
+            let mut cmd = AutoCommandBufferBuilder::new(
+                device.clone(),
+                info.graphics_queue.family()
+            ).unwrap();
+
+            cmd.copy_buffer_to_image(buf, image.clone()).unwrap();
+
+            let future = cmd
+                .build()
+                .unwrap()
+                .execute(info.graphics_queue.clone())
+                .unwrap();
+
+            (ImageView::new(image).unwrap(), future)
+        };
+
+        tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+
+        let noise_set = PersistentDescriptorSet::start(
+            pipeline.layout().descriptor_set_layout(7).unwrap().clone()
+        )
+            .add_image(texture)
+            .unwrap()
+            .build()
+            .unwrap();
+
+        let noise_set = Arc::new(noise_set);
+
+        MakeGiRaysCommandFactory { pipeline, random_values, noise_set }
     }
 
     pub fn add_making_gi_rays<PIS, WI, WOS, IntersSer, GTS>(
@@ -69,6 +144,7 @@ impl MakeGiRaysCommandFactory {
             previous_intersections_set,
             gi_thetas_set,
             ctx.buffers.global_app_set.clone(),
+            self.noise_set.clone(),
         );
 
         let (rand1, rand2) = self.give_random_numbers(sample_number);

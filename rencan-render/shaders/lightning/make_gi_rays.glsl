@@ -60,6 +60,8 @@ layout(std140, set = 6, binding = 1) restrict readonly uniform Camera {
     float fov;
 };
 
+layout(set = 7, binding = 0, rgba8) readonly uniform image2D noise;
+
 layout(push_constant) readonly uniform RandomSeed {
     float val1;
     float val2;
@@ -120,21 +122,21 @@ void main() {
     float r1;
     float r2;
 
-    r1 = rand(pixel_pos * random.val1);
-    r2 = rand(pixel_pos * random.val2);
+    r1 = imageLoad(noise, (ivec2(random.val1 * 512) + pixel_pos) % 512).x;
+    r2 = imageLoad(noise, (ivec2(random.val2 * 512) + pixel_pos) % 512).x;
 
     vec3 next_ray_direction = uniform_sample_hemisphere(r1, r2);
     mat3 transf = create_coordinate_system(inter.normal);
 
     vec3 next_ray_direction_global = transf * next_ray_direction;
 
-    Ray next_ray = Ray(inter.point, next_ray_direction_global, 1.0 / 0.0);
+    Ray next_ray = Ray(inter.point, normalize(next_ray_direction_global), 1.0 / 0.0);
 
     Intersection next_inter;
     bool is_inter = trace(next_ray, inter.pixel_id, next_inter);
     if (is_inter) {
         uint idx = next_idx();
-        gi_ethas[idx] = r1;
+        gi_ethas[idx] = cos(next_ray_direction.y);
         gi_intersects[idx] = next_inter;
     }
 }
