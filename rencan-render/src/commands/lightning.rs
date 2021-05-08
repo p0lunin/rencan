@@ -433,25 +433,7 @@ impl CommandFactory for LightningV2CommandFactory {
                 buf.0.fill_buffer(workgroups_set3.0.clone(), 0).unwrap();
                 buf.0
                     .fill_buffer(
-                        self.intersections_set.get_depends_or_init(|_| unreachable!()).0.clone(),
-                        0,
-                    )
-                    .unwrap();
-                buf.0
-                    .fill_buffer(
                         self.image_buffer_set.get_depends_or_init(|_| unreachable!()).0.clone(),
-                        0,
-                    )
-                    .unwrap();
-                buf.0
-                    .fill_buffer(
-                        self.gi_thetas_set.get_depends_or_init(|_| unreachable!()).0.clone(),
-                        0,
-                    )
-                    .unwrap();
-                buf.0
-                    .fill_buffer(
-                        self.gi_intersections_set.get_depends_or_init(|_| unreachable!()).0.clone(),
                         0,
                     )
                     .unwrap();
