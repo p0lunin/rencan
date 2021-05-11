@@ -212,7 +212,7 @@ fn init_scene(device: Arc<Device>) -> Scene {
         ),
         vec![
             PointLight::new(
-                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
+                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 800.0),
                 Point3::new(0.0, 2.3, 0.0),
             ),
         ],
@@ -228,9 +228,9 @@ fn main() {
     let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, &"some.mp4");
+    let mut renderer = Renderer::new(app, 30, &"some.png");
     let mut scene = init_scene(device);
-
+/*
     for i in 0..30 {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene, i);
@@ -241,6 +241,6 @@ fn main() {
         });
     }
     renderer.end_video();
-
-    //renderer.render_frame_to_image(&mut scene);
+*/
+    renderer.render_frame_to_image(&mut scene);
 }

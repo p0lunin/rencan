@@ -136,7 +136,7 @@ void main() {
     bool is_inter = trace(next_ray, inter.pixel_id, next_inter);
     if (is_inter) {
         uint idx = next_idx();
-        gi_ethas[idx] = cos(next_ray_direction.y);
+        gi_ethas[idx] = next_ray_direction.y;
         gi_intersects[idx] = next_inter;
     }
 }
