@@ -99,10 +99,12 @@ void main() {
     Intersection inter = previous_intersections[idx];
 
     if (inter.model_material.material == MATERIAL_DIFFUSE) {
-        LightRay global_ray = make_shadow_ray_for_direction_light(inter.point, inter.normal);
+        if (global_light.intensity > 0.01) {
+            LightRay global_ray = make_shadow_ray_for_direction_light(inter.point, inter.normal);
 
-        if (!trace_any(global_ray.ray)) {
-            not_intersected_rays[next_idx()] = global_ray;
+            if (!trace_any(global_ray.ray)) {
+                not_intersected_rays[next_idx()] = global_ray;
+            }
         }
 
         PointLight light;
