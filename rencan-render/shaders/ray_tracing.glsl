@@ -114,8 +114,7 @@ vec3 compute_color_diffuse_material(Intersection inter) {
             inter.model_material,
             global_light_ray.light_intensity,
             inter.normal,
-            global_light_ray.ray.direction,
-            inter.ray.direction
+            global_light_ray.ray.direction
         );
     }
     else {
@@ -140,8 +139,7 @@ vec3 compute_color_diffuse_material(Intersection inter) {
             inter.model_material,
             light_ray.light_intensity,
             inter.normal,
-            light_ray.ray.direction,
-            inter.ray.direction
+            light_ray.ray.direction
         );
     }
 

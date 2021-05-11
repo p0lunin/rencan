@@ -39,8 +39,7 @@ void main() {
         inter.model_material,
         light_int.light_intensity,
         inter.normal,
-        light_int.ray.direction,
-        inter.ray.direction
+        light_int.ray.direction
     );
 
     uvec3 add_color = uvec3(clamp(color, 0, 1) * (255 * 255 * 255));
