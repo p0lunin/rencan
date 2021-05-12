@@ -16,6 +16,9 @@ use winit::{
 };
 use std::sync::Arc;
 use vulkano::device::Device;
+use rapier3d::dynamics::{CCDSolver, JointSet, RigidBodySet, IntegrationParameters};
+use rapier3d::geometry::{ColliderSet, NarrowPhase, BroadPhase};
+use rapier3d::pipeline::PhysicsPipeline;
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -95,6 +98,10 @@ fn init_scene(device: Arc<Device>) -> Scene {
 }
 
 fn main() {
+    run_ui_example();
+}
+
+fn run_ui_example() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_resizable(true)
@@ -104,58 +111,34 @@ fn main() {
 
     let mut frames = 0;
     let mut next = Instant::now() + Duration::from_secs(1);
-/*
-    let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
-    models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
-    models.push(models::make_mirror(
-        Point3::new(-4.99, 0.0, 0.0),
-        UnitQuaternion::from_euler_angles(0.0, std::f32::consts::FRAC_PI_2, 0.0),
-        2.0,
-    ));
-    models.push(models::make_mirror(
-        Point3::new(4.99, 0.0, 0.0),
-        UnitQuaternion::from_euler_angles(0.0, -std::f32::consts::FRAC_PI_2, 0.0),
-        2.0,
-    ));
 
-    let mut scene = Scene::new(
-        app.device(),
-        models,
-        vec![
-            SphereModel::new(Point3::new(0.0, -1.0, 0.0), 0.2), // TODO: vulkano bug
-        ],
-        DirectionLight::new(
-            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 10.0),
-            Vector3::new(0.2, -0.4, 0.3),
-        ),
-        vec![
-            PointLight::new(
-                LightInfo::new(Point4::new(0.8, 0.2, 0.0, 0.0), 1500.0),
-                Point3::new(0.0, 2.49, 0.0),
-            ),
-            PointLight::new(
-                LightInfo::new(Point4::new(0.1, 0.9, 0.1, 0.0), 300.0),
-                Point3::new(0.0, -2.0, 0.0),
-            ),
-        ],
-        Camera::from_origin().move_at(0.0, 0.0, 5.0),
-    );
-*/
+    let mut pipeline = PhysicsPipeline::new();
+    let gravity = Vector3::new(0.0, -9.81, 0.0);
+    let integration_parameters = IntegrationParameters::default();
+    let mut broad_phase = BroadPhase::new();
+    let mut narrow_phase = NarrowPhase::new();
+    let mut bodies = RigidBodySet::new();
+    let mut colliders = ColliderSet::new();
+    let mut joints = JointSet::new();
+    let mut ccd_solver = CCDSolver::new();
+    let physics_hooks = ();
+    let event_handler = ();
 
-    let (rot_tx, rot_rx) = std::sync::mpsc::sync_channel(1000);
     let mut scene = init_scene(app.device());
-    std::thread::spawn(move || loop {
-        std::thread::sleep(Duration::from_millis(10));
-        if let Err(_) = rot_tx.send(UnitQuaternion::<f32>::from_euler_angles(-0.01, 0.0, 0.0)) {
-            break;
-        }
-    });
-
-    let microseconds_per_frame = (1000_000.0 / 60.0) as u64;
-    let frame_duration = Duration::from_micros(microseconds_per_frame);
 
     event_loop.run(move |event, _, control_flow| {
-        //*control_flow = ControlFlow::WaitUntil(Instant::now() + frame_duration);
+        pipeline.step(
+            &gravity,
+            &integration_parameters,
+            &mut broad_phase,
+            &mut narrow_phase,
+            &mut bodies,
+            &mut colliders,
+            &mut joints,
+            &mut ccd_solver,
+            &physics_hooks,
+            &event_handler
+        );
         *control_flow = ControlFlow::Poll;
 
         match event {
@@ -166,11 +149,6 @@ fn main() {
                 app.reacreate_swapchain();
             }
             Event::RedrawEventsCleared => {
-                //rx.recv().unwrap();
-                //while let Ok(rot) = rot_rx.try_recv() {
-                //    scene.data.global_light.direction = rot *
-                // &scene.data.global_light.direction;
-                //}
                 frames += 1;
                 if Instant::now() >= next {
                     println!("fps: {}", frames);

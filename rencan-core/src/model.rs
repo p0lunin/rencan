@@ -120,6 +120,7 @@ impl AppModel {
     }
 }
 
+#[derive(Clone)]
 pub struct SphereModel {
     pub center: Point3<f32>,
     pub radius: f32,

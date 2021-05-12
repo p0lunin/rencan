@@ -13,3 +13,4 @@ winit = "0.24.0"
 vulkano = { path = "D:/Rust/vulkano/vulkano" }
 rencan-render = { path = "../rencan-render" }
 rencan-ui = { path = "../rencan-ui" }
+rapier3d = { version = "0.8.0", features = [ "simd-stable" ] }

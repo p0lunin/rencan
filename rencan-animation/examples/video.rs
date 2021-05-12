@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
+use nalgebra::{Point3, Point4, UnitQuaternion, Vector3, Isometry3, Translation3};
 use rencan_animation::{AnimationApp, Renderer};
 use rencan_render::core::{
     camera::Camera,
@@ -192,19 +192,15 @@ mod models {
     }
 }
 
-fn calculate_sphere_pos(time: f32) -> Point3<f32> {
-    Point3::new(time.sin() * 3.0, -2.2, time.cos() * 3.0)
-}
-
 fn init_scene(device: Arc<Device>) -> Scene {
-    let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
+    let mut models = Vec::new();
     models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
     Scene::new(
         device,
         models,
         vec![
-            SphereModel::new(Point3::new(0.0, -1.2, 0.0), 0.3),
-            SphereModel::new(calculate_sphere_pos(0.0), 0.3)
+            SphereModel::new(Point3::new(0.0, 1.5, 0.0), 0.3),
+            SphereModel::new(Point3::new(0.0, 0.5, 0.3), 0.45),
         ],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
@@ -224,23 +220,107 @@ fn init_scene(device: Arc<Device>) -> Scene {
     )
 }
 
+use rapier3d::dynamics::{JointSet, RigidBodySet, IntegrationParameters, RigidBodyBuilder, RigidBody};
+use rapier3d::geometry::{BroadPhase, NarrowPhase, ColliderSet, Collider, ColliderBuilder, InteractionGroups};
+use rapier3d::pipeline::PhysicsPipeline;
+
+struct PShere {
+    sphere: SphereModel,
+    rigid_body: RigidBody,
+    collider: Collider
+}
+
 fn main() {
     let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, &"some.png");
+    let mut renderer = Renderer::new(app, 30, &"some.mp4");
     let mut scene = init_scene(device);
-/*
-    for i in 0..30 {
+
+    let mut pipeline = PhysicsPipeline::new();
+    let gravity = Vector3::new(0.0, -9.81, 0.0);
+    let mut integration_parameters = IntegrationParameters::default();
+    integration_parameters.set_inv_dt(30.0);
+    let mut broad_phase = BroadPhase::new();
+    let mut narrow_phase = NarrowPhase::new();
+    let mut bodies = RigidBodySet::new();
+    let mut colliders = ColliderSet::new();
+    let mut joints = JointSet::new();
+    let event_handler = ();
+
+    const COL_GROUP: InteractionGroups = InteractionGroups::new(0b10, 0b10);
+
+    for (i, sphere) in scene.data.sphere_models.state().iter().enumerate() {
+        let rigid_body = RigidBodyBuilder::new_dynamic()
+            .translation(sphere.center.x, sphere.center.y, sphere.center.z)
+            .user_data(i as u128)
+            .build();
+        let collider = ColliderBuilder::ball(sphere.radius)
+            .collision_groups(COL_GROUP)
+            .build();
+        let parent_handle = bodies.insert(rigid_body);
+        colliders.insert(collider, parent_handle, &mut bodies);
+    }
+
+    let floor_rb_handle = bodies.insert(
+        RigidBodyBuilder::new_static()
+            .translation(0.0, -2.5, 0.0)
+            .user_data(300000)
+            .build()
+    );
+    colliders.insert(
+        ColliderBuilder::cuboid(5.0, 0.1, 5.0)
+            .collision_groups(COL_GROUP)
+            .build(),
+        floor_rb_handle,
+        &mut bodies,
+    );
+
+    let floor_rb_handle = bodies.insert(
+        RigidBodyBuilder::new_static()
+            .translation(0.0, 0.0, -5.0)
+            .user_data(300000)
+            .build()
+    );
+    colliders.insert(
+        ColliderBuilder::cuboid(5.0, 5.0, 0.1)
+            .collision_groups(COL_GROUP)
+            .build(),
+        floor_rb_handle,
+        &mut bodies,
+    );
+
+    for i in 0..120 {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene, i);
 
+        pipeline.step(
+            &gravity,
+            &integration_parameters,
+            &mut broad_phase,
+            &mut narrow_phase,
+            &mut bodies,
+            &mut colliders,
+            &mut joints,
+            None,
+            None,
+            &event_handler
+        );
         scene.data.sphere_models = scene.data.sphere_models.change(|mut spheres| {
-            spheres[1].center = calculate_sphere_pos(i as f32 / 30.0);
+            for (_, body) in bodies.iter() {
+                if body.user_data == 300000 {
+                    continue;
+                }
+                spheres[body.user_data as usize].center = Point3::new(
+                    body.position().translation.vector.x,
+                    body.position().translation.vector.y,
+                    body.position().translation.vector.z,
+                );
+            }
             spheres
         });
     }
     renderer.end_video();
-*/
-    renderer.render_frame_to_image(&mut scene);
+
+    //renderer.render_frame_to_image(&mut scene);
 }

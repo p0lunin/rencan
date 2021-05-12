@@ -121,8 +121,8 @@ void main() {
             idx % local_screen.x + i % MSAA_MULTIPLIER,
             (idx * MSAA_MULTIPLIER) / local_screen.x + i / MSAA_MULTIPLIER
         );
-        //color += imageLoad(inputImage, local_pixel_pos);
-        color += vec4(denoise(local_pixel_pos, local_screen), 1.0);
+        color += imageLoad(inputImage, local_pixel_pos);
+        //color += vec4(denoise(local_pixel_pos, local_screen), 1.0);
     }
     color /= MSAA_MULTIPLIER * MSAA_MULTIPLIER;
     imageStore(resultImage, pixel_pos, color);
