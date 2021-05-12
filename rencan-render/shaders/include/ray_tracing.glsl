@@ -186,7 +186,6 @@ bool trace_spheres(
                 pixel_id
             );
             is_inter = true;
-            break;
         }
     }
 

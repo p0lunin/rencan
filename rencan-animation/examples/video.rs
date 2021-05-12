@@ -194,7 +194,16 @@ mod models {
 
 fn init_scene(device: Arc<Device>) -> Scene {
     let mut models = Vec::new();
-    models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
+    models.push({
+        let mut room = models::make_room([0.0, 2.5, 0.0].into(), 5.0);
+        room.update_info(|model| match model.material {
+            Material::Phong { ref mut color, .. } => {
+                *color = [120.0/255.0, 219.0/255.0, 226.0/255.0]
+            }
+            _ => unreachable!()
+        });
+        room
+    });
     Scene::new(
         device,
         models,
@@ -249,16 +258,16 @@ fn main() {
 }
 
 fn run_video() {
-    let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
+    let app = AnimationApp::new(Screen::new(1280, 720), 5, 2);
     let device = app.vulkan_device();
 
-    let mut renderer = Renderer::new(app, 30, &"some.mp4");
+    let mut renderer = Renderer::new(app, 45, &"some.mp4");
     let mut scene = init_scene(device);
 
     let mut pipeline = PhysicsPipeline::new();
     let gravity = Vector3::new(0.0, -9.81, 0.0);
     let mut integration_parameters = IntegrationParameters::default();
-    integration_parameters.set_inv_dt(30.0);
+    integration_parameters.set_inv_dt(45.0);
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();
     let mut bodies = RigidBodySet::new();
@@ -308,7 +317,7 @@ fn run_video() {
         &mut bodies,
     );
 
-    for i in 0..120 {
+    for i in 0..(45*3) {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene, i);
 
