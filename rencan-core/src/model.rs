@@ -3,15 +3,15 @@ use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion};
 
 #[derive(Debug, Clone)]
 pub enum Material {
-    Phong { albedo: f32, diffuse: f32, specular: f32 },
+    Phong { albedo: f32, diffuse: f32, specular: f32, color: [f32; 3] },
     Mirror,
 }
 
 impl Material {
-    fn into_uniform(self) -> (f32, f32, f32, u32) {
+    fn into_uniform(self) -> (f32, f32, f32, u32, [f32; 3]) {
         match self {
-            Material::Phong { albedo, diffuse, specular } => (albedo, diffuse, specular, 1),
-            Material::Mirror => (0.0, 0.0, 0.0, 2),
+            Material::Phong { albedo, diffuse, specular, color } => (albedo, diffuse, specular, 1, color),
+            Material::Mirror => (0.0, 0.0, 0.0, 2, [0.0; 3]),
         }
     }
 }
@@ -34,7 +34,7 @@ impl Model {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 },
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2, color: [1.0; 3] },
         }
     }
     pub fn with_isometry(
@@ -48,7 +48,7 @@ impl Model {
         Model { vertices, indexes, rotation, position, scaling, material }
     }
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
-        let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
+        let (albedo, diffuse, specular, material, color) = self.material.clone().into_uniform();
         let isometry = Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
@@ -60,12 +60,14 @@ impl Model {
             inverse_isometry: inverse_isometry.into(),
             model_id,
             _offset: 0,
+            _offset2: 0,
             vertices_length: self.vertices.len() as u32,
             indexes_length: self.indexes.len() as u32,
             albedo,
             diffuse,
             specular,
             material,
+            color
         }
     }
 }
@@ -82,6 +84,8 @@ pub struct ModelUniformInfo {
     pub albedo: f32,
     pub diffuse: f32,
     pub specular: f32,
+    pub color: [f32; 3],
+    pub _offset2: u32
 }
 
 #[allow(dead_code)]
@@ -138,12 +142,12 @@ impl SphereModel {
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             position: Point3::new(0.0, 0.0, 0.0),
             scaling: 1.0,
-            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2 },
+            material: Material::Phong { albedo: 0.18, diffuse: 0.8, specular: 0.2, color: [1.0; 3] },
         }
     }
 
     pub fn get_uniform_info(&self, model_id: u32) -> ModelUniformInfo {
-        let (albedo, diffuse, specular, material) = self.material.clone().into_uniform();
+        let (albedo, diffuse, specular, material, color) = self.material.clone().into_uniform();
         let isometry = Isometry3::from_parts(
                 Translation3::new(self.position.x, self.position.y, self.position.z),
                 self.rotation,
@@ -161,6 +165,8 @@ impl SphereModel {
             specular,
             material,
             _offset: 0,
+            _offset2: 0,
+            color
         }
     }
 }

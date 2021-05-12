@@ -199,8 +199,14 @@ fn init_scene(device: Arc<Device>) -> Scene {
         device,
         models,
         vec![
-            SphereModel::new(Point3::new(0.0, 1.5, 0.0), 0.3),
-            SphereModel::new(Point3::new(0.0, 0.5, 0.3), 0.45),
+            SphereModel {
+                material: Material::Phong { color: [1.0, 0.0, 0.0], albedo: 0.18, diffuse: 0.8, specular: 0.2 },
+                ..SphereModel::new(Point3::new(0.0, 1.5, 0.0), 0.3)
+            },
+            SphereModel {
+                material: Material::Phong { color: [0.0, 1.0, 0.0], albedo: 0.18, diffuse: 0.8, specular: 0.2 },
+                ..SphereModel::new(Point3::new(0.0, 0.5, 0.3), 0.45)
+            },
         ],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
@@ -223,6 +229,7 @@ fn init_scene(device: Arc<Device>) -> Scene {
 use rapier3d::dynamics::{JointSet, RigidBodySet, IntegrationParameters, RigidBodyBuilder, RigidBody};
 use rapier3d::geometry::{BroadPhase, NarrowPhase, ColliderSet, Collider, ColliderBuilder, InteractionGroups};
 use rapier3d::pipeline::PhysicsPipeline;
+use rencan_render::core::model::Material;
 
 struct PShere {
     sphere: SphereModel,
@@ -231,6 +238,17 @@ struct PShere {
 }
 
 fn main() {
+    run_video();
+    /*let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
+    let device = app.vulkan_device();
+
+    let mut renderer = Renderer::new(app, 30, &"some.png");
+    let mut scene = init_scene(device);
+
+    renderer.render_frame_to_image(&mut scene);*/
+}
+
+fn run_video() {
     let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
     let device = app.vulkan_device();
 
@@ -321,6 +339,4 @@ fn main() {
         });
     }
     renderer.end_video();
-
-    //renderer.render_frame_to_image(&mut scene);
 }

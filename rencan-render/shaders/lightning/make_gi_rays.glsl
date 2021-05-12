@@ -48,7 +48,7 @@ layout(std140, set = 4, binding = 0) restrict readonly buffer Intersections {
 };
 
 layout(set = 5, binding = 0) restrict writeonly buffer GiThetas {
-    float gi_ethas[];
+    vec3 gi_ethas[];
 };
 
 layout(set = 6, binding = 0) restrict readonly uniform Info {
@@ -136,7 +136,7 @@ void main() {
     bool is_inter = trace(next_ray, inter.pixel_id, next_inter);
     if (is_inter) {
         uint idx = next_idx();
-        gi_ethas[idx] = next_ray_direction.y;
+        gi_ethas[idx] = next_ray_direction.y * inter.model_material.color;
         gi_intersects[idx] = next_inter;
     }
 }

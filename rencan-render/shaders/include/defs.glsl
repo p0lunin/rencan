@@ -9,6 +9,7 @@ struct ModelMaterial {
     float albedo;
     float diffuse;
     float specular;
+    vec3 color;
 };
 
 struct ModelInfo {
@@ -84,6 +85,10 @@ vec3 compute_light_color(
     vec3 inter_normal,
     vec3 light_direction
 ) {
-    vec3 color = model.diffuse * model.albedo / PI * light_intensity * max(dot(inter_normal, light_direction), 0.0);
+    vec3 color = model.diffuse
+        * model.albedo / PI
+        * light_intensity
+        * max(dot(inter_normal, light_direction), 0.0)
+        * model.color;
     return color;
 }

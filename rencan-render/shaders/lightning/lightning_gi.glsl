@@ -21,7 +21,7 @@ layout(std140, set = 2, binding = 0) restrict readonly buffer PreviousIntersecti
 };
 
 layout(set = 3, binding = 0) restrict readonly buffer GiThethas {
-    float gi_thethas[];
+    vec3 gi_thethas[];
 };
 
 void main() {
@@ -30,7 +30,7 @@ void main() {
     LightRay light_int = intersections[idx];
     Intersection inter = previous_intersections[light_int.inter_id];
 
-    float theta = gi_thethas[light_int.inter_id];
+    vec3 theta = gi_thethas[light_int.inter_id];
     vec3 light_color = compute_light_color(
         inter.model_material,
         light_int.light_intensity,
