@@ -1,11 +1,8 @@
-use crate::core::{CommandFactoryContext, AppInfo};
+use crate::core::{AppInfo, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
-    command_buffer::{AutoCommandBufferBuilder},
-    descriptor::{
-        pipeline_layout::{PipelineLayout},
-        DescriptorSet,
-    },
+    command_buffer::AutoCommandBufferBuilder,
+    descriptor::{pipeline_layout::PipelineLayout, DescriptorSet},
     device::Device,
     pipeline::ComputePipeline,
 };
@@ -52,7 +49,10 @@ impl CopyFromBufferToImageCommandFactory {
                 [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
                 self.pipeline.clone(),
                 sets,
-                (ctx.app_info.size_of_image_array() as u32 * ctx.render_step, ctx.app_info.msaa as u32),
+                (
+                    ctx.app_info.size_of_image_array() as u32 * ctx.render_step,
+                    ctx.app_info.msaa as u32,
+                ),
                 std::iter::empty(),
             )
             .unwrap();

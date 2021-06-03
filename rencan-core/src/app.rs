@@ -7,12 +7,9 @@ use vulkano::{
 };
 
 use crate::{
-    camera::{CameraUniform},
-    intersection::IntersectionUniform,
-    light::{DirectionLightUniform},
-    model_buffers::SceneBuffers,
-    ray::Ray,
-    AppInfo, BufferAccessData, CommandFactory, CommandFactoryContext, Scene, Screen,
+    camera::CameraUniform, intersection::IntersectionUniform, light::DirectionLightUniform,
+    model_buffers::SceneBuffers, ray::Ray, AppInfo, BufferAccessData, CommandFactory,
+    CommandFactoryContext, Scene, Screen,
 };
 use once_cell::sync::OnceCell;
 use vulkano::{
@@ -23,12 +20,12 @@ use vulkano::{
         DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
+    format::ClearValue,
     image::{view::ImageView, AttachmentImage},
     instance::QueueFamily,
     memory::pool::StdMemoryPool,
     pipeline::ComputePipeline,
 };
-use vulkano::format::ClearValue;
 
 pub struct App {
     info: AppInfo,
@@ -68,32 +65,36 @@ impl App {
     where
         Prev: GpuFuture + 'static,
         F: FnOnce(&AppInfo) -> Arc<ImageView<Arc<AttachmentImage>>>,
-        AMF: FnOnce(Box<dyn GpuFuture>, CommandFactoryContext) -> (Box<dyn GpuFuture>, Arc<ImageView<Arc<AttachmentImage>>>)
+        AMF: FnOnce(
+            Box<dyn GpuFuture>,
+            CommandFactoryContext,
+        ) -> (Box<dyn GpuFuture>, Arc<ImageView<Arc<AttachmentImage>>>),
     {
         let image = image_create(&self.info);
         let (mut buffers, mut fut_local) = self.create_buffers(image.clone(), scene);
         let fut: Box<dyn GpuFuture> = Box::new(previous.join(fut_local));
-
-        // device.physical_device().extended_properties().subgroup_size().unwrap_or(32);
-        let recommend_workgroups_length = 64;
 
         let mut ctx = CommandFactoryContext {
             app_info: &self.info,
             buffers: buffers.clone(),
             scene,
             camera: &scene.data.camera,
-            render_step: 0
+            render_step: 0,
         };
 
         let mut fut = {
-            let cmd = ctx.create_command_buffer()
+            let cmd = ctx
+                .create_command_buffer()
                 .update_with(|buf| {
-                    buf.0.clear_color_image(ctx.buffers.image.image().clone(), ClearValue::Float([0.0; 4])).unwrap();
+                    buf.0
+                        .clear_color_image(
+                            ctx.buffers.image.image().clone(),
+                            ClearValue::Float([0.0; 4]),
+                        )
+                        .unwrap();
                 })
                 .build();
-            fut.then_execute(ctx.graphics_queue(), cmd)
-                .unwrap()
-                .boxed()
+            fut.then_execute(ctx.graphics_queue(), cmd).unwrap().boxed()
         };
 
         for i in 0..self.info.render_steps {
@@ -117,7 +118,7 @@ impl App {
             buffers: buffers.clone(),
             scene,
             camera: &scene.data.camera,
-            render_step: 0
+            render_step: 0,
         };
 
         Ok(add_msaa(fut, ctx))

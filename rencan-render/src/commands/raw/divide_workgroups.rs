@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use vulkano::{
-    command_buffer::{AutoCommandBufferBuilder},
+    command_buffer::AutoCommandBufferBuilder,
     descriptor::{pipeline_layout::PipelineLayout, DescriptorSet},
     device::Device,
     pipeline::ComputePipeline,

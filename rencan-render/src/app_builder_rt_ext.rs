@@ -7,7 +7,7 @@ pub trait AppBuilderRtExt: Sized {
 
 impl AppBuilderRtExt for AppBuilder {
     fn then_ray_tracing_pipeline(self) -> Self {
-        let cmd = Box::new(commands::RayTraceCommandFactory::new(self.info()));
+        let cmd = Box::new(commands::InitialTraceCommandFactory::new(self.info()));
         self.then_command(cmd)
     }
 }

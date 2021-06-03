@@ -1,24 +1,28 @@
 mod models;
 
 use nalgebra::{Point3, Point4, UnitQuaternion, Vector3};
+use rapier3d::{
+    dynamics::{CCDSolver, IntegrationParameters, JointSet, RigidBodySet},
+    geometry::{BroadPhase, ColliderSet, NarrowPhase},
+    pipeline::PhysicsPipeline,
+};
 use rencan_render::core::{
     camera::Camera,
     light::{DirectionLight, LightInfo, PointLight},
     model::{AppModel, SphereModel},
     Model, Scene,
 };
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use vulkano::device::Device;
 use winit::{
     dpi::{PhysicalSize, Size},
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use std::sync::Arc;
-use vulkano::device::Device;
-use rapier3d::dynamics::{CCDSolver, JointSet, RigidBodySet, IntegrationParameters};
-use rapier3d::geometry::{ColliderSet, NarrowPhase, BroadPhase};
-use rapier3d::pipeline::PhysicsPipeline;
 
 #[allow(unused)]
 fn make_pyramid(position: Point3<f32>, scale: f32) -> AppModel {
@@ -83,17 +87,15 @@ fn init_scene(device: Arc<Device>) -> Scene {
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
-        vec![
-            PointLight::new(
-                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
-                Point3::new(0.0, 2.3, 0.0),
-            ),
-        ],
-        Camera::from_origin().move_at(4.185082,
-                1.1902695,
-                4.007931,).rotate(-0.24999996,
-        0.8000001,
-        0.0,),
+        vec![PointLight::new(
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
+            Point3::new(0.0, 2.3, 0.0),
+        )],
+        Camera::from_origin().move_at(4.185082, 1.1902695, 4.007931).rotate(
+            -0.24999996,
+            0.8000001,
+            0.0,
+        ),
     )
 }
 
@@ -137,7 +139,7 @@ fn run_ui_example() {
             &mut joints,
             &mut ccd_solver,
             &physics_hooks,
-            &event_handler
+            &event_handler,
         );
         *control_flow = ControlFlow::Poll;
 

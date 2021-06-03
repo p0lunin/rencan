@@ -15,7 +15,7 @@ use vulkano::{
         descriptor_set::FixedSizeDescriptorSetsPool, pipeline_layout::PipelineLayout,
         DescriptorSet, PipelineLayoutAbstract,
     },
-    device::{Device},
+    device::Device,
     memory::pool::StdMemoryPool,
     pipeline::ComputePipeline,
     sync::GpuFuture,

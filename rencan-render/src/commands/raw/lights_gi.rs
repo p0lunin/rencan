@@ -1,11 +1,9 @@
-use crate::core::{CommandFactoryContext, AppInfo};
+use crate::core::{AppInfo, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
     command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
-    descriptor::{
-        pipeline_layout::PipelineLayout, DescriptorSet,
-    },
+    descriptor::{pipeline_layout::PipelineLayout, DescriptorSet},
     device::Device,
     pipeline::ComputePipeline,
 };
@@ -27,7 +25,8 @@ impl LightsGiCommandFactory {
         let local_size_x = info.recommend_workgroups_length;
         let shader = cs::Shader::load(device.clone()).unwrap();
 
-        let constants = cs::SpecializationConstants { constant_0: local_size_x, constant_1: samples };
+        let constants =
+            cs::SpecializationConstants { constant_0: local_size_x, constant_1: samples };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
@@ -55,12 +54,7 @@ impl LightsGiCommandFactory {
         PIS: DescriptorSet + Send + Sync + 'static,
         GTS: DescriptorSet + Send + Sync + 'static,
     {
-        let sets = (
-            intersections_set,
-            image_set,
-            previous_intersections_set,
-            gi_thetas_set,
-        );
+        let sets = (intersections_set, image_set, previous_intersections_set, gi_thetas_set);
 
         buffer
             .dispatch_indirect(

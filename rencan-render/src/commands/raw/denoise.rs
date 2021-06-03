@@ -1,20 +1,18 @@
-use crate::core::{CommandFactoryContext, AppInfo};
+use crate::core::{AppInfo, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
     command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
     descriptor::{
-        descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout},
+        descriptor_set::{PersistentDescriptorSet, UnsafeDescriptorSetLayout},
+        pipeline_layout::PipelineLayout,
         DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
+    format::Format,
+    image::{view::ImageView, AttachmentImage, ImageUsage},
     pipeline::ComputePipeline,
 };
-use vulkano::image::view::ImageView;
-use vulkano::image::{AttachmentImage, ImageUsage};
-use vulkano::format::Format;
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -49,9 +47,11 @@ impl DenoiseCommandFactory {
                     transfer_destination: true,
                     transfer_source: true,
                     ..ImageUsage::none()
-                }
-            ).unwrap()
-        ).unwrap();
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap();
         DenoiseCommandFactory { pipeline, output_image }
     }
 
@@ -61,7 +61,7 @@ impl DenoiseCommandFactory {
         input_image_set: IIS,
         buffer: &mut AutoCommandBufferBuilder,
     ) -> Arc<ImageView<Arc<AttachmentImage>>>
-        where
+    where
         IIS: DescriptorSet + Send + Sync + 'static,
     {
         let output_image_set = PersistentDescriptorSet::start(self.output_image_layout())
@@ -70,11 +70,7 @@ impl DenoiseCommandFactory {
             .build()
             .unwrap();
 
-        let sets = (
-            ctx.buffers.global_app_set.clone(),
-            input_image_set,
-            output_image_set
-        );
+        let sets = (ctx.buffers.global_app_set.clone(), input_image_set, output_image_set);
 
         buffer
             .dispatch(

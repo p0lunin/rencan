@@ -1,12 +1,11 @@
-use crate::core::{CommandFactoryContext, AppInfo};
+use crate::core::{AppInfo, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
     command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
     descriptor::{
-        descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout},
-        DescriptorSet, PipelineLayoutAbstract,
+        descriptor_set::UnsafeDescriptorSetLayout, pipeline_layout::PipelineLayout, DescriptorSet,
+        PipelineLayoutAbstract,
     },
     device::Device,
     pipeline::ComputePipeline,
@@ -30,7 +29,8 @@ impl MsaaCommandFactory {
         let local_size_x = info.recommend_workgroups_length;
 
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let constants = cs::SpecializationConstants { constant_0: local_size_x, constant_1: msaa_multiplier };
+        let constants =
+            cs::SpecializationConstants { constant_0: local_size_x, constant_1: msaa_multiplier };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
@@ -46,11 +46,8 @@ impl MsaaCommandFactory {
     ) where
         OIS: DescriptorSet + Send + Sync + 'static,
     {
-        let sets = (
-            ctx.buffers.global_app_set.clone(),
-            ctx.buffers.image_set.clone(),
-            output_image_set
-        );
+        let sets =
+            (ctx.buffers.global_app_set.clone(), ctx.buffers.image_set.clone(), output_image_set);
 
         buffer
             .dispatch(

@@ -8,20 +8,19 @@ use crate::{
     commands::raw::{
         copy_from_buffer_to_image::CopyFromBufferToImageCommandFactory,
         divide_workgroups::DivideWorkgroupsCommandFactory,
-        lights_diffuse::LightsDiffuseCommandFactory,
+        lights_diffuse::LightsDiffuseCommandFactory, lights_gi::LightsGiCommandFactory,
+        make_gi_rays::MakeGiRaysCommandFactory,
         reflect_from_mirror::ReflectFromMirrorsCommandFactory,
         trace_rays_to_light::TraceRaysToLightCommandFactory,
     },
     core::{
-        intersection::IntersectionUniform, AutoCommandBufferBuilderWrap, CommandFactory,
+        intersection::IntersectionUniform, AppInfo, AutoCommandBufferBuilderWrap, CommandFactory,
         CommandFactoryContext, LightRay, Mutable,
     },
 };
 use once_cell::sync::OnceCell;
 use vulkano::{
-    buffer::{
-        BufferAccess, BufferUsage, DeviceLocalBuffer, TypedBufferAccess,
-    },
+    buffer::{BufferAccess, BufferUsage, DeviceLocalBuffer, TypedBufferAccess},
     command_buffer::DispatchIndirectCommand,
     descriptor::{
         descriptor_set::{PersistentDescriptorSet, UnsafeDescriptorSetLayout},
@@ -29,11 +28,8 @@ use vulkano::{
     },
     sync::GpuFuture,
 };
-use crate::commands::raw::make_gi_rays::MakeGiRaysCommandFactory;
-use crate::commands::raw::lights_gi::LightsGiCommandFactory;
-use crate::core::AppInfo;
 
-pub struct LightningV2CommandFactory {
+pub struct GiCommandFactory {
     divide_factory: DivideWorkgroupsCommandFactory,
     trace_rays_factory: TraceRaysToLightCommandFactory,
     lights_factory: LightsDiffuseCommandFactory,
@@ -50,12 +46,12 @@ pub struct LightningV2CommandFactory {
     samples_per_bounce: u32,
 }
 
-impl LightningV2CommandFactory {
+impl GiCommandFactory {
     pub fn new(info: &AppInfo, samples_per_bounce: u32) -> Self {
         let device = &info.device;
         let local_size_x = info.recommend_workgroups_length;
 
-        LightningV2CommandFactory {
+        GiCommandFactory {
             divide_factory: DivideWorkgroupsCommandFactory::new(device.clone(), local_size_x),
             trace_rays_factory: TraceRaysToLightCommandFactory::new(info),
             lights_factory: LightsDiffuseCommandFactory::new(info),
@@ -123,9 +119,7 @@ impl LightningV2CommandFactory {
         &mut self,
         ctx: &CommandFactoryContext,
     ) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.gi_intersections_set.change_with_check_in_place(
-            ctx.buffers.intersections.len(),
-        );
+        self.gi_intersections_set.change_with_check_in_place(ctx.buffers.intersections.len());
         let layout = self.make_gi_rays_factory.intersections_layout();
         let one_set = self
             .gi_intersections_set
@@ -148,9 +142,7 @@ impl LightningV2CommandFactory {
         &mut self,
         ctx: &CommandFactoryContext,
     ) -> Arc<dyn DescriptorSet + Send + Sync> {
-        self.gi_thetas_set.change_with_check_in_place(
-            ctx.buffers.intersections.len(),
-        );
+        self.gi_thetas_set.change_with_check_in_place(ctx.buffers.intersections.len());
         let layout = self.make_gi_rays_factory.gi_thetas_set();
         let one_set = self
             .gi_thetas_set
@@ -202,7 +194,7 @@ impl LightningV2CommandFactory {
     }
 }
 
-impl LightningV2CommandFactory {
+impl GiCommandFactory {
     fn add_lightning_commands<WB1, WB2, WS2, PIS, TIS, ImS>(
         &self,
         ctx: &CommandFactoryContext,
@@ -215,16 +207,8 @@ impl LightningV2CommandFactory {
         fut: impl GpuFuture + 'static,
     ) -> Box<dyn GpuFuture>
     where
-        WB1: TypedBufferAccess<Content = [DispatchIndirectCommand]>
-            + Clone
-            + Send
-            + Sync
-            + 'static,
-        WB2: TypedBufferAccess<Content = [DispatchIndirectCommand]>
-            + Clone
-            + Send
-            + Sync
-            + 'static,
+        WB1: TypedBufferAccess<Content = [DispatchIndirectCommand]> + Clone + Send + Sync + 'static,
+        WB2: TypedBufferAccess<Content = [DispatchIndirectCommand]> + Clone + Send + Sync + 'static,
         WS2: DescriptorSet + Clone + Send + Sync + 'static,
         PIS: DescriptorSet + Clone + Send + Sync + 'static,
         TIS: DescriptorSet + Clone + Send + Sync + 'static,
@@ -283,8 +267,7 @@ impl LightningV2CommandFactory {
             })
             .build();
 
-        fut
-            .then_execute(ctx.graphics_queue(), cmd_2_divide)
+        fut.then_execute(ctx.graphics_queue(), cmd_2_divide)
             .unwrap()
             .then_signal_semaphore() // vulkano does not provide barrier for this
             .then_execute(ctx.graphics_queue(), cmd_3_lights_diffuse)
@@ -296,7 +279,7 @@ impl LightningV2CommandFactory {
         &self,
         ctx: &CommandFactoryContext,
         workgroups_set1: WS1,
-        fut: impl GpuFuture + 'static
+        fut: impl GpuFuture + 'static,
     ) -> Box<dyn GpuFuture>
     where
         WS1: DescriptorSet + Clone + Send + Sync + 'static,
@@ -321,7 +304,8 @@ impl LightningV2CommandFactory {
             })
             .build();
 
-        let fut = fut.then_execute_same_queue(cmd_trace_mirrors)
+        let fut = fut
+            .then_execute_same_queue(cmd_trace_mirrors)
             .unwrap()
             .then_execute_same_queue(cmd_divide_for_trace)
             .unwrap()
@@ -343,16 +327,8 @@ impl LightningV2CommandFactory {
         fut: impl GpuFuture + 'static,
     ) -> Box<dyn GpuFuture>
     where
-        WB1: TypedBufferAccess<Content = [DispatchIndirectCommand]>
-            + Clone
-            + Send
-            + Sync
-            + 'static,
-        WB2: TypedBufferAccess<Content = [DispatchIndirectCommand]>
-            + Clone
-            + Send
-            + Sync
-            + 'static,
+        WB1: TypedBufferAccess<Content = [DispatchIndirectCommand]> + Clone + Send + Sync + 'static,
+        WB2: TypedBufferAccess<Content = [DispatchIndirectCommand]> + Clone + Send + Sync + 'static,
         WS2: DescriptorSet + Clone + Send + Sync + 'static,
         PIS: DescriptorSet + Clone + Send + Sync + 'static,
         TIS: DescriptorSet + Clone + Send + Sync + 'static,
@@ -395,8 +371,7 @@ impl LightningV2CommandFactory {
             })
             .build();
 
-        fut
-            .then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
+        fut.then_execute(ctx.graphics_queue(), cmd_1_trace_diffuse)
             .unwrap()
             .then_execute(ctx.graphics_queue(), cmd_2_divide)
             .unwrap()
@@ -407,7 +382,7 @@ impl LightningV2CommandFactory {
     }
 }
 
-impl CommandFactory for LightningV2CommandFactory {
+impl CommandFactory for GiCommandFactory {
     fn make_command(
         &mut self,
         ctx: CommandFactoryContext,
@@ -417,11 +392,7 @@ impl CommandFactory for LightningV2CommandFactory {
         let image_buffer_set = self.init_image_buffer_set(&ctx);
         let gi_intersections_set = self.init_gi_intersections_set(&ctx);
         let gi_thetas_set = self.init_gi_thetas_set(&ctx);
-        let [
-            workgroups_set1,
-            workgroups_set2,
-            workgroups_set3,
-        ] = self.init_workgroups_set(&ctx);
+        let [workgroups_set1, workgroups_set2, workgroups_set3] = self.init_workgroups_set(&ctx);
 
         debug_assert_eq!(workgroups_set2.0.len(), 1);
 
@@ -440,9 +411,7 @@ impl CommandFactory for LightningV2CommandFactory {
             })
             .build();
 
-        let fut =
-            fut.then_execute(ctx.app_info.graphics_queue.clone(), cmd_zeroes)
-                .unwrap();
+        let fut = fut.then_execute(ctx.app_info.graphics_queue.clone(), cmd_zeroes).unwrap();
         let fut = self.add_lightning_commands(
             &ctx,
             ctx.buffers.workgroups.clone(),
@@ -451,7 +420,7 @@ impl CommandFactory for LightningV2CommandFactory {
             ctx.buffers.intersections_set.clone(),
             intersections_set.clone(),
             image_buffer_set.clone(),
-            fut
+            fut,
         );
 
         fut.flush().unwrap();
@@ -484,7 +453,8 @@ impl CommandFactory for LightningV2CommandFactory {
             let cmd_divide = ctx
                 .create_command_buffer()
                 .update_with(|buf| {
-                    self.divide_factory.add_divider_to_buffer(workgroups_set3.1.clone(), &mut buf.0);
+                    self.divide_factory
+                        .add_divider_to_buffer(workgroups_set3.1.clone(), &mut buf.0);
                     buf.0.fill_buffer(workgroups_set1.0.clone(), 0).unwrap();
                 })
                 .build();
@@ -519,10 +489,7 @@ impl CommandFactory for LightningV2CommandFactory {
             })
             .build();
 
-        fut
-            .then_execute(ctx.graphics_queue(), cmd_last_copy_command)
-            .unwrap()
-            .boxed()
+        fut.then_execute(ctx.graphics_queue(), cmd_last_copy_command).unwrap().boxed()
     }
 }
 

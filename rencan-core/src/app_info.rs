@@ -26,10 +26,19 @@ impl AppInfo {
         msaa: u8,
         recommend_workgroups_length: u32,
     ) -> Self {
-        AppInfo { instance, graphics_queue, device, screen, render_steps, msaa, recommend_workgroups_length }
+        AppInfo {
+            instance,
+            graphics_queue,
+            device,
+            screen,
+            render_steps,
+            msaa,
+            recommend_workgroups_length,
+        }
     }
 
     pub fn size_of_image_array(&self) -> usize {
-        (self.screen.width() * self.screen.height() / self.render_steps * (self.msaa as u32 * self.msaa as u32)) as usize
+        (self.screen.width() * self.screen.height() / self.render_steps
+            * (self.msaa as u32 * self.msaa as u32)) as usize
     }
 }

@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Point4, UnitQuaternion, Vector3, Isometry3, Translation3};
+use nalgebra::{Isometry3, Point3, Point4, Translation3, UnitQuaternion, Vector3};
 use rencan_animation::{AnimationApp, Renderer};
 use rencan_render::core::{
     camera::Camera,
@@ -142,13 +142,8 @@ mod models {
                 [-1.0, -1.0, 1.0, 0.0].into(),  // D2 - 7
             ],
             indices![
-                A2, C2, B2, A2, D2,
-                C2,
-                                D1, B1, C1,
-                                D1, A1, B1,
-
-                B1, A2, B2, B1, A1, A2, A1, D2, A2, A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2,
-                C1, B1, B2,
+                A2, C2, B2, A2, D2, C2, D1, B1, C1, D1, A1, B1, B1, A2, B2, B1, A1, A2, A1, D2, A2,
+                A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2, C1, B1, B2,
             ],
         );
         model.position = position;
@@ -193,68 +188,100 @@ mod models {
 }
 
 fn init_scene(device: Arc<Device>) -> Scene {
+    let mut models = models::make_desk(Point3::new(0.0, -1.5, 0.0), 3.0);
+    models.push(models::make_room([0.0, 2.5, 0.0].into(), 5.0));
+    Scene::new(
+        device,
+        models,
+        vec![SphereModel::new(Point3::new(0.0, -1.2, 0.0), 0.3)],
+        DirectionLight::new(
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
+            Vector3::new(0.2, -0.4, -0.3).normalize(),
+        ),
+        vec![PointLight::new(
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 800.0),
+            Point3::new(0.0, 2.3, 0.0),
+        )],
+        Camera::from_origin().move_at(4.185082, 1.1902695, 4.007931).rotate(
+            -0.24999996,
+            0.8000001,
+            0.0,
+        ),
+    )
+}
+/*
+fn init_scene(device: Arc<Device>) -> Scene {
     let mut models = Vec::new();
     models.push({
         let mut room = models::make_room([0.0, 2.5, 0.0].into(), 5.0);
         room.update_info(|model| match model.material {
             Material::Phong { ref mut color, .. } => {
-                *color = [120.0/255.0, 219.0/255.0, 226.0/255.0]
+                *color = [120.0 / 255.0, 219.0 / 255.0, 226.0 / 255.0]
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         });
         room
     });
+    let create_sphere = |color: [f32; 3], pos: Point3<f32>, radius: f32| SphereModel {
+        material: Material::Phong { color, albedo: 0.18, diffuse: 0.8, specular: 0.2 },
+        ..SphereModel::new(pos, radius)
+    };
+
     Scene::new(
         device,
         models,
         vec![
-            SphereModel {
-                material: Material::Phong { color: [1.0, 0.0, 0.0], albedo: 0.18, diffuse: 0.8, specular: 0.2 },
-                ..SphereModel::new(Point3::new(0.0, 1.5, 0.0), 0.3)
-            },
-            SphereModel {
-                material: Material::Phong { color: [0.0, 1.0, 0.0], albedo: 0.18, diffuse: 0.8, specular: 0.2 },
-                ..SphereModel::new(Point3::new(0.0, 0.5, 0.3), 0.45)
-            },
+            create_sphere([1.0, 0.0, 0.0], Point3::new(-0.5, -2.25, -0.5), 0.25),
+            create_sphere([0.2, 0.7, 0.3], Point3::new(-0.5, -2.25, 0.0), 0.25),
+            create_sphere([0.6, 0.1, 0.0], Point3::new(-0.5, -2.25, 0.5), 0.25),
+            create_sphere([0.0, 1.0, 0.0], Point3::new(0.0, -2.25, -0.5), 0.25),
+            create_sphere([0.0, 0.8, 0.2], Point3::new(0.0, -2.25, 0.0), 0.25),
+            create_sphere([0.9, 0.0, 0.9], Point3::new(0.0, -2.25, 0.5), 0.25),
+            create_sphere([1.0, 0.0, 0.5], Point3::new(0.5, -2.25, -0.5), 0.25),
+            create_sphere([0.8, 0.6, 0.0], Point3::new(0.5, -2.25, 0.0), 0.25),
+            create_sphere([0.1, 0.4, 0.8], Point3::new(0.5, -2.25, 0.5), 0.25),
+            create_sphere([0.2, 0.5, 0.9], Point3::new(0.25, -1.75, 0.25), 0.25),
+            create_sphere([0.3, 1.0, 0.0], Point3::new(-0.25, -1.75, 0.25), 0.25),
+            create_sphere([0.4, 0.2, 0.8], Point3::new(-0.25, -1.75, -0.25), 0.25),
+            create_sphere([0.2, 0.2, 0.6], Point3::new(0.25, -1.75, -0.25), 0.25),
+            create_sphere([0.3, 0.7, 0.7], Point3::new(0.0, -1.25, 0.0), 0.25),
         ],
         DirectionLight::new(
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
-        vec![
-            PointLight::new(
-                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 800.0),
-                Point3::new(0.0, 2.3, 0.0),
-            ),
-        ],
-        Camera::from_origin().move_at(4.185082,
-                1.1902695,
-                4.007931,).rotate(-0.34,
-        0.8000001,
-        0.0,),
+        vec![PointLight::new(
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 800.0),
+            Point3::new(0.0, 2.3, 0.0),
+        )],
+        Camera::from_origin().move_at(4.185082, 1.1902695, 4.007931).rotate(-0.34, 0.8000001, 0.0),
     )
-}
+}*/
 
-use rapier3d::dynamics::{JointSet, RigidBodySet, IntegrationParameters, RigidBodyBuilder, RigidBody};
-use rapier3d::geometry::{BroadPhase, NarrowPhase, ColliderSet, Collider, ColliderBuilder, InteractionGroups};
-use rapier3d::pipeline::PhysicsPipeline;
+use rapier3d::{
+    dynamics::{IntegrationParameters, JointSet, RigidBody, RigidBodyBuilder, RigidBodySet},
+    geometry::{
+        BroadPhase, Collider, ColliderBuilder, ColliderSet, InteractionGroups, NarrowPhase,
+    },
+    pipeline::PhysicsPipeline,
+};
 use rencan_render::core::model::Material;
 
 struct PShere {
     sphere: SphereModel,
     rigid_body: RigidBody,
-    collider: Collider
+    collider: Collider,
 }
 
 fn main() {
-    run_video();
-    /*let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
+    //run_video();
+    let app = AnimationApp::new(Screen::new(1280, 720), 5, 3);
     let device = app.vulkan_device();
 
     let mut renderer = Renderer::new(app, 30, &"some.png");
     let mut scene = init_scene(device);
 
-    renderer.render_frame_to_image(&mut scene);*/
+    renderer.render_frame_to_image(&mut scene);
 }
 
 fn run_video() {
@@ -267,7 +294,7 @@ fn run_video() {
     let mut pipeline = PhysicsPipeline::new();
     let gravity = Vector3::new(0.0, -9.81, 0.0);
     let mut integration_parameters = IntegrationParameters::default();
-    integration_parameters.set_inv_dt(45.0);
+    integration_parameters.set_inv_dt(30.0);
     let mut broad_phase = BroadPhase::new();
     let mut narrow_phase = NarrowPhase::new();
     let mut bodies = RigidBodySet::new();
@@ -282,42 +309,36 @@ fn run_video() {
             .translation(sphere.center.x, sphere.center.y, sphere.center.z)
             .user_data(i as u128)
             .build();
-        let collider = ColliderBuilder::ball(sphere.radius)
-            .collision_groups(COL_GROUP)
-            .build();
+        let collider = ColliderBuilder::ball(sphere.radius).collision_groups(COL_GROUP).build();
         let parent_handle = bodies.insert(rigid_body);
         colliders.insert(collider, parent_handle, &mut bodies);
     }
 
-    let floor_rb_handle = bodies.insert(
-        RigidBodyBuilder::new_static()
-            .translation(0.0, -2.5, 0.0)
-            .user_data(300000)
-            .build()
-    );
-    colliders.insert(
-        ColliderBuilder::cuboid(5.0, 0.1, 5.0)
-            .collision_groups(COL_GROUP)
-            .build(),
-        floor_rb_handle,
-        &mut bodies,
+    let mut add_collider_cuboid = |rb: RigidBodyBuilder, cb: ColliderBuilder| {
+        let floor_rb_handle = bodies.insert(rb.user_data(300000).build());
+        colliders.insert(cb.collision_groups(COL_GROUP).build(), floor_rb_handle, &mut bodies);
+    };
+    add_collider_cuboid(
+        RigidBodyBuilder::new_static().translation(0.0, -2.6, 0.0),
+        ColliderBuilder::cuboid(5.0, 0.1, 5.0),
     );
 
-    let floor_rb_handle = bodies.insert(
-        RigidBodyBuilder::new_static()
-            .translation(0.0, 0.0, -5.0)
-            .user_data(300000)
-            .build()
-    );
-    colliders.insert(
-        ColliderBuilder::cuboid(5.0, 5.0, 0.1)
-            .collision_groups(COL_GROUP)
-            .build(),
-        floor_rb_handle,
-        &mut bodies,
+    add_collider_cuboid(
+        RigidBodyBuilder::new_static().translation(0.0, 0.0, -5.0),
+        ColliderBuilder::cuboid(5.0, 5.0, 0.1),
     );
 
-    for i in 0..(45*3) {
+    add_collider_cuboid(
+        RigidBodyBuilder::new_static().translation(5.0, 0.0, 0.0),
+        ColliderBuilder::cuboid(0.1, 5.0, 5.0),
+    );
+
+    add_collider_cuboid(
+        RigidBodyBuilder::new_static().translation(-5.0, 0.0, 0.0),
+        ColliderBuilder::cuboid(0.1, 5.0, 5.0),
+    );
+
+    for i in 0..(30 * 5) {
         println!("Render frame {}", i);
         renderer.render_frame_to_video(&mut scene, i);
 
@@ -331,7 +352,7 @@ fn run_video() {
             &mut joints,
             None,
             None,
-            &event_handler
+            &event_handler,
         );
         scene.data.sphere_models = scene.data.sphere_models.change(|mut spheres| {
             for (_, body) in bodies.iter() {

@@ -1,11 +1,9 @@
-use crate::core::{CommandFactoryContext, AppInfo};
+use crate::core::{AppInfo, CommandFactoryContext};
 use std::sync::Arc;
 use vulkano::{
     buffer::{BufferAccess, TypedBufferAccess},
     command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
-    descriptor::{
-        pipeline_layout::PipelineLayout, DescriptorSet,
-    },
+    descriptor::{pipeline_layout::PipelineLayout, DescriptorSet},
     device::Device,
     pipeline::ComputePipeline,
 };

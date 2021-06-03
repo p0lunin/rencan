@@ -1,35 +1,35 @@
-use ffmpeg::{format::Pixel, software::scaling::Context, StreamMut};
+use ffmpeg::{
+    codec::traits::Encoder,
+    format::{context::Output, Pixel},
+    software::scaling::Context,
+    util::frame::Video,
+    StreamMut,
+};
 use image::Rgba;
+use itertools::Itertools;
 use rencan_render::{
+    commands::raw::{denoise::DenoiseCommandFactory, msaa::MsaaCommandFactory},
     core::{camera::Camera, AppInfo, Scene, Screen},
     App, AppBuilder, AppBuilderRtExt,
 };
 use std::{
+    io::Write,
+    ops::Deref,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{mpsc::SyncSender, Arc},
+    thread::JoinHandle,
+    time::Instant,
 };
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::AutoCommandBufferBuilder,
+    descriptor::descriptor_set::PersistentDescriptorSet,
     device::{Device, DeviceExtensions, Features, Queue},
-    image::{view::ImageView, AttachmentImage, ImageDimensions, ImageUsage},
+    image::{view::ImageView, AttachmentImage, ImageAccess, ImageDimensions, ImageUsage},
     instance::{Instance, InstanceExtensions, PhysicalDevice},
+    sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
     sync::GpuFuture,
 };
-use ffmpeg::format::context::Output;
-use std::ops::Deref;
-use ffmpeg::util::frame::Video;
-use itertools::Itertools;
-use ffmpeg::codec::traits::Encoder;
-use std::io::Write;
-use std::sync::mpsc::SyncSender;
-use std::thread::JoinHandle;
-use vulkano::image::{ImageAccess};
-use rencan_render::commands::raw::msaa::MsaaCommandFactory;
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-use rencan_render::commands::raw::denoise::DenoiseCommandFactory;
-use std::time::Instant;
-use vulkano::sampler::{Sampler, Filter, MipmapMode, SamplerAddressMode};
 
 pub struct FFMpeg {
     context: ffmpeg::format::context::Output,
@@ -68,16 +68,12 @@ impl FFMpeg {
 
         let mut encoder = {
             let mut video = ffmpeg::codec::encoder::video::Video(
-                ffmpeg::codec::encoder::encoder::Encoder(
-                    stream.codec()
-                )
+                ffmpeg::codec::encoder::encoder::Encoder(stream.codec()),
             );
             video.set_time_base((1, fps));
             video.set_width(width);
             video.set_height(height);
-            video.set_format(
-                Pixel::YUV420P
-            );
+            video.set_format(Pixel::YUV420P);
             video.open_as(codec.clone()).unwrap()
         };
 
@@ -85,26 +81,12 @@ impl FFMpeg {
 
         output.write_header().unwrap();
 
-        let video_rgb = ffmpeg::util::frame::video::Video::new(
-            ffmpeg::format::Pixel::RGBA,
-            width,
-            height,
-        );
-        let video_yuv = ffmpeg::util::frame::video::Video::new(
-            ffmpeg::format::Pixel::YUV420P,
-            width,
-            height,
-        );
+        let video_rgb =
+            ffmpeg::util::frame::video::Video::new(ffmpeg::format::Pixel::RGBA, width, height);
+        let video_yuv =
+            ffmpeg::util::frame::video::Video::new(ffmpeg::format::Pixel::YUV420P, width, height);
 
-        Self {
-            context: output,
-            scale_context,
-            video_rgb,
-            video_yuv,
-            frame_number: 0,
-            encoder,
-            fps,
-        }
+        Self { context: output, scale_context, video_rgb, video_yuv, frame_number: 0, encoder, fps }
     }
     pub fn write_frame(&mut self, frame_rgba: &[u8]) {
         let mut video_rgb = &mut self.video_rgb;
@@ -144,8 +126,7 @@ impl FFMpeg {
                 packet.set_stream(0);
                 println!("Writes frame {} with size {}", packet.pts().unwrap(), packet.size());
                 packet.write_interleaved(&mut self.context).unwrap();
-            }
-            else {
+            } else {
                 break;
             }
             self.frame_number += 1;
@@ -156,7 +137,7 @@ impl FFMpeg {
         self.stream().codec()
     }
     fn stream(&self) -> ffmpeg::format::stream::Stream {
-         self.context.stream(0).unwrap()
+        self.context.stream(0).unwrap()
     }
 }
 
@@ -168,24 +149,20 @@ pub struct Renderer {
 
     buffer_image: Arc<ImageView<Arc<AttachmentImage>>>,
     msaa: Arc<MsaaCommandFactory>,
-    denoise: Arc<DenoiseCommandFactory>
+    denoise: Arc<DenoiseCommandFactory>,
 }
 
 impl Renderer {
     pub fn new(app: AnimationApp, fps: u32, output_file: impl AsRef<str>) -> Self {
         let msaa = app.app.info().msaa;
-        let (sender, receiver) = std::sync::mpsc::sync_channel::<Arc<CpuAccessibleBuffer<[u8]>>>(10);
+        let (sender, receiver) =
+            std::sync::mpsc::sync_channel::<Arc<CpuAccessibleBuffer<[u8]>>>(10);
 
         let file = output_file.as_ref().to_string();
         let width = app.screen().width();
         let height = app.screen().height();
         let handle = std::thread::spawn(move || {
-            let mut ffmpeg = FFMpeg::new(
-                file,
-                width,
-                height,
-                fps as i32
-            );
+            let mut ffmpeg = FFMpeg::new(file, width, height, fps as i32);
             let mut i = 0;
             for buf in receiver.iter() {
                 let mut content = buf.read().unwrap();
@@ -216,15 +193,21 @@ impl Renderer {
         .unwrap();
 
         let msaa = Arc::new(MsaaCommandFactory::new(app.app.info(), msaa as u32));
-        let denoise = Arc::new(
-            DenoiseCommandFactory::new(
-                app.app.info(),
-                buffer_image.image().format(),
-                buffer_image.image().dimensions().width_height()
-            )
-        );
+        let denoise = Arc::new(DenoiseCommandFactory::new(
+            app.app.info(),
+            buffer_image.image().format(),
+            buffer_image.image().dimensions().width_height(),
+        ));
 
-        Renderer { handle, sender, app, output_file: output_file.as_ref().into(), buffer_image, msaa, denoise }
+        Renderer {
+            handle,
+            sender,
+            app,
+            output_file: output_file.as_ref().into(),
+            buffer_image,
+            msaa,
+            denoise,
+        }
     }
 
     pub fn render_frame_to_video(&mut self, scene: &mut Scene, frame_num: u32) {
@@ -304,9 +287,11 @@ impl Renderer {
         &mut self.app.app
     }
 
-    fn render(&mut self, scene: &mut Scene) -> (impl GpuFuture, Arc<ImageView<Arc<AttachmentImage>>>) {
-        self
-            .app
+    fn render(
+        &mut self,
+        scene: &mut Scene,
+    ) -> (impl GpuFuture, Arc<ImageView<Arc<AttachmentImage>>>) {
+        self.app
             .app
             .render(
                 vulkano::sync::now(self.app.vulkan_device()),
@@ -324,9 +309,11 @@ impl Renderer {
                                 storage: true,
                                 transfer_destination: true,
                                 ..ImageUsage::none()
-                            }
-                        ).unwrap()
-                    ).unwrap();
+                            },
+                        )
+                        .unwrap(),
+                    )
+                    .unwrap();
                     move |_| image
                 },
                 {
@@ -335,7 +322,8 @@ impl Renderer {
                     let denoise = self.denoise.clone();
                     let device = self.app.vulkan_device();
                     move |fut, ctx| {
-                        let cmd = ctx.create_command_buffer()
+                        let cmd = ctx
+                            .create_command_buffer()
                             .update_with(|buf| {
                                 msaa.add_msaa(
                                     &ctx,
@@ -344,13 +332,14 @@ impl Renderer {
                                         .unwrap()
                                         .build()
                                         .unwrap(),
-                                    &mut buf.0
+                                    &mut buf.0,
                                 );
                             })
                             .build();
 
                         let mut output_img = None;
-                        let cmd2 = ctx.create_command_buffer()
+                        let cmd2 = ctx
+                            .create_command_buffer()
                             .update_with(|buf| {
                                 let sampler = Sampler::new(
                                     device,
@@ -374,12 +363,11 @@ impl Renderer {
                                         .unwrap()
                                         .build()
                                         .unwrap(),
-                                    &mut buf.0
+                                    &mut buf.0,
                                 );
                                 output_img = Some(img);
                             })
                             .build();
-
 
                         let fut = fut
                             .then_execute(ctx.graphics_queue(), cmd)
@@ -389,7 +377,7 @@ impl Renderer {
                             .boxed();
                         (fut, output_img.unwrap())
                     }
-                }
+                },
             )
             .unwrap()
     }
@@ -444,23 +432,12 @@ fn init_instance() -> Arc<Instance> {
 fn init_app(instance: Arc<Instance>, screen: Screen, steps: u32, msaa: u8) -> App {
     let (device, graphics_queue) = init_device_and_queue(&instance);
 
-    let info = AppInfo::new(
-        instance,
-        graphics_queue,
-        device.clone(),
-        screen,
-        steps,
-        msaa,
-        32
-    );
+    let info = AppInfo::new(instance, graphics_queue, device.clone(), screen, steps, msaa, 32);
 
     let app = AppBuilder::new(info.clone())
         .then_ray_tracing_pipeline()
         //.then_command(Box::new(rencan_render::commands::SkyCommandFactory::new(device.clone())))
-        .then_command(Box::new(rencan_render::commands::LightningV2CommandFactory::new(
-            &info,
-            32,
-        )))
+        .then_command(Box::new(rencan_render::commands::GiCommandFactory::new(&info, 16)))
         .build();
 
     app

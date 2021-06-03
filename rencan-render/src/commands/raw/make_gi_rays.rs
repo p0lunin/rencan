@@ -1,24 +1,19 @@
-use crate::core::{CommandFactoryContext, AppInfo};
-use std::sync::Arc;
+use crate::core::{AppInfo, CommandFactoryContext};
+use std::{io::Cursor, sync::Arc};
 use vulkano::{
-    buffer::{BufferAccess, TypedBufferAccess},
-    command_buffer::{AutoCommandBufferBuilder, DispatchIndirectCommand},
+    buffer::{BufferAccess, BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
+    command_buffer::{AutoCommandBufferBuilder, CommandBuffer, DispatchIndirectCommand},
     descriptor::{
-        descriptor_set::UnsafeDescriptorSetLayout,
-        pipeline_layout::{PipelineLayout},
+        descriptor_set::{PersistentDescriptorSet, UnsafeDescriptorSetLayout},
+        pipeline_layout::PipelineLayout,
         DescriptorSet, PipelineLayoutAbstract,
     },
     device::Device,
+    format::Format,
+    image::{view::ImageView, AttachmentImage, ImageDimensions, ImageUsage},
     pipeline::ComputePipeline,
+    sync::GpuFuture,
 };
-use std::io::Cursor;
-use vulkano::image::{ImageDimensions, AttachmentImage, ImageUsage};
-use vulkano::image::view::ImageView;
-use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage};
-use vulkano::command_buffer::CommandBuffer;
-use vulkano::format::Format;
-use vulkano::sync::GpuFuture;
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 
 mod cs {
     vulkano_shaders::shader! {
@@ -40,7 +35,7 @@ impl MakeGiRaysCommandFactory {
         let local_size_x = info.recommend_workgroups_length;
 
         let shader = cs::Shader::load(device.clone()).unwrap();
-        let constants = cs::SpecializationConstants { constant_0: local_size_x, };
+        let constants = cs::SpecializationConstants { constant_0: local_size_x };
         let pipeline = Arc::new(
             ComputePipeline::new(device.clone(), &shader.main_entry_point(), &constants, None)
                 .unwrap(),
@@ -65,37 +60,25 @@ impl MakeGiRaysCommandFactory {
                 device.clone(),
                 [img_info.width, img_info.height],
                 Format::R8G8B8A8Unorm,
-                ImageUsage {
-                    storage: true,
-                    transfer_destination: true,
-                    ..ImageUsage::none()
-                }
+                ImageUsage { storage: true, transfer_destination: true, ..ImageUsage::none() },
             )
             .unwrap();
 
             let buf = CpuAccessibleBuffer::from_iter(
                 device.clone(),
-                BufferUsage {
-                    storage_buffer: true,
-                    transfer_source: true,
-                    ..BufferUsage::none()
-                },
+                BufferUsage { storage_buffer: true, transfer_source: true, ..BufferUsage::none() },
                 false,
                 image_data.into_iter(),
-            ).unwrap();
+            )
+            .unwrap();
 
-            let mut cmd = AutoCommandBufferBuilder::new(
-                device.clone(),
-                info.graphics_queue.family()
-            ).unwrap();
+            let mut cmd =
+                AutoCommandBufferBuilder::new(device.clone(), info.graphics_queue.family())
+                    .unwrap();
 
             cmd.copy_buffer_to_image(buf, image.clone()).unwrap();
 
-            let future = cmd
-                .build()
-                .unwrap()
-                .execute(info.graphics_queue.clone())
-                .unwrap();
+            let future = cmd.build().unwrap().execute(info.graphics_queue.clone()).unwrap();
 
             (ImageView::new(image).unwrap(), future)
         };
@@ -103,12 +86,12 @@ impl MakeGiRaysCommandFactory {
         tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
         let noise_set = PersistentDescriptorSet::start(
-            pipeline.layout().descriptor_set_layout(7).unwrap().clone()
+            pipeline.layout().descriptor_set_layout(7).unwrap().clone(),
         )
-            .add_image(texture)
-            .unwrap()
-            .build()
-            .unwrap();
+        .add_image(texture)
+        .unwrap()
+        .build()
+        .unwrap();
 
         let noise_set = Arc::new(noise_set);
 
@@ -158,7 +141,7 @@ impl MakeGiRaysCommandFactory {
                     rand1,
                     rand2,
                     ctx.app_info.size_of_image_array() as u32 * ctx.render_step,
-                    ctx.app_info.msaa
+                    ctx.app_info.msaa,
                 ),
                 std::iter::empty(),
             )

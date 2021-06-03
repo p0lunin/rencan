@@ -1,11 +1,10 @@
 use crate::core::CommandFactoryContext;
 use std::sync::Arc;
 use vulkano::{
-    command_buffer::{AutoCommandBufferBuilder},
+    command_buffer::AutoCommandBufferBuilder,
     descriptor::{
-        descriptor::ShaderStages,
-        pipeline_layout::{PipelineLayout},
-        DescriptorSet, PipelineLayoutAbstract,
+        descriptor::ShaderStages, pipeline_layout::PipelineLayout, DescriptorSet,
+        PipelineLayoutAbstract,
     },
     device::Device,
     pipeline::ComputePipeline,

@@ -7,9 +7,7 @@ use crate::{
     AppInfo,
 };
 use std::sync::Arc;
-use vulkano::{
-    descriptor::DescriptorSet, device::Device, sync::GpuFuture,
-};
+use vulkano::{descriptor::DescriptorSet, device::Device, sync::GpuFuture};
 
 pub struct Scene {
     pub data: SceneData,

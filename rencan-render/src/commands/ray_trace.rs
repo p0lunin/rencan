@@ -6,14 +6,10 @@ use vulkano::{
 
 use crate::{
     commands::raw::divide_workgroups::DivideWorkgroupsCommandFactory,
-    core::{camera::Camera, CommandFactory, CommandFactoryContext, Screen},
+    core::{camera::Camera, AppInfo, CommandFactory, CommandFactoryContext, Screen},
 };
 use nalgebra::Point3;
-use vulkano::{
-    sync::GpuFuture,
-};
-use vulkano::format::ClearValue;
-use crate::core::AppInfo;
+use vulkano::{format::ClearValue, sync::GpuFuture};
 
 mod cs {
     vulkano_shaders::shader! {
@@ -26,15 +22,13 @@ pub mod ray_trace_shader {
     pub use super::cs::*;
 }
 
-pub struct RayTraceCommandFactory {
+pub struct InitialTraceCommandFactory {
     pipeline: Arc<ComputePipeline<PipelineLayout<cs::MainLayout>>>,
     divide_factory: DivideWorkgroupsCommandFactory,
-    prev_camera: Camera,
-    prev_screen: Screen,
     local_size_x: u32,
 }
 
-impl RayTraceCommandFactory {
+impl InitialTraceCommandFactory {
     pub fn new(info: &AppInfo) -> Self {
         let device = &info.device;
         let shader = cs::Shader::load(device.clone()).unwrap();
@@ -47,29 +41,20 @@ impl RayTraceCommandFactory {
                 .unwrap(),
         );
         let divide_factory = DivideWorkgroupsCommandFactory::new(device.clone(), local_size_x);
-        RayTraceCommandFactory {
+        InitialTraceCommandFactory {
             pipeline,
             divide_factory,
-            prev_camera: Camera::new(
-                Point3::new(f32::NAN, f32::NAN, f32::NAN),
-                (f32::NAN, f32::NAN, f32::NAN),
-                0.0,
-            ),
-            prev_screen: Screen::new(0, 0),
             local_size_x,
         }
     }
 }
 
-impl CommandFactory for RayTraceCommandFactory {
+impl CommandFactory for InitialTraceCommandFactory {
     fn make_command(
         &mut self,
         ctx: CommandFactoryContext,
         fut: Box<dyn GpuFuture>,
     ) -> Box<dyn GpuFuture> {
-        self.prev_camera = ctx.camera.clone();
-        self.prev_screen = ctx.app_info.screen.clone();
-
         let buffers = &ctx.buffers;
 
         let set_0 = buffers.global_app_set.clone();
@@ -85,13 +70,18 @@ impl CommandFactory for RayTraceCommandFactory {
         let ray_trace_command = ctx
             .create_command_buffer()
             .update_with(|buf| {
-                buf.0.dispatch(
-                    [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
-                    self.pipeline.clone(),
-                    sets,
-                    (ctx.app_info.size_of_image_array() as u32 * ctx.render_step, ctx.app_info.msaa as u32),
-                    std::iter::empty()
-                ).unwrap();
+                buf.0
+                    .dispatch(
+                        [ctx.app_info.size_of_image_array() as u32 / self.local_size_x, 1, 1],
+                        self.pipeline.clone(),
+                        sets,
+                        (
+                            ctx.app_info.size_of_image_array() as u32 * ctx.render_step,
+                            ctx.app_info.msaa as u32,
+                        ),
+                        std::iter::empty(),
+                    )
+                    .unwrap();
             })
             .build();
 

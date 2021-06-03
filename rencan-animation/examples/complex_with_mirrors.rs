@@ -142,13 +142,8 @@ mod models {
                 [-1.0, -1.0, 1.0, 0.0].into(),  // D2 - 7
             ],
             indices![
-                A2, C2, B2, A2, D2,
-                C2,
-                                D1, B1, C1,
-                                D1, A1, B1,
-
-                B1, A2, B2, B1, A1, A2, A1, D2, A2, A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2,
-                C1, B1, B2,
+                A2, C2, B2, A2, D2, C2, D1, B1, C1, D1, A1, B1, B1, A2, B2, B1, A1, A2, A1, D2, A2,
+                A1, D1, D2, D1, C2, D2, D1, C1, C2, C1, B2, C2, C1, B1, B2,
             ],
         );
         model.position = position;
@@ -213,12 +208,10 @@ fn init_scene(device: Arc<Device>) -> Scene {
             LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 0.0),
             Vector3::new(0.2, -0.4, -0.3).normalize(),
         ),
-        vec![
-            PointLight::new(
-                LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
-                Point3::new(0.0, 2.3, 0.0),
-            ),
-        ],
+        vec![PointLight::new(
+            LightInfo::new(Point4::new(1.0, 0.98, 0.96, 0.0), 600.0),
+            Point3::new(0.0, 2.3, 0.0),
+        )],
         Camera::from_origin().move_at(1.0, 0.3, 0.5).rotate(0.0, std::f32::consts::FRAC_PI_2, 0.0),
     )
 }
@@ -229,17 +222,16 @@ fn main() {
 
     let mut renderer = Renderer::new(app, 30, &"some.png");
     let mut scene = init_scene(device);
-/*
-    for i in 0..1 {
-        println!("Render frame {}", i);
-        renderer.render_frame_to_video(&mut scene);
+    /*
+        for i in 0..1 {
+            println!("Render frame {}", i);
+            renderer.render_frame_to_video(&mut scene);
 
-        scene.update_camera(|camera| {
-            camera.rotate(0.0, 0.01, 0.0)
-        });
-    }
-    renderer.end_video();
-*/
+            scene.update_camera(|camera| {
+                camera.rotate(0.0, 0.01, 0.0)
+            });
+        }
+        renderer.end_video();
+    */
     renderer.render_frame_to_image(&mut scene);
-
 }

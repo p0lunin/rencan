@@ -15,5 +15,7 @@ impl Screen {
     pub fn height(&self) -> u32 {
         self.0[1]
     }
-    pub fn size(&self) -> u32 { self.width() * self.height() }
+    pub fn size(&self) -> u32 {
+        self.width() * self.height()
+    }
 }

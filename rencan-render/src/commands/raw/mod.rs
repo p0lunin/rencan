@@ -1,10 +1,10 @@
 pub mod copy_from_buffer_to_image;
+pub mod denoise;
 pub mod divide_workgroups;
 pub mod lights_diffuse;
+pub mod lights_gi;
+pub mod make_gi_rays;
+pub mod msaa;
 pub mod reflect_from_mirror;
 pub mod trace_rays;
 pub mod trace_rays_to_light;
-pub mod make_gi_rays;
-pub mod lights_gi;
-pub mod msaa;
-pub mod denoise;
